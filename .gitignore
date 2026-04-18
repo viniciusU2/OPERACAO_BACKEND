@@ -8,3 +8,5 @@ __pycache__/
 # Arquivos de build
 build/
 dist/
+temp/
+saida/

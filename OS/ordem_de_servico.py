@@ -290,6 +290,63 @@ def baixar_os(id_os: int, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/subestacao/1/gerar-os")
+def gerar_os_subestacao(db: Session = Depends(get_db)):
+
+    # 🔹 Buscar todas as OS da subestação 1
+    ordens = (
+        db.query(OS_models.OrdemServico)
+        .filter(OS_models.OrdemServico.id_subestacao == 1)
+        .all()
+    )
+
+    if not ordens:
+        raise HTTPException(
+            status_code=404,
+            detail="Nenhuma OS encontrada para essa subestação"
+        )
+
+    # 🔹 Criar pasta de saída
+    pasta_saida = "saida"
+    os.makedirs(pasta_saida, exist_ok=True)
+
+    arquivos_gerados = []
+
+    for os_db in ordens:
+
+        # 🔹 Buscar ativo (se existir)
+        ativo = None
+        if os_db.id_ativo:
+            ativo = db.query(Ativo).filter(
+                Ativo.id_ativo == os_db.id_ativo
+            ).first()
+
+        # 🔹 Montar contexto
+        contexto = montar_contexto_os(os_db, ativo)
+
+        # 🔹 Nome seguro
+        numero_os_safe = nome_arquivo_seguro(os_db.numero_os)
+        nome_arquivo = f"{numero_os_safe}.xlsm"
+
+        caminho_saida = os.path.join(pasta_saida, nome_arquivo)
+
+        # 🔹 Gerar arquivo
+        gerar_xlsm(
+            modelo="modelos/MODELO_OS.xlsx",
+            destino=caminho_saida,
+            contexto=contexto,
+            mapeamento=MAPEAMENTO_CELULAS
+        )
+
+        arquivos_gerados.append(nome_arquivo)
+
+    return {
+        "message": "Arquivos gerados com sucesso",
+        "total": len(arquivos_gerados),
+        "arquivos": arquivos_gerados
+    }
+
+
 @router.get("")
 def listar_os(
     id_ativo: int | None = None,
