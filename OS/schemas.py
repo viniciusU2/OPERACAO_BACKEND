@@ -9,7 +9,7 @@ from typing import Optional, Literal
 
 class OrdemServicoCreate(BaseModel):
     # ================= IDENTIFICAÇÃO =================
-    numero_os: str = Field(..., min_length=1)
+    numero_os: Optional[str] = None
     numero_si: Optional[str] = None
 
     id_subestacao: Optional[int] = Field(None, gt=0)

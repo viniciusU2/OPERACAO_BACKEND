@@ -184,7 +184,7 @@ def gerar_numero_os(db: Session, sigla: str, codigo_ativo: str | None) -> str:
     # 🔹 Sanitizar código do ativo (opcional mas recomendado)
     if codigo_ativo:
         codigo_ativo = re.sub(r"[^A-Za-z0-9\-]", "", codigo_ativo)
-        return f"OS-{sigla}-{numero_formatado}-{ano_atual}-{codigo_ativo}"
+        return f"OS-{sigla}-{numero_formatado}-{ano_atual}-{codigo_ativo}", f"OS-{sigla}-{numero_formatado}-{ano_atual}-{codigo_ativo}"
     else:
         return f"OS-{sigla}-{numero_formatado}-{ano_atual}",f"APR-{sigla}-{numero_formatado}-{ano_atual}"
 
