@@ -1,22 +1,16 @@
-# models/inspecao_models.py
-
 import enum
-from datetime import datetime, date
-from decimal import Decimal
-from typing import List, Optional
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Column, Integer, String, DateTime, Date, ForeignKey, Text,
-    DECIMAL, Boolean, UniqueConstraint
+    DECIMAL, Boolean, UniqueConstraint, Index
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy import Enum as SQLEnum
 
 from database import Base
-from pydantic import BaseModel, ConfigDict
 
 
-# ====================== CONFIG PADRÃO MYSQL 🔥 ======================
 MYSQL_ARGS = {
     "mysql_engine": "InnoDB",
     "mysql_charset": "utf8mb4",
@@ -24,7 +18,7 @@ MYSQL_ARGS = {
 }
 
 
-# ====================== ENUMS ======================
+# ================= ENUMS =================
 class PeriodicidadeEnum(str, enum.Enum):
     SEMANAL = "SEMANAL"
     MENSAL = "MENSAL"
@@ -42,13 +36,67 @@ class StatusItemEnum(str, enum.Enum):
     NA = "NA"
 
 
-# ====================== MODELS ======================
-
-class ItemInspecaoTemplate(Base):
-    __tablename__ = "item_inspecao_template"
+# ================= PLANO ITEM =================
+class PlanoItem(Base):
+    __tablename__ = "plano_item"
     __table_args__ = MYSQL_ARGS
 
-    id_item_template = Column(Integer, primary_key=True, autoincrement=True)
+    id_plano_item = Column(Integer, primary_key=True)
+
+    id_plano_manutencao = Column(
+        Integer,
+        ForeignKey("plano_manutencao.id_plano_manutencao", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    id_ativo = Column(
+        Integer,
+        ForeignKey("ativo.id_ativo", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    nome_item = Column(String(200), nullable=False)
+    descricao = Column(Text)
+
+    periodicidade = Column(
+        SQLEnum(PeriodicidadeEnum, name="periodicidade_enum_plano_item"),
+        nullable=False
+    )
+
+    unidade = Column(String(30))
+    valor_referencia = Column(DECIMAL(12, 4))
+    tolerancia = Column(DECIMAL(12, 4))
+
+    data_inicio = Column(Date)
+    intervalo = Column(Integer, default=1)
+    antecedencia = Column(Integer, default=0)
+
+    ordem = Column(Integer, default=1)
+    ativo_flag = Column(Boolean, default=True)
+
+    # RELATIONSHIPS
+    plano = relationship("PlanoManutencao", back_populates="itens")
+
+    ativo = relationship("Ativo", back_populates="plano_items")
+
+    inspecoes = relationship(
+        "ResultadoItemInspecao",
+        back_populates="plano_item"
+    )
+
+    execucoes = relationship(
+        "PlanoExecucao",
+        back_populates="plano_item",
+        cascade="all, delete-orphan"
+    )
+
+
+# ================= PLANO =================
+class PlanoManutencao(Base):
+    __tablename__ = "plano_manutencao"
+    __table_args__ = MYSQL_ARGS
+
+    id_plano_manutencao = Column(Integer, primary_key=True)
 
     id_tipo_ativo = Column(
         Integer,
@@ -56,30 +104,59 @@ class ItemInspecaoTemplate(Base):
         nullable=False
     )
 
-    nome_item = Column(String(200), nullable=False)
-    descricao = Column(Text, nullable=True)
+    descricao_geral = Column(Text, default="")
+    materiais_previstos = Column(Text, default="")
+    procedimentos_instrucoes = Column(Text, default="")
+    requisitos_de_seguranca = Column(Text, default="")
+    observacao_geral = Column(Text, default="")
 
-    periodicidade = Column(
-        SQLEnum(PeriodicidadeEnum, name="periodicidade_enum"),
+    tipo_ativo = relationship("TipoAtivo", back_populates="planos_manutencao")
+
+    itens = relationship(
+        "PlanoItem",
+        back_populates="plano",
+        cascade="all, delete-orphan"
+    )
+
+
+# ================= EXECUÇÃO =================
+class PlanoExecucao(Base):
+    __tablename__ = "plano_execucao"
+    __table_args__ = (
+        Index("idx_execucao_proxima", "proxima_execucao"),
+        MYSQL_ARGS
+    )
+
+    id_execucao = Column(Integer, primary_key=True)
+
+    id_plano_item = Column(
+        Integer,
+        ForeignKey("plano_item.id_plano_item", ondelete="CASCADE"),
         nullable=False
     )
 
-    unidade = Column(String(30), nullable=True)
-    valor_referencia = Column(DECIMAL(12, 4), nullable=True)
-    tolerancia = Column(DECIMAL(12, 4), nullable=True)
+    id_ativo = Column(
+        Integer,
+        ForeignKey("ativo.id_ativo", ondelete="CASCADE"),
+        nullable=False
+    )
 
-    ativo = Column(Boolean, default=True)
+    ultima_execucao = Column(DateTime)
+    proxima_execucao = Column(DateTime, nullable=False)
 
-    tipo_ativo = relationship("TipoAtivo", back_populates="itens_template")
+    ativo_flag = Column(Boolean, default=True)
+
+    plano_item = relationship("PlanoItem", back_populates="execucoes")
+
+    ativo = relationship("Ativo", back_populates="execucoes")
 
 
-# --------------------------------------------------
-
+# ================= INSPEÇÃO =================
 class Inspecao(Base):
     __tablename__ = "inspecao"
     __table_args__ = MYSQL_ARGS
 
-    id_inspecao = Column(Integer, primary_key=True, autoincrement=True)
+    id_inspecao = Column(Integer, primary_key=True)
 
     id_ativo = Column(
         Integer,
@@ -93,23 +170,28 @@ class Inspecao(Base):
         nullable=True
     )
 
-    data_inspecao = Column(DateTime, default=datetime.utcnow, nullable=False)
-    data_proxima_inspecao = Column(Date, nullable=True)
+    data_inspecao = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    data_proxima_inspecao = Column(Date)
 
     periodicidade = Column(
-        SQLEnum(PeriodicidadeEnum, name="periodicidade_enum"),
+        SQLEnum(PeriodicidadeEnum, name="periodicidade_enum_inspecao"),
         nullable=False
     )
 
-    responsavel = Column(String(100), nullable=True)
+    responsavel = Column(String(100))
     observacao_geral = Column(Text, default="")
 
     status_geral = Column(
-        SQLEnum(StatusItemEnum, name="status_item_enum"),
+        SQLEnum(StatusItemEnum, name="status_item_enum_inspecao"),
         default=StatusItemEnum.NA
     )
 
     ativo = relationship("Ativo", back_populates="inspecoes")
+
     ordem_servico = relationship("OrdemServico", back_populates="inspecao")
 
     resultados = relationship(
@@ -119,16 +201,15 @@ class Inspecao(Base):
     )
 
 
-# --------------------------------------------------
-
+# ================= RESULTADO =================
 class ResultadoItemInspecao(Base):
     __tablename__ = "resultado_item_inspecao"
     __table_args__ = (
-        UniqueConstraint('id_inspecao', 'id_item_template', name='uq_inspecao_item'),
-        *[MYSQL_ARGS]
+        UniqueConstraint('id_inspecao', 'id_plano_item'),
+        MYSQL_ARGS
     )
 
-    id_resultado = Column(Integer, primary_key=True, autoincrement=True)
+    id_resultado = Column(Integer, primary_key=True)
 
     id_inspecao = Column(
         Integer,
@@ -136,74 +217,25 @@ class ResultadoItemInspecao(Base):
         nullable=False
     )
 
-    id_item_template = Column(
+    id_plano_item = Column(
         Integer,
-        ForeignKey("item_inspecao_template.id_item_template", ondelete="RESTRICT"),
+        ForeignKey("plano_item.id_plano_item", ondelete="RESTRICT"),
         nullable=False
     )
 
-    valor_medido = Column(DECIMAL(12, 4), nullable=True)
+    nome_item = Column(String(200), nullable=False)
+
+    valor_referencia = Column(DECIMAL(12, 4))
+    tolerancia = Column(DECIMAL(12, 4))
+    valor_medido = Column(DECIMAL(12, 4))
 
     status_item = Column(
-        SQLEnum(StatusItemEnum, name="status_item_enum"),
+        SQLEnum(StatusItemEnum, name="status_item_enum_resultado"),
         nullable=False
     )
 
-    observacao_item = Column(Text, nullable=True)
+    observacao_item = Column(Text)
 
     inspecao = relationship("Inspecao", back_populates="resultados")
-    item_template = relationship("ItemInspecaoTemplate")
 
-
-# ====================== SCHEMAS ======================
-
-class ResultadoItemCreate(BaseModel):
-    id_item_template: int
-    valor_medido: Optional[Decimal] = None
-    status_item: StatusItemEnum
-    observacao_item: Optional[str] = None
-
-
-class InspecaoCreate(BaseModel):
-    id_ativo: int
-    id_os: Optional[int] = None
-    data_inspecao: Optional[datetime] = None
-    data_proxima_inspecao: Optional[date] = None
-    periodicidade: PeriodicidadeEnum
-    responsavel: Optional[str] = None
-    observacao_geral: Optional[str] = ""
-
-    resultados: List[ResultadoItemCreate]
-
-
-class InspecaoRead(BaseModel):
-    id_inspecao: int
-    id_ativo: int
-    id_os: Optional[int] = None
-    data_inspecao: datetime
-    data_proxima_inspecao: Optional[date] = None
-    periodicidade: PeriodicidadeEnum
-    responsavel: Optional[str] = None
-    observacao_geral: Optional[str] = ""
-    status_geral: StatusItemEnum
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ResultadoItemInspecaoRead(BaseModel):
-    id_resultado: int
-    id_item_template: int
-    valor_medido: Optional[Decimal] = None
-    status_item: StatusItemEnum
-    observacao_item: Optional[str] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class InspecaoReadFull(InspecaoRead):
-    resultados: List[ResultadoItemInspecaoRead]
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-InspecaoReadFull.model_rebuild()
+    plano_item = relationship("PlanoItem", back_populates="inspecoes")

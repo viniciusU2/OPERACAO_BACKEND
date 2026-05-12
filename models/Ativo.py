@@ -1,11 +1,7 @@
-from sqlalchemy import Column, Integer, String, Date
-from sqlalchemy import DECIMAL, Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Date, DECIMAL, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 
-# =========================================================
-# ATIVO
-# =========================================================
 
 class Ativo(Base):
     __tablename__ = "ativo"
@@ -35,10 +31,26 @@ class Ativo(Base):
     vao = Column(String(50))
     fase = Column(String(50))
 
-
+    # RELATIONSHIPS
     subestacao = relationship("Subestacao", back_populates="ativos")
     tipo_ativo = relationship("TipoAtivo", back_populates="ativos")
+
     ordens = relationship("OrdemServico", back_populates="ativo")
-    inspecoes = relationship("Inspecao", back_populates="ativo")
 
+    inspecoes = relationship(
+        "Inspecao",
+        back_populates="ativo",
+        cascade="all, delete-orphan"
+    )
 
+    plano_items = relationship(
+        "PlanoItem",
+        back_populates="ativo",
+        cascade="all, delete-orphan"
+    )
+
+    execucoes = relationship(
+        "PlanoExecucao",
+        back_populates="ativo",
+        cascade="all, delete-orphan"
+    )

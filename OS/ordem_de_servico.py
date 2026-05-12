@@ -153,78 +153,130 @@ def montar_contexto_os(os, ativo=None):
         "DT_FIM_EXEC2": limpar(os.data_fim_execucao),
         "STATUS": limpar(os.status),  # ✅ AQUI
     }
-# ---------------- ORDEM DE SERVIÇO ----------------
+
+# 🔹 Lista fixa de subestações
+SUBESTACOES_SIGLAS = ["BJD", "GDO", "JAB"]
+
+
+# =========================
+# 🔥 GERAR NUMERO OS
+# =========================
+def gerar_numero_os(db: Session, sigla: str, codigo_ativo: str | None) -> str:
+    ano_atual = datetime.now().year
+
+    # 🔹 Buscar OS existentes da mesma subestação e ano
+    registros = (
+        db.query(OS_models.OrdemServico.numero_os)
+        .filter(OS_models.OrdemServico.numero_os.like(f"OS-{sigla}-%-{ano_atual}%"))
+        .all()
+    )
+
+    numeros = []
+
+    for (numero_os,) in registros:
+        match = re.search(rf"OS-{sigla}-(\d+)-{ano_atual}", numero_os)
+        if match:
+            numeros.append(int(match.group(1)))
+
+    proximo = max(numeros) + 1 if numeros else 1
+    numero_formatado = str(proximo).zfill(4)
+
+    # 🔹 Sanitizar código do ativo (opcional mas recomendado)
+    if codigo_ativo:
+        codigo_ativo = re.sub(r"[^A-Za-z0-9\-]", "", codigo_ativo)
+        return f"OS-{sigla}-{numero_formatado}-{ano_atual}-{codigo_ativo}"
+    else:
+        return f"OS-{sigla}-{numero_formatado}-{ano_atual}",f"APR-{sigla}-{numero_formatado}-{ano_atual}"
+
+
+
+
+# =========================
+# 🔥 CRIAR ORDEM DE SERVIÇO
+# =========================
 @router.post("", response_model=OrdemServicoCreate)
 def criar_ordem_servico(
     os_data: OrdemServicoCreate,
     db: Session = Depends(get_db)
+):
+    print(os_data)
 
-    
-):
-    
+    # 🔹 Validação de datas
     if (
-    os_data.data_inicio_programado
-    and os_data.data_fim_programado
-    and os_data.data_fim_programado < os_data.data_inicio_programado
-):
+        os_data.data_inicio_programado
+        and os_data.data_fim_programado
+        and os_data.data_fim_programado < os_data.data_inicio_programado
+    ):
         raise HTTPException(
             status_code=400,
             detail="Data final não pode ser anterior à data inicial"
         )
-    # 🔹 Validação de Subestação
-    if os_data.id_subestacao:
-        sub = db.query(Subestacao).filter(
-            Subestacao.id_subestacao == os_data.id_subestacao
-        ).first()
-  
-        os_data.instalacao = sub.nome  # ✅ objeto SQLAlchemy
 
+    # 🔹 Validar Subestação
+    if not os_data.id_subestacao:
+        raise HTTPException(400, "Subestação é obrigatória")
 
-        if not sub:
-            raise HTTPException(
-                status_code=400,
-                detail="Subestação inválida"
-            )
+    sub = db.query(Subestacao).filter(
+        Subestacao.id_subestacao == os_data.id_subestacao
+    ).first()
 
-    # 🔹 Validação de Ativo
+    if not sub:
+        raise HTTPException(400, "Subestação inválida")
+
+    # 🔹 Define nome da instalação
+    os_data.instalacao = sub.nome
+
+    # 🔹 Definir sigla (baseado na lista)
+    try:
+        sigla = SUBESTACOES_SIGLAS[os_data.id_subestacao - 1]
+    except IndexError:
+        raise HTTPException(400, "Subestação sem sigla configurada")
+
+    # 🔹 Validar Ativo
     ativo = None
+    codigo_ativo = None
+
     if os_data.id_ativo:
         ativo = db.query(Ativo).filter(
             Ativo.id_ativo == os_data.id_ativo
         ).first()
 
         if not ativo:
-            raise HTTPException(
-                status_code=400,
-                detail="Ativo inválido"
-            )
-        
+            raise HTTPException(400, "Ativo inválido")
 
- 
+        codigo_ativo = ativo.codigo_ativo
 
-    data = os_data.dict(exclude={"codigo_ativo"}) # 👈 REMOVE
+    # 🔥 GERAR NUMERO OS
+    os_data.numero_os,  os_data.numero_apr = gerar_numero_os(db, sigla, codigo_ativo)
+
+    # 🔹 Criar OS
+    data = os_data.dict(exclude={"codigo_ativo"})
     nova_os = OS_models.OrdemServico(**data)
+    print(data)
 
     db.add(nova_os)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Erro ao gerar número da OS. Tente novamente."
+        )
+
     db.refresh(nova_os)
 
-
-
     # -------------------------
-    # 🔥 GERAR XLSM AQUI
+    # 🔥 GERAR XLSM
     # -------------------------
-
     pasta_saida = "saida"
     os.makedirs(pasta_saida, exist_ok=True)
 
     contexto = montar_contexto_os(os_data, ativo)
 
     numero_os_safe = nome_arquivo_seguro(nova_os.numero_os)
-
     nome_arquivo = f"{numero_os_safe}.xlsm"
-
-  
     caminho_saida = os.path.join(pasta_saida, nome_arquivo)
 
     gerar_xlsm(
@@ -235,6 +287,7 @@ def criar_ordem_servico(
     )
 
     return nova_os
+
 
 from fastapi.responses import FileResponse
 
@@ -359,7 +412,7 @@ def listar_os(
             OS_models.OrdemServico.id_ativo == id_ativo
         )
 
-    return query.all()
+    return query.order_by(OS_models.OrdemServico.id_os.desc()).all()
 
 @router.get("/ativo/{id_ativo}")
 def listar_os(
