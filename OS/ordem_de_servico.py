@@ -19,8 +19,8 @@ from datetime import datetime
 import os
 import re
 from fastapi.background import BackgroundTasks
-
-
+from typing import List
+from fastapi.responses import FileResponse
 
 
 
@@ -289,7 +289,6 @@ def criar_ordem_servico(
     return nova_os
 
 
-from fastapi.responses import FileResponse
 
 @router.get("/{id_os}/download")
 def baixar_os(id_os: int, db: Session = Depends(get_db)):
@@ -511,13 +510,6 @@ def deletar_os(id_os: int, db: Session = Depends(get_db)):
     return {"message": "OS excluída com sucesso"}
 
 
-
-
-import re
-from fastapi import HTTPException
-from sqlalchemy.orm import Session
-from typing import List
-
 @router.post("/lote-por-tipo-ativo", response_model=List[OrdemServicoResponse])
 def criar_os_lote_por_tipo_ativo(
     payload: OrdemServicoCreateLote,
@@ -548,6 +540,16 @@ def criar_os_lote_por_tipo_ativo(
             detail="Nenhum ativo encontrado para esse tipo na subestação."
         )
 
+
+ 
+    # 🔹 Definir sigla (baseado na lista)
+    try:
+        sigla = SUBESTACOES_SIGLAS[payload.id_subestacao - 1]
+    except IndexError:
+        raise HTTPException(400, "Subestação sem sigla configurada")
+    
+
+
     # ====================== 3. ORDENAÇÃO CORRETA ======================
     ordem_fase = {"AZ": 1, "BR": 2, "VM": 3}
 
@@ -573,11 +575,16 @@ def criar_os_lote_por_tipo_ativo(
     )
 
     # ====================== 4. GERAÇÃO DO NÚMERO OS ======================
-    if not payload.numero_os:
-        raise HTTPException(
-            status_code=400,
-            detail="numero_os inicial é obrigatório (ex: OS-RTV-BJD-0168-2026)"
-        )
+ 
+   # 🔹 Validar Ativo
+    ativo = None
+    codigo_ativo = None
+
+   
+
+    payload.numero_os,  payload.numero_apr = gerar_numero_os(db, sigla, codigo_ativo)
+    
+  
 
     padrao = r"^(.*-)(\d+)-(\d{4})$"
     match = re.match(padrao, payload.numero_os.strip())
@@ -596,6 +603,7 @@ def criar_os_lote_por_tipo_ativo(
     padding = len(match.group(2))
 
     ordens_criadas = []
+    
 
     # ====================== 5. CRIAR AS OS ======================
     for index, ativo in enumerate(ativos):

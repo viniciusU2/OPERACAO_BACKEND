@@ -117,7 +117,7 @@ class OrdemServicoUpdate(BaseModel):
 
 class OrdemServicoCreateLote(BaseModel):
     id_subestacao: int
-    id_tipo_ativo: str                     # EAT, SPCS, TELECON, etc.
+    id_tipo_ativo: int                     # EAT, SPCS, TELECON, etc.
 
     numero_si: Optional[str] = None
     numero_os: Optional[str] = None

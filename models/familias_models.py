@@ -35,12 +35,7 @@ class TipoAtivo(Base):
     nome = Column(String(50), unique=True, nullable=False)
     descricao = Column(String(300), nullable=True)
 
-    data_criacao = Column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False
-    )
-
+    
     # ================= RELATIONSHIPS =================
     ativos = relationship(
         "Ativo",
