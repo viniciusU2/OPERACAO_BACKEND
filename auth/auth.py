@@ -55,10 +55,13 @@ def register(data: schemas.UsuarioCreate, db: Session = Depends(get_db)):
     if usuario_existente:
         raise HTTPException(status_code=400, detail="Email já cadastrado")
 
+    role = data.role if data.role in ["usuario", "mantenedor"] else "usuario"
+
     novo_usuario = Usuario(
         nome=data.nome,
         email=data.email,
-        senha_hash=gerar_hash(data.senha)
+        senha_hash=gerar_hash(data.senha),
+        role=role
     )
 
     db.add(novo_usuario)

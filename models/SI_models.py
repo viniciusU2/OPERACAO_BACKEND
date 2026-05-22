@@ -38,6 +38,11 @@ class solicitacao_intervencao(Base):
     responsavel_cot_manutencao = Column(String(100))
     responsavel_se_manutencao =  Column(String(100))
 
+    tipo_programacao=  Column(String(100))
+    dias_excecao =  Column(String(100))
+    tempo_retorno =  Column(String(100))
+    disponivel =  Column(String(100))
+
     responsavel_data_ons_manutencao = Column(DateTime)
     responsavel_data_cot_manutencao = Column(DateTime)
     responsavel_data_se_manutencao = Column(DateTime)

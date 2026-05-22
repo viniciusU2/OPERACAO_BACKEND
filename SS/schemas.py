@@ -6,7 +6,7 @@ from typing import Optional
 # BASE
 class SolicitacaoServicoBase(BaseModel):
 
-    numero_ss: str
+    numero_ss: Optional[str] = None
 
     data_hora_solicitacao: Optional[datetime] = None
     data_hora_abertura: Optional[datetime] = None
@@ -24,7 +24,7 @@ class SolicitacaoServicoBase(BaseModel):
     localizacao: Optional[str] = None
     complemento: Optional[str] = None
 
-    id_ativo: int
+    id_ativo: Optional[int] = None
 
     esquema_servico: Optional[str] = None
     centro_custo: Optional[str] = None
@@ -38,12 +38,12 @@ class SolicitacaoServicoBase(BaseModel):
 
     prioridade: Optional[str] = None
 
-    status: Optional[str] = None
+    status: Optional[str] = "ABERTA"
 
 
 # CREATE
 class SolicitacaoServicoCreate(SolicitacaoServicoBase):
-    pass
+    id_subestacao: Optional[int] = None
 
 
 # UPDATE (todos opcionais)
@@ -88,5 +88,6 @@ class SolicitacaoServicoUpdate(BaseModel):
 class SolicitacaoServicoResponse(SolicitacaoServicoBase):
 
     id: int
+    id_ss: int
 
     model_config = ConfigDict(from_attributes=True)

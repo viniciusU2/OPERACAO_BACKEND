@@ -684,3 +684,195 @@ def criar_os_lote_por_tipo_ativo(
 
     db.commit()
     return ordens_criadas
+
+
+from models.plano_manutencao_models import (
+    PlanoItem,
+    PlanoExecucao,
+    PeriodicidadeEnum,
+    PlanoManutencao
+
+)
+
+from models.familias_models import (
+    TipoAtivo
+
+)
+
+
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from database import get_db
+
+
+
+
+@router.post("/gerar-os-semanal")
+def gerar_os_semanal(db: Session = Depends(get_db)):
+    hoje = datetime.utcnow()
+    os_criadas = []
+
+    tipos_ativo = db.query(TipoAtivo).all()
+
+    for tipo in tipos_ativo:
+        planos = (
+            db.query(PlanoManutencao)
+            .filter(PlanoManutencao.id_tipo_ativo == tipo.id_tipo_ativo)
+            .all()
+        )
+
+        for plano in planos:
+            itens_plano = (
+                db.query(PlanoItem)
+                .filter(
+                    PlanoItem.id_plano_manutencao == plano.id_plano_manutencao,
+                    PlanoItem.periodicidade == PeriodicidadeEnum.SEMANAL,
+                )
+                .all()
+            )
+
+            if not itens_plano:
+                continue
+
+            ativos = (
+                db.query(Ativo)
+                .filter(Ativo.id_tipo_ativo == tipo.id_tipo_ativo)
+                .all()
+            )
+
+            for ativo in ativos:
+                execucoes_pendentes = []
+
+                for item in itens_plano:
+                    execucao = (
+                        db.query(PlanoExecucao)
+                        .filter(
+                            PlanoExecucao.id_plano_item == item.id_plano_item,
+                            PlanoExecucao.id_ativo == ativo.id_ativo,
+                        )
+                        .first()
+                    )
+
+                    if not execucao:
+                        execucao = PlanoExecucao(
+                            id_plano_item=item.id_plano_item,
+                            id_ativo=ativo.id_ativo,
+                            ultima_execucao=None,
+                            proxima_execucao=hoje,
+                        )
+                        db.add(execucao)
+                        db.flush()
+
+                    if execucao.proxima_execucao and execucao.proxima_execucao > hoje:
+                        continue
+
+                    execucoes_pendentes.append((item, execucao))
+
+                if not execucoes_pendentes:
+                    continue
+
+                data_programada = min(
+                    execucao.proxima_execucao or hoje
+                    for _, execucao in execucoes_pendentes
+                )
+                inicio_dia = data_programada.replace(hour=0, minute=0, second=0, microsecond=0)
+                fim_dia = inicio_dia + timedelta(days=1)
+
+                os_existente = (
+                    db.query(OrdemServico)
+                    .filter(
+                        OrdemServico.id_ativo == ativo.id_ativo,
+                        OrdemServico.descricao_servicos == plano.descricao_geral,
+                        OrdemServico.data_inicio_programado >= inicio_dia,
+                        OrdemServico.data_inicio_programado < fim_dia,
+                        OrdemServico.status.in_(["ABERTA", "PROGRAMADA", "EM_EXECUCAO"]),
+                    )
+                    .first()
+                )
+
+                if os_existente:
+                    for _, execucao in execucoes_pendentes:
+                        execucao.ultima_execucao = hoje
+                        execucao.proxima_execucao = hoje + timedelta(days=7)
+                    continue
+
+                subestacao = (
+                    db.query(Subestacao)
+                    .filter(Subestacao.id_subestacao == ativo.id_subestacao)
+                    .first()
+                )
+
+                if not subestacao:
+                    continue
+
+                try:
+                    sigla = SUBESTACOES_SIGLAS[ativo.id_subestacao - 1]
+                except IndexError:
+                    continue
+
+                numero_os, numero_apr = gerar_numero_os(
+                    db,
+                    sigla,
+                    ativo.codigo_ativo,
+                )
+
+                ultima_os_com_equipe = (
+                    db.query(OrdemServico)
+                    .filter(
+                        OrdemServico.id_subestacao == ativo.id_subestacao,
+                        OrdemServico.responsavel.isnot(None),
+                        OrdemServico.responsavel != "",
+                        OrdemServico.substituto.isnot(None),
+                        OrdemServico.substituto != "",
+                    )
+                    .order_by(
+                        OrdemServico.criado_em.desc(),
+                        OrdemServico.id_os.desc(),
+                    )
+                    .first()
+                )
+
+                nova_os = OrdemServico(
+                    numero_os=numero_os,
+                    numero_apr=numero_apr,
+                    id_subestacao=ativo.id_subestacao,
+                    id_ativo=ativo.id_ativo,
+                    instalacao=subestacao.nome,
+                    localizacao=ativo.vao,
+                    complemento=ativo.fase,
+                    descricao_servicos=plano.descricao_geral,
+                    data_inicio_programado=data_programada,
+                    data_fim_programado=data_programada,
+                    responsavel=ultima_os_com_equipe.responsavel if ultima_os_com_equipe else None,
+                    substituto=ultima_os_com_equipe.substituto if ultima_os_com_equipe else None,
+                    status="ABERTA",
+                )
+
+                db.add(nova_os)
+                db.flush()
+
+                for _, execucao in execucoes_pendentes:
+                    execucao.ultima_execucao = hoje
+                    execucao.proxima_execucao = hoje + timedelta(days=7)
+
+                os_criadas.append({
+                    "numero_os": numero_os,
+                    "ativo": ativo.codigo_ativo,
+                    "itens_plano": [
+                        item.nome_item
+                        for item, _ in execucoes_pendentes
+                    ],
+                    "responsavel": nova_os.responsavel,
+                    "substituto": nova_os.substituto,
+                })
+
+    db.commit()
+
+    return {
+        "mensagem": "OS semanais geradas com sucesso",
+        "total_os": len(os_criadas),
+        "os_criadas": os_criadas,
+    }

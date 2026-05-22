@@ -101,7 +101,7 @@ class PlanoItemBase(BaseModel):
     intervalo: int = 1
     antecedencia: int = 0
     ordem: int = 1
-    ativo: bool = True
+  
 
 
 class PlanoItemCreate(PlanoItemBase):
@@ -195,6 +195,7 @@ class InspecaoRead(BaseModel):
     status_geral: StatusItemEnum
 
     model_config = ConfigDict(from_attributes=True)
+
 
 
 class InspecaoReadFull(InspecaoRead):

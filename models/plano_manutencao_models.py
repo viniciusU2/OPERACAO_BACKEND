@@ -72,7 +72,7 @@ class PlanoItem(Base):
     antecedencia = Column(Integer, default=0)
 
     ordem = Column(Integer, default=1)
-    ativo_flag = Column(Boolean, default=True)
+  
 
     # RELATIONSHIPS
     plano = relationship("PlanoManutencao", back_populates="itens")
@@ -144,7 +144,7 @@ class PlanoExecucao(Base):
     ultima_execucao = Column(DateTime)
     proxima_execucao = Column(DateTime, nullable=False)
 
-    ativo_flag = Column(Boolean, default=True)
+   
 
     plano_item = relationship("PlanoItem", back_populates="execucoes")
 

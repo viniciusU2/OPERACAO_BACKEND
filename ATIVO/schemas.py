@@ -38,6 +38,7 @@ class AtivoResponse(BaseModel):
     numero_serie: Optional[str] = None
     fabricante: Optional[str] = None
     modelo: Optional[str] = None
+    especie: Optional[str] = None
     tensao_nominal_kv: Optional[Decimal] = None
     data_instalacao: Optional[date] = None
     status: str

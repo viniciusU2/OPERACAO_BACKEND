@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 class SIBase(BaseModel):
-    numero_si: str
+    numero_si: Optional[str] = None
     numero_sgi: Optional[str] = None
     id_subestacao: Optional[int] = None
     id_ativo: Optional[int] = None
@@ -40,7 +40,7 @@ class SIBase(BaseModel):
     responsavel_ons_manutencao: Optional[str] = None
     responsavel_cot_manutencao: Optional[str] = None
     responsavel_se_manutencao: Optional[str] = None
-    emissor: Optional[str]
+    emissor: Optional[str] = None
 
     
     responsavel_data_ons_manutencao: Optional[datetime] = None
@@ -54,6 +54,12 @@ class SIBase(BaseModel):
     responsavel_se_operacao: Optional[str] = None
 
 
+    tipo_programacao: Optional[str] = None
+    dias_excecao: Optional[str] = None
+    tempo_retorno: Optional[str] = None
+    disponivel: Optional[str] = None
+
+
     responsavel_data_ons_operacao: Optional[datetime] = None
     responsavel_data_cot_operacao: Optional[datetime] = None
     responsavel_data_se_operacao: Optional[datetime] = None
@@ -65,7 +71,7 @@ class SICreate(SIBase):
     pass
 
 
-class SIUpdate(BaseModel):
+class SIUpdate(SIBase):
     # tudo opcional pra edição
     numero_si: Optional[str] = None
     numero_sgi: Optional[str] = None
@@ -77,7 +83,7 @@ class SIUpdate(BaseModel):
     documentos_referencia: Optional[str] = None
     descricao_servicos: Optional[str] = None
     observacoes: Optional[str] = None
-    emissor: Optional[str]
+    emissor: Optional[str] = None
 
 
 class SIResponse(SIBase):

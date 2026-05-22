@@ -11,6 +11,7 @@ from familias import familias
 from Instalacao import instalacao
 from plano_manutencao import plano_manutencao
 from auth import auth
+import downloads
 from database import Base, engine
 from ATIVO import ativos
 
@@ -48,6 +49,7 @@ app.include_router(plano_manutencao.router)
 app.include_router(ativos.router)
 app.include_router(solicitcao_intervencao.router)
 app.include_router(livro_registro.router)
+app.include_router(downloads.router)
 
 
 

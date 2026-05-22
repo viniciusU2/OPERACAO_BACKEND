@@ -43,3 +43,7 @@ class SolicitacaoServico(Base):
     status = Column(String(20), default="ABERTA")
 
     ativo = relationship("Ativo")
+
+    @property
+    def id_ss(self):
+        return self.id

@@ -148,7 +148,7 @@ async def importar_ativos(file: UploadFile = File(...), db: Session = Depends(ge
 
 
                 fase=str(row["fase"]) if pd.notna(row["fase"]) else None,
-                status="OPERANTE"
+                status="ATIVO"
             )
 
             ativos.append(ativo)
