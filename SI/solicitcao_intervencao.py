@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from auth.dependencies import require_roles
 from database import get_db
 from models.SI_models import solicitacao_intervencao
 from models.instalacao_models import Subestacao
@@ -343,7 +344,11 @@ def editar_si(id_si: int, dados: SIUpdate, db: Session = Depends(get_db)):
 # 🔹 DELETAR
 # ==============================
 @router.delete("/{id_si}")
-def deletar_si(id_si: int, db: Session = Depends(get_db)):
+def deletar_si(
+    id_si: int,
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin")),
+):
 
     si = db.query(solicitacao_intervencao).filter(
         solicitacao_intervencao.id_si == id_si

@@ -21,6 +21,7 @@ import re
 from fastapi.background import BackgroundTasks
 from typing import List
 from fastapi.responses import FileResponse
+from auth.dependencies import require_roles
 
 
 
@@ -399,7 +400,7 @@ def gerar_os_subestacao(db: Session = Depends(get_db)):
     }
 
 
-@router.get("")
+@router.get("", response_model=List[OrdemServicoResponse])
 def listar_os(
     id_ativo: int | None = None,
     db: Session = Depends(get_db)
@@ -413,7 +414,7 @@ def listar_os(
 
     return query.order_by(OS_models.OrdemServico.id_os.desc()).all()
 
-@router.get("/ativo/{id_ativo}")
+@router.get("/ativo/{id_ativo}", response_model=List[OrdemServicoResponse])
 def listar_os(
     id_ativo: int,
     db: Session = Depends(get_db)
@@ -475,7 +476,7 @@ def editar_ordem_servico(
 
     return os_db
 
-@router.get("/{id_os}")
+@router.get("/{id_os}", response_model=OrdemServicoResponse)
 def buscar_os_por_id(
     id_os: int,
     db: Session = Depends(get_db)
@@ -495,7 +496,11 @@ def buscar_os_por_id(
     return os
 
 @router.delete("/{id_os}")
-def deletar_os(id_os: int, db: Session = Depends(get_db)):
+def deletar_os(
+    id_os: int,
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin")),
+):
 
     os = db.query(OrdemServico).filter(
         OrdemServico.id_os == id_os

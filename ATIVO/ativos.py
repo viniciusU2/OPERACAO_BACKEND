@@ -33,7 +33,7 @@ def criar_ativo(
 def listar_subestacoes(db: Session = Depends(get_db)):
     return db.query(Ativo).all()
 
-@router.get("/ativos/{id_subestacao}")
+@router.get("/ativos/{id_subestacao}", response_model=List[schemas.AtivoResponse])
 def listar_ativos(
     id_subestacao: int,
     db: Session = Depends(get_db)
@@ -50,7 +50,7 @@ def listar_ativos(
 
 
 
-@router.get("/ativo/{id_ativo}")
+@router.get("/ativo/{id_ativo}", response_model=schemas.AtivoResponse)
 def buscar_ativo_por_id(
     id_ativo: int,
     db: Session = Depends(get_db)

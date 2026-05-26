@@ -11,6 +11,7 @@ from openpyxl.utils import range_boundaries
 from sqlalchemy.orm import Session
 
 from database import get_db
+from auth.dependencies import require_roles
 from models.Ativo import Ativo
 from models.SS_models import SolicitacaoServico
 from SS.schemas import (
@@ -228,7 +229,11 @@ def editar_ss(
 
 
 @router.delete("/{id_ss}")
-def deletar_ss(id_ss: int, db: Session = Depends(get_db)):
+def deletar_ss(
+    id_ss: int,
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin")),
+):
     ss = db.query(SolicitacaoServico).filter(
         SolicitacaoServico.id == id_ss
     ).first()

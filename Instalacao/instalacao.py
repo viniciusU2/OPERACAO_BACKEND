@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database import get_db
 from Instalacao import schemas
+from auth.dependencies import require_roles
 
 
 
@@ -37,7 +38,11 @@ def listar_subestacoes_ativas(db: Session = Depends(get_db)):
 
 
 @router.delete("/subestacao/{id_subestacao}")
-def deletar_subestcao(id_subestacao: int, db: Session = Depends(get_db)):
+def deletar_subestcao(
+    id_subestacao: int,
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin")),
+):
 
     os = db.query(instalacao_models.Subestacao).filter(
         instalacao_models.Subestacao.id_subestacao== id_subestacao

@@ -41,6 +41,7 @@ class LoginResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class UsuarioLogin(BaseModel):
-    email: EmailStr
-    senha: str
+
+class UsuarioAdminUpdate(BaseModel):
+    role: Optional[str] = None
+    ativo: Optional[bool] = None

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database import get_db
 from familias import schemas
+from auth.dependencies import require_roles
 
 router = APIRouter(prefix="", tags=["Instalação"])
 
@@ -63,7 +64,8 @@ def atualizar_tipo_ativo(
 @router.delete("/tipo-ativo/{id_tipo}")
 def deletar_tipo_ativo(
     id_tipo: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin")),
 ):
     tipo = db.query(familias_models.TipoAtivo).filter(
         familias_models.TipoAtivo.id_tipo_ativo == id_tipo
@@ -81,18 +83,6 @@ def deletar_tipo_ativo(
 
 
 # -------- Tipo Ativo --------
-@router.post("/tipo-ativo", response_model=schemas.TipoAtivoOut)
-def criar_tipo(tipo: schemas.TipoAtivoCreate, db: Session = Depends(get_db)):
-    db_tipo = familias_models.TipoAtivo(**tipo.model_dump())
-    db.add(db_tipo)
-    db.commit()
-    db.refresh(db_tipo)
-    return db_tipo
-
-
-@router.get("/tipo-ativo", response_model=list[schemas.TipoAtivoOut])
-def listar_tipo(db: Session = Depends(get_db)):
-    return db.query(familias_models.TipoAtivo).all()
 
 
 
