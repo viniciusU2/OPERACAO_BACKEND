@@ -432,6 +432,16 @@ def editar_ordem_servico(
     dados: dict,
     db: Session = Depends(get_db)
 ):
+    campos_somente_leitura = {
+        "id_tipo_ativo",
+        "tipo_ativo",
+        "codigo_ativo",
+        "fase",
+        "ativo",
+        "subestacao",
+        "criado_em",
+    }
+
     os_db = (
         db.query(OS_models.OrdemServico)
         .filter(OS_models.OrdemServico.id_os == id_os)
@@ -447,11 +457,13 @@ def editar_ordem_servico(
 
     # Atualiza campos primeiro
     for campo, valor in dados.items():
+        if campo in campos_somente_leitura:
+            continue
         if hasattr(os_db, campo):
             setattr(os_db, campo, valor)
 
     # Atualiza instalação baseado na subestação
-    if "id_subestacao" in dados:
+    if dados.get("id_subestacao"):
         sub = db.query(Subestacao).filter(
             Subestacao.id_subestacao == dados["id_subestacao"]  # ✅ CORRETO
         ).first()
