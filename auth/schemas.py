@@ -42,6 +42,15 @@ class LoginResponse(BaseModel):
         from_attributes = True
 
 
+class UsuarioAtivoOption(BaseModel):
+    id: int
+    nome: str
+    role: str
+
+    class Config:
+        from_attributes = True
+
+
 class UsuarioAdminUpdate(BaseModel):
     role: Optional[str] = None
     ativo: Optional[bool] = None

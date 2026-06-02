@@ -77,6 +77,19 @@ def listar_usuarios(
     return db.query(Usuario).order_by(Usuario.nome.asc()).all()
 
 
+@router.get("/usuarios/ativos", response_model=list[schemas.UsuarioAtivoOption])
+def listar_usuarios_ativos(
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin", "mantenedor")),
+):
+    return (
+        db.query(Usuario)
+        .filter(Usuario.ativo.is_(True))
+        .order_by(Usuario.nome.asc())
+        .all()
+    )
+
+
 @router.put("/usuarios/{usuario_id}", response_model=schemas.UsuarioResponse)
 def atualizar_usuario_admin(
     usuario_id: int,

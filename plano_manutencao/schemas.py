@@ -165,6 +165,30 @@ class PlanoExecucaoRead(PlanoExecucaoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PlanoExecucaoUpdate(BaseModel):
+    ultima_execucao: Optional[datetime] = None
+    proxima_execucao: datetime
+
+
+class PlanoExecucaoPlanilhaRead(BaseModel):
+    id_execucao: int
+    id_plano_item: int
+    id_plano_manutencao: int
+    id_ativo: int
+    nome_item: str
+    periodicidade: PeriodicidadeEnum
+    intervalo: int
+    antecedencia: int
+    plano_descricao: Optional[str] = ""
+    codigo_ativo: str
+    instalacao: Optional[str] = None
+    tipo_ativo: Optional[str] = None
+    vao: Optional[str] = None
+    fase: Optional[str] = None
+    ultima_execucao: Optional[datetime] = None
+    proxima_execucao: datetime
+
+
 # --- Inspecao ---
 class ResultadoItemCreate(BaseModel):
     id_plano_item: int

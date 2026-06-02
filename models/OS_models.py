@@ -53,3 +53,25 @@ class OrdemServico(Base):
     ativo = relationship("Ativo", back_populates="ordens")
     livro_registro = relationship("LivroRegistro", back_populates="os")
     inspecao = relationship("Inspecao", back_populates="ordem_servico", uselist=False)
+
+    @property
+    def id_tipo_ativo(self):
+        return self.ativo.id_tipo_ativo if self.ativo else None
+
+    @property
+    def tipo_ativo(self):
+        if self.ativo and self.ativo.tipo_ativo:
+            return self.ativo.tipo_ativo.nome
+
+        return None
+
+    @property
+    def codigo_ativo(self):
+        return self.ativo.codigo_ativo if self.ativo else None
+
+    @property
+    def fase(self):
+        if self.ativo and self.ativo.fase:
+            return self.ativo.fase
+
+        return self.complemento

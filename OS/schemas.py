@@ -68,6 +68,10 @@ class OrdemServicoCreate(OrdemServicoCreate):
 class OrdemServicoResponse(OrdemServicoCreate):
     id_os: int
     criado_em: Optional[datetime] = None
+    id_tipo_ativo: Optional[int] = None
+    tipo_ativo: Optional[str] = None
+    codigo_ativo: Optional[str] = None
+    fase: Optional[str] = None
 
     class Config:
         from_attributes = True
