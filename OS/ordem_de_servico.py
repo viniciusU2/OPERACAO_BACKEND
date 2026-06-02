@@ -705,7 +705,8 @@ from models.familias_models import (
 )
 
 
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
+from dateutil.relativedelta import relativedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -715,8 +716,57 @@ from database import get_db
 
 
 
-@router.post("/gerar-os-semanal")
-def gerar_os_semanal(db: Session = Depends(get_db)):
+def delta_periodicidade(periodicidade: PeriodicidadeEnum, intervalo: int | None = 1):
+    multiplicador = max(intervalo or 1, 1)
+
+    if periodicidade == PeriodicidadeEnum.SEMANAL:
+        return relativedelta(weeks=multiplicador)
+    if periodicidade == PeriodicidadeEnum.MENSAL:
+        return relativedelta(months=multiplicador)
+    if periodicidade == PeriodicidadeEnum.BIMESTRAL:
+        return relativedelta(months=2 * multiplicador)
+    if periodicidade == PeriodicidadeEnum.TRIMESTRAL:
+        return relativedelta(months=3 * multiplicador)
+    if periodicidade == PeriodicidadeEnum.SEMESTRAL:
+        return relativedelta(months=6 * multiplicador)
+    if periodicidade == PeriodicidadeEnum.TRES_ANOS:
+        return relativedelta(years=3 * multiplicador)
+    if periodicidade == PeriodicidadeEnum.CINCO_ANOS:
+        return relativedelta(years=5 * multiplicador)
+    if periodicidade == PeriodicidadeEnum.SEIS_ANOS:
+        return relativedelta(years=6 * multiplicador)
+
+    return relativedelta(weeks=multiplicador)
+
+
+def data_inicial_execucao(item: PlanoItem, hoje: datetime):
+    if item.data_inicio:
+        return datetime.combine(item.data_inicio, time.min)
+
+    return hoje
+
+
+def deve_gerar_os(item: PlanoItem, proxima_execucao: datetime, hoje: datetime):
+    antecedencia = max(item.antecedencia or 0, 0)
+    data_liberacao = proxima_execucao - timedelta(days=antecedencia)
+
+    return data_liberacao <= hoje
+
+
+def proxima_data_execucao(item: PlanoItem, data_atual: datetime, hoje: datetime):
+    proxima = data_atual + delta_periodicidade(item.periodicidade, item.intervalo)
+
+    while deve_gerar_os(item, proxima, hoje):
+        proxima += delta_periodicidade(item.periodicidade, item.intervalo)
+
+    return proxima
+
+
+def valor_periodicidade(periodicidade: PeriodicidadeEnum):
+    return getattr(periodicidade, "value", periodicidade)
+
+
+def gerar_os_por_planos_manutencao(db: Session):
     hoje = datetime.utcnow()
     os_criadas = []
 
@@ -732,10 +782,7 @@ def gerar_os_semanal(db: Session = Depends(get_db)):
         for plano in planos:
             itens_plano = (
                 db.query(PlanoItem)
-                .filter(
-                    PlanoItem.id_plano_manutencao == plano.id_plano_manutencao,
-                    PlanoItem.periodicidade == PeriodicidadeEnum.SEMANAL,
-                )
+                .filter(PlanoItem.id_plano_manutencao == plano.id_plano_manutencao)
                 .all()
             )
 
@@ -766,12 +813,16 @@ def gerar_os_semanal(db: Session = Depends(get_db)):
                             id_plano_item=item.id_plano_item,
                             id_ativo=ativo.id_ativo,
                             ultima_execucao=None,
-                            proxima_execucao=hoje,
+                            proxima_execucao=data_inicial_execucao(item, hoje),
                         )
                         db.add(execucao)
                         db.flush()
 
-                    if execucao.proxima_execucao and execucao.proxima_execucao > hoje:
+                    if execucao.proxima_execucao and not deve_gerar_os(
+                        item,
+                        execucao.proxima_execucao,
+                        hoje,
+                    ):
                         continue
 
                     execucoes_pendentes.append((item, execucao))
@@ -799,9 +850,13 @@ def gerar_os_semanal(db: Session = Depends(get_db)):
                 )
 
                 if os_existente:
-                    for _, execucao in execucoes_pendentes:
+                    for item, execucao in execucoes_pendentes:
                         execucao.ultima_execucao = hoje
-                        execucao.proxima_execucao = hoje + timedelta(days=7)
+                        execucao.proxima_execucao = proxima_data_execucao(
+                            item,
+                            execucao.proxima_execucao or hoje,
+                            hoje,
+                        )
                     continue
 
                 subestacao = (
@@ -859,15 +914,22 @@ def gerar_os_semanal(db: Session = Depends(get_db)):
                 db.add(nova_os)
                 db.flush()
 
-                for _, execucao in execucoes_pendentes:
+                for item, execucao in execucoes_pendentes:
                     execucao.ultima_execucao = hoje
-                    execucao.proxima_execucao = hoje + timedelta(days=7)
+                    execucao.proxima_execucao = proxima_data_execucao(
+                        item,
+                        execucao.proxima_execucao or hoje,
+                        hoje,
+                    )
 
                 os_criadas.append({
                     "numero_os": numero_os,
                     "ativo": ativo.codigo_ativo,
                     "itens_plano": [
-                        item.nome_item
+                        {
+                            "nome_item": item.nome_item,
+                            "periodicidade": valor_periodicidade(item.periodicidade),
+                        }
                         for item, _ in execucoes_pendentes
                     ],
                     "responsavel": nova_os.responsavel,
@@ -877,7 +939,17 @@ def gerar_os_semanal(db: Session = Depends(get_db)):
     db.commit()
 
     return {
-        "mensagem": "OS semanais geradas com sucesso",
+        "mensagem": "OS preventivas geradas com sucesso",
         "total_os": len(os_criadas),
         "os_criadas": os_criadas,
     }
+
+
+@router.post("/gerar-os-planos")
+def gerar_os_planos(db: Session = Depends(get_db)):
+    return gerar_os_por_planos_manutencao(db)
+
+
+@router.post("/gerar-os-semanal")
+def gerar_os_semanal(db: Session = Depends(get_db)):
+    return gerar_os_por_planos_manutencao(db)
