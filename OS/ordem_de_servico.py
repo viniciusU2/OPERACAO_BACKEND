@@ -766,8 +766,20 @@ def valor_periodicidade(periodicidade: PeriodicidadeEnum):
     return getattr(periodicidade, "value", periodicidade)
 
 
+def data_programada_os(execucoes_pendentes: list[tuple[PlanoItem, PlanoExecucao]], hoje: datetime):
+    primeira_data_vencida = min(
+        execucao.proxima_execucao or hoje
+        for _, execucao in execucoes_pendentes
+    )
+
+    if primeira_data_vencida < hoje:
+        return hoje
+
+    return primeira_data_vencida
+
+
 def gerar_os_por_planos_manutencao(db: Session):
-    hoje = datetime.utcnow()
+    hoje = datetime.now()
     os_criadas = []
 
     tipos_ativo = db.query(TipoAtivo).all()
@@ -830,20 +842,13 @@ def gerar_os_por_planos_manutencao(db: Session):
                 if not execucoes_pendentes:
                     continue
 
-                data_programada = min(
-                    execucao.proxima_execucao or hoje
-                    for _, execucao in execucoes_pendentes
-                )
-                inicio_dia = data_programada.replace(hour=0, minute=0, second=0, microsecond=0)
-                fim_dia = inicio_dia + timedelta(days=1)
+                data_programada = data_programada_os(execucoes_pendentes, hoje)
 
                 os_existente = (
                     db.query(OrdemServico)
                     .filter(
                         OrdemServico.id_ativo == ativo.id_ativo,
                         OrdemServico.descricao_servicos == plano.descricao_geral,
-                        OrdemServico.data_inicio_programado >= inicio_dia,
-                        OrdemServico.data_inicio_programado < fim_dia,
                         OrdemServico.status.in_(["ABERTA", "PROGRAMADA", "EM_EXECUCAO"]),
                     )
                     .first()
