@@ -1105,6 +1105,8 @@ CREATE TABLE IF NOT EXISTS `solicitacao_intervencao` (
   `id_ativo` int(11) DEFAULT NULL,
   `especie` varchar(50) DEFAULT NULL,
   `numero_apr` varchar(50) DEFAULT NULL,
+  `natureza` varchar(255) DEFAULT NULL,
+  `caracteristica_intervencao` varchar(100) DEFAULT NULL,
   `tipo` varchar(50) DEFAULT NULL,
   `documentos_referencia` varchar(100) DEFAULT NULL,
   `data_inicio_preriodo_total` datetime DEFAULT NULL,

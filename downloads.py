@@ -10,6 +10,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from database import get_db
 from models.Ativo import Ativo
@@ -54,6 +55,23 @@ def aplicar_estilo(ws):
             max_length = max(max_length, len(str(cell.value or "")))
 
         ws.column_dimensions[column_letter].width = min(max(max_length + 2, 12), 48)
+
+
+def garantir_colunas_si(db: Session):
+    colunas = {
+        "natureza": "VARCHAR(255) NULL",
+        "caracteristica_intervencao": "VARCHAR(100) NULL",
+    }
+
+    for coluna, definicao in colunas.items():
+        existe = db.execute(
+            text("SHOW COLUMNS FROM solicitacao_intervencao LIKE :coluna"),
+            {"coluna": coluna},
+        ).first()
+        if not existe:
+            db.execute(text(f"ALTER TABLE solicitacao_intervencao ADD COLUMN {coluna} {definicao}"))
+
+    db.commit()
 
 
 def adicionar_aba(wb, titulo: str, colunas: list[tuple[str, str]], registros):
@@ -151,6 +169,8 @@ SI_COLUNAS = [
     ("Ativo", "id_ativo"),
     ("Especie", "especie"),
     ("APR", "numero_apr"),
+    ("Natureza", "natureza"),
+    ("Caracterizacao Intervencao", "caracteristica_intervencao"),
     ("Tipo", "tipo"),
     ("Documentos Referencia", "documentos_referencia"),
     ("Inicio Periodo Total", "data_inicio_preriodo_total"),
@@ -274,6 +294,7 @@ def baixar_operacionais(
         adicionar_aba(wb, "OS", OS_COLUNAS, query.all())
 
     if documento in ("all", "si"):
+        garantir_colunas_si(db)
         query = aplicar_filtros_operacionais(
             db.query(solicitacao_intervencao),
             solicitacao_intervencao,

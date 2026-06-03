@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from auth.dependencies import require_roles
 from database import get_db
@@ -19,6 +20,23 @@ from openpyxl.drawing.image import Image
 router = APIRouter(prefix="/si", tags=["Serviço Intervenção"])
 
 SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
+
+
+def garantir_colunas_si(db: Session):
+    colunas = {
+        "natureza": "VARCHAR(255) NULL",
+        "caracteristica_intervencao": "VARCHAR(100) NULL",
+    }
+
+    for coluna, definicao in colunas.items():
+        existe = db.execute(
+            text("SHOW COLUMNS FROM solicitacao_intervencao LIKE :coluna"),
+            {"coluna": coluna},
+        ).first()
+        if not existe:
+            db.execute(text(f"ALTER TABLE solicitacao_intervencao ADD COLUMN {coluna} {definicao}"))
+
+    db.commit()
 
 
 # ==============================
@@ -277,6 +295,7 @@ def montar_contexto_si(si, ativo=None, sub=None):
 # ==============================
 @router.post("", response_model=SIResponse)
 def criar_si(dados: SICreate, db: Session = Depends(get_db)):
+    garantir_colunas_si(db)
 
     data = dados.dict()
     if not data.get("numero_si"):
@@ -299,6 +318,7 @@ def criar_si(dados: SICreate, db: Session = Depends(get_db)):
 # ==============================
 @router.get("", response_model=list[SIResponse])
 def listar_si(db: Session = Depends(get_db)):
+    garantir_colunas_si(db)
     return db.query(solicitacao_intervencao).all()
 
 
@@ -307,6 +327,7 @@ def listar_si(db: Session = Depends(get_db)):
 # ==============================
 @router.get("/{id_si}", response_model=SIResponse)
 def buscar_si(id_si: int, db: Session = Depends(get_db)):
+    garantir_colunas_si(db)
 
     si = db.query(solicitacao_intervencao).filter(
         solicitacao_intervencao.id_si == id_si
@@ -323,6 +344,7 @@ def buscar_si(id_si: int, db: Session = Depends(get_db)):
 # ==============================
 @router.put("/{id_si}", response_model=SIResponse)
 def editar_si(id_si: int, dados: SIUpdate, db: Session = Depends(get_db)):
+    garantir_colunas_si(db)
 
     si = db.query(solicitacao_intervencao).filter(
         solicitacao_intervencao.id_si == id_si
@@ -368,6 +390,7 @@ def deletar_si(
 # ==============================
 @router.get("/{id_si}/download")
 def download_si(id_si: int, db: Session = Depends(get_db)):
+    garantir_colunas_si(db)
 
     si = db.query(solicitacao_intervencao).filter(
         solicitacao_intervencao.id_si == id_si
