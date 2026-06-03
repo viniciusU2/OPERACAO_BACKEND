@@ -1,9 +1,10 @@
 import os
 import re
+import tempfile
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
@@ -66,6 +67,45 @@ def adicionar_aba(wb, titulo: str, colunas: list[tuple[str, str]], registros):
         ])
 
     aplicar_estilo(ws)
+
+
+def filtrar_por_intervalo(query, modelo, campo_inicio: str | None, data_inicio, data_fim):
+    if not campo_inicio:
+        return query
+
+    coluna = getattr(modelo, campo_inicio, None)
+    if coluna is None:
+        return query
+
+    if data_inicio:
+        query = query.filter(coluna >= data_inicio)
+    if data_fim:
+        query = query.filter(coluna <= data_fim)
+
+    return query
+
+
+def aplicar_filtros_operacionais(
+    query,
+    modelo,
+    status: str | None = None,
+    id_subestacao: int | None = None,
+    data_inicio=None,
+    data_fim=None,
+    campo_data: str | None = None,
+):
+    if status and status != "all":
+        if modelo is solicitacao_intervencao:
+            query = query.filter(
+                (modelo.status_manutencao == status) | (modelo.status_operacao == status)
+            )
+        elif hasattr(modelo, "status"):
+            query = query.filter(modelo.status == status)
+
+    if id_subestacao:
+        query = query.filter(modelo.id_subestacao == id_subestacao)
+
+    return filtrar_por_intervalo(query, modelo, campo_data, data_inicio, data_fim)
 
 
 OS_COLUNAS = [
@@ -197,8 +237,7 @@ ATIVO_COLUNAS = [
 
 
 def salvar_workbook(wb, nome_base: str):
-    pasta_saida = "saida"
-    os.makedirs(pasta_saida, exist_ok=True)
+    pasta_saida = tempfile.mkdtemp(prefix="downloads_")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nome_arquivo = nome_arquivo_seguro(f"{nome_base}_{timestamp}.xlsx")
@@ -209,15 +248,60 @@ def salvar_workbook(wb, nome_base: str):
 
 
 @router.get("/operacionais")
-def baixar_operacionais(db: Session = Depends(get_db)):
+def baixar_operacionais(
+    documento: str = Query(default="all"),
+    status: str | None = Query(default=None),
+    id_subestacao: int | None = Query(default=None),
+    data_inicio: datetime | None = Query(default=None),
+    data_fim: datetime | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
     wb = Workbook()
     wb.remove(wb.active)
 
-    adicionar_aba(wb, "OS", OS_COLUNAS, db.query(OrdemServico).all())
-    adicionar_aba(wb, "SI", SI_COLUNAS, db.query(solicitacao_intervencao).all())
-    adicionar_aba(wb, "SS", SS_COLUNAS, db.query(SolicitacaoServico).all())
+    documento = (documento or "all").lower()
 
-    caminho, nome_arquivo = salvar_workbook(wb, "os_si_ss")
+    if documento in ("all", "os"):
+        query = aplicar_filtros_operacionais(
+            db.query(OrdemServico),
+            OrdemServico,
+            status=status,
+            id_subestacao=id_subestacao,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            campo_data="data_inicio_programado",
+        )
+        adicionar_aba(wb, "OS", OS_COLUNAS, query.all())
+
+    if documento in ("all", "si"):
+        query = aplicar_filtros_operacionais(
+            db.query(solicitacao_intervencao),
+            solicitacao_intervencao,
+            status=status,
+            id_subestacao=id_subestacao,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            campo_data="data_inicio_preriodo_total",
+        )
+        adicionar_aba(wb, "SI", SI_COLUNAS, query.all())
+
+    if documento in ("all", "ss"):
+        query = aplicar_filtros_operacionais(
+            db.query(SolicitacaoServico),
+            SolicitacaoServico,
+            status=status,
+            id_subestacao=None,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            campo_data="data_hora_solicitacao",
+        )
+        if id_subestacao:
+            query = query.join(Ativo, Ativo.id_ativo == SolicitacaoServico.id_ativo).filter(
+                Ativo.id_subestacao == id_subestacao
+            )
+        adicionar_aba(wb, "SS", SS_COLUNAS, query.all())
+
+    caminho, nome_arquivo = salvar_workbook(wb, f"operacionais_{documento}")
 
     return FileResponse(
         path=caminho,
@@ -227,13 +311,29 @@ def baixar_operacionais(db: Session = Depends(get_db)):
 
 
 @router.get("/ativos")
-def baixar_ativos(db: Session = Depends(get_db)):
+def baixar_ativos(
+    status: str | None = Query(default=None),
+    id_subestacao: int | None = Query(default=None),
+    id_tipo_ativo: int | None = Query(default=None),
+    data_inicio: datetime | None = Query(default=None),
+    data_fim: datetime | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
     wb = Workbook()
     ws = wb.active
     ws.title = "Ativos"
 
+    query = db.query(Ativo)
+    if status and status != "all":
+        query = query.filter(Ativo.status == status)
+    if id_subestacao:
+        query = query.filter(Ativo.id_subestacao == id_subestacao)
+    if id_tipo_ativo:
+        query = query.filter(Ativo.id_tipo_ativo == id_tipo_ativo)
+    query = filtrar_por_intervalo(query, Ativo, "data_instalacao", data_inicio, data_fim)
+
     ws.append([label for label, _ in ATIVO_COLUNAS])
-    for ativo in db.query(Ativo).all():
+    for ativo in query.all():
         ws.append([
             limpar(getattr(ativo, campo, ""))
             for _, campo in ATIVO_COLUNAS

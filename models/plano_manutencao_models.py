@@ -200,6 +200,42 @@ class Inspecao(Base):
         cascade="all, delete-orphan"
     )
 
+    @property
+    def codigo_ativo(self):
+        return self.ativo.codigo_ativo if self.ativo else None
+
+    @property
+    def fase(self):
+        return self.ativo.fase if self.ativo else None
+
+    @property
+    def vao(self):
+        return self.ativo.vao if self.ativo else None
+
+    @property
+    def fabricante(self):
+        return self.ativo.fabricante if self.ativo else None
+
+    @property
+    def modelo(self):
+        return self.ativo.modelo if self.ativo else None
+
+    @property
+    def instalacao(self):
+        return self.ativo.subestacao.nome if self.ativo and self.ativo.subestacao else None
+
+    @property
+    def tipo_ativo(self):
+        return self.ativo.tipo_ativo.nome if self.ativo and self.ativo.tipo_ativo else None
+
+    @property
+    def numero_os(self):
+        return self.ordem_servico.numero_os if self.ordem_servico else None
+
+    @property
+    def numero_apr(self):
+        return self.ordem_servico.numero_apr if self.ordem_servico else None
+
 
 # ================= RESULTADO =================
 class ResultadoItemInspecao(Base):
@@ -217,10 +253,12 @@ class ResultadoItemInspecao(Base):
         nullable=False
     )
 
+    id_item_template = Column(Integer, nullable=True)
+
     id_plano_item = Column(
         Integer,
         ForeignKey("plano_item.id_plano_item", ondelete="RESTRICT"),
-        nullable=False
+        nullable=True
     )
 
     nome_item = Column(String(200), nullable=False)
@@ -239,3 +277,7 @@ class ResultadoItemInspecao(Base):
     inspecao = relationship("Inspecao", back_populates="resultados")
 
     plano_item = relationship("PlanoItem", back_populates="inspecoes")
+
+    @property
+    def unidade(self):
+        return self.plano_item.unidade if self.plano_item else None

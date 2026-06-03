@@ -200,15 +200,34 @@ class ResultadoItemCreate(BaseModel):
 class InspecaoCreate(BaseModel):
     id_ativo: int
     id_os: Optional[int] = None
+    data_inspecao: Optional[datetime] = None
+    data_proxima_inspecao: Optional[date] = None
     periodicidade: PeriodicidadeEnum
+    responsavel: Optional[str] = None
+    observacao_geral: Optional[str] = ""
     resultados: List[ResultadoItemCreate] = Field(default_factory=list)
+
+
+class InspecaoUpdate(BaseModel):
+    data_inspecao: Optional[datetime] = None
+    data_proxima_inspecao: Optional[date] = None
+    periodicidade: Optional[PeriodicidadeEnum] = None
+    responsavel: Optional[str] = None
+    observacao_geral: Optional[str] = None
+    resultados: Optional[List[ResultadoItemCreate]] = None
 
 
 class ResultadoItemInspecaoRead(BaseModel):
     id_resultado: int
-    id_plano_item: int
-    valor_medido: Optional[Decimal]
+    id_plano_item: Optional[int] = None
+    id_item_template: Optional[int] = None
+    nome_item: Optional[str] = None
+    valor_referencia: Optional[Decimal] = None
+    tolerancia: Optional[Decimal] = None
+    valor_medido: Optional[Decimal] = None
+    unidade: Optional[str] = None
     status_item: StatusItemEnum
+    observacao_item: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -216,10 +235,24 @@ class ResultadoItemInspecaoRead(BaseModel):
 class InspecaoRead(BaseModel):
     id_inspecao: int
     id_ativo: int
+    id_os: Optional[int] = None
+    data_inspecao: datetime
+    data_proxima_inspecao: Optional[date] = None
+    periodicidade: PeriodicidadeEnum
+    responsavel: Optional[str] = None
+    observacao_geral: Optional[str] = ""
     status_geral: StatusItemEnum
+    codigo_ativo: Optional[str] = None
+    fase: Optional[str] = None
+    vao: Optional[str] = None
+    fabricante: Optional[str] = None
+    modelo: Optional[str] = None
+    instalacao: Optional[str] = None
+    tipo_ativo: Optional[str] = None
+    numero_os: Optional[str] = None
+    numero_apr: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
-
 
 
 class InspecaoReadFull(InspecaoRead):
