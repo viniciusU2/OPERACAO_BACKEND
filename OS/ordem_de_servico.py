@@ -156,13 +156,13 @@ def montar_contexto_os(os, ativo=None):
     }
 
 # 🔹 Lista fixa de subestações
-SUBESTACOES_SIGLAS = ["BJD", "GDO", "JAB"]
+SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
 
 
 # =========================
 # 🔥 GERAR NUMERO OS
 # =========================
-def gerar_numero_os(db: Session, sigla: str, codigo_ativo: str | None) -> str:
+def gerar_numero_os(db: Session, sigla: str, codigo_ativo: str | None) -> tuple[str, str]:
     ano_atual = datetime.now().year
 
     # 🔹 Buscar OS existentes da mesma subestação e ano
@@ -183,11 +183,14 @@ def gerar_numero_os(db: Session, sigla: str, codigo_ativo: str | None) -> str:
     numero_formatado = str(proximo).zfill(4)
 
     # 🔹 Sanitizar código do ativo (opcional mas recomendado)
+    numero_os = f"OS-{sigla}-{numero_formatado}-{ano_atual}"
+    numero_apr = f"APR-{sigla}-{numero_formatado}-{ano_atual}"
+
     if codigo_ativo:
         codigo_ativo = re.sub(r"[^A-Za-z0-9\-]", "", codigo_ativo)
-        return f"OS-{sigla}-{numero_formatado}-{ano_atual}-{codigo_ativo}", f"OS-{sigla}-{numero_formatado}-{ano_atual}-{codigo_ativo}"
-    else:
-        return f"OS-{sigla}-{numero_formatado}-{ano_atual}",f"APR-{sigla}-{numero_formatado}-{ano_atual}"
+        numero_os = f"{numero_os}-{codigo_ativo}"
+
+    return numero_os, numero_apr
 
 
 
@@ -628,7 +631,7 @@ def criar_os_lote_por_tipo_ativo(
         numero_formatado = str(numero_atual).zfill(padding)
 
         numero_os_final = f"{prefixo}{numero_formatado}-{ano}-{ativo.codigo_ativo}"
-        numero_apr_final = f"{prefixo2}-{numero_formatado}-{ano}"
+        numero_apr_final = f"{prefixo2}{numero_formatado}-{ano}"
 
         fase = normalizar_fase(ativo.fase)
         complemento = f"Fase: {fase}"

@@ -22,6 +22,11 @@ class AtivoBase(BaseModel):
     status: Optional[Literal["ATIVO", "INATIVO"]] = "ATIVO"
     vao: Optional[str] = None
     fase: Optional[str] = None
+    codigo_linha: Optional[str] = None
+    estrutura_operacional: Optional[str] = None
+    vao_vante_m: Optional[float] = None
+    sentido: Optional[str] = None
+    tipo_estrutura: Optional[str] = None
 
 
 
@@ -44,6 +49,11 @@ class AtivoResponse(BaseModel):
     status: str
     vao: Optional[str] = None
     fase: Optional[str] = None
+    codigo_linha: Optional[str] = None
+    estrutura_operacional: Optional[str] = None
+    vao_vante_m: Optional[Decimal] = None
+    sentido: Optional[str] = None
+    tipo_estrutura: Optional[str] = None
 
     class Config:
         orm_mode = True

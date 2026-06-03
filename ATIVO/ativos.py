@@ -12,10 +12,107 @@ from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 import pandas as pd
+from models.instalacao_models import Subestacao
+from models.familias_models import TipoAtivo
 
 
 router = APIRouter(prefix="", tags=["ATIVO"])
+
+
+def valor_texto(valor):
+    if pd.isna(valor):
+        return None
+
+    texto = str(valor).strip()
+    return texto if texto and texto != "-" else None
+
+
+def valor_decimal(valor):
+    if pd.isna(valor):
+        return None
+
+    return float(valor)
+
+
+def normalizar_codigo_torre(codigo_linha: str, estrutura: str):
+    estrutura_limpa = str(estrutura).strip()
+    if estrutura_limpa.isdigit():
+        estrutura_limpa = estrutura_limpa.zfill(3)
+
+    return f"{codigo_linha.strip()}-T{estrutura_limpa}"
+
+
+def garantir_colunas_torre(db: Session):
+    colunas = {
+        "codigo_linha": "VARCHAR(100) NULL",
+        "estrutura_operacional": "VARCHAR(50) NULL",
+        "vao_vante_m": "DECIMAL(10,3) NULL",
+        "sentido": "VARCHAR(50) NULL",
+        "tipo_estrutura": "VARCHAR(100) NULL",
+    }
+
+    existentes = {
+        row[0]
+        for row in db.execute(
+            text(
+                """
+                SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'ativo'
+                """
+            )
+        ).all()
+    }
+
+    for coluna, definicao in colunas.items():
+        if coluna not in existentes:
+            db.execute(text(f"ALTER TABLE ativo ADD COLUMN {coluna} {definicao}"))
+
+
+def get_or_create_instalacao_lt(db: Session, codigo_linha: str, sentido: str | None):
+    nome = f"LT {codigo_linha.strip()}"
+    instalacao = (
+        db.query(Subestacao)
+        .filter(Subestacao.nome == nome)
+        .first()
+    )
+
+    if instalacao:
+        return instalacao
+
+    instalacao = Subestacao(
+        nome=nome,
+        localizacao=sentido,
+        status="ATIVA",
+    )
+    db.add(instalacao)
+    db.flush()
+
+    return instalacao
+
+
+def get_or_create_tipo_torre(db: Session, tipo_estrutura: str):
+    nome = f"Torre {tipo_estrutura.strip()}"
+    tipo = (
+        db.query(TipoAtivo)
+        .filter(TipoAtivo.nome == nome)
+        .first()
+    )
+
+    if tipo:
+        return tipo
+
+    tipo = TipoAtivo(
+        nome=nome,
+        descricao=f"Torre de linha de transmissao - estrutura {tipo_estrutura.strip()}",
+    )
+    db.add(tipo)
+    db.flush()
+
+    return tipo
 
 
 # ---------------- ATIVO ----------------
@@ -161,6 +258,107 @@ async def importar_ativos(file: UploadFile = File(...), db: Session = Depends(ge
             "msg": f"{len(ativos)} ativos importados com sucesso"
         }
 
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ativos/importar-torres-xlsx")
+async def importar_torres(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    try:
+        garantir_colunas_torre(db)
+
+        df = pd.read_excel(file.file, usecols="A:G")
+        df.columns = [str(col).strip().lower() for col in df.columns]
+
+        colunas_obrigatorias = [
+            "estrutura operacional",
+            "vao vante (m)",
+            "codigo_ativo",
+            "id_linha de transmissão",
+            "id_tipo_ativo",
+            "tipo",
+            "sentido",
+        ]
+
+        for col in colunas_obrigatorias:
+            if col not in df.columns:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Coluna obrigatoria ausente: {col}"
+                )
+
+        criadas = 0
+        atualizadas = 0
+        ignoradas = 0
+        instalacoes_criadas = set()
+        tipos_criados = set()
+
+        for _, row in df.iterrows():
+            estrutura = valor_texto(row["estrutura operacional"])
+            codigo_linha = valor_texto(row["codigo_ativo"])
+            tipo_estrutura = valor_texto(row["tipo"])
+            sentido = valor_texto(row["sentido"])
+
+            if not estrutura or not codigo_linha or not tipo_estrutura:
+                ignoradas += 1
+                continue
+
+            instalacao = get_or_create_instalacao_lt(db, codigo_linha, sentido)
+            if instalacao.nome not in instalacoes_criadas:
+                instalacoes_criadas.add(instalacao.nome)
+
+            tipo_ativo = get_or_create_tipo_torre(db, tipo_estrutura)
+            if tipo_ativo.nome not in tipos_criados:
+                tipos_criados.add(tipo_ativo.nome)
+
+            codigo_torre = normalizar_codigo_torre(codigo_linha, estrutura)
+            ativo = (
+                db.query(Ativo)
+                .filter(
+                    Ativo.id_subestacao == instalacao.id_subestacao,
+                    Ativo.codigo_ativo == codigo_torre,
+                )
+                .first()
+            )
+
+            dados_torre = {
+                "id_subestacao": instalacao.id_subestacao,
+                "id_tipo_ativo": tipo_ativo.id_tipo_ativo,
+                "codigo_ativo": codigo_torre,
+                "codigo_linha": codigo_linha,
+                "estrutura_operacional": estrutura,
+                "vao_vante_m": valor_decimal(row["vao vante (m)"]),
+                "sentido": sentido,
+                "tipo_estrutura": tipo_estrutura,
+                "vao": f"T{estrutura.zfill(3) if estrutura.isdigit() else estrutura}",
+                "fase": sentido,
+                "especie": "LINHA DE TRANSMISSAO",
+                "status": "ATIVO",
+            }
+
+            if ativo:
+                for campo, valor in dados_torre.items():
+                    setattr(ativo, campo, valor)
+                atualizadas += 1
+            else:
+                db.add(Ativo(**dados_torre))
+                criadas += 1
+
+        db.commit()
+
+        return {
+            "mensagem": "Torres importadas com sucesso",
+            "criadas": criadas,
+            "atualizadas": atualizadas,
+            "ignoradas": ignoradas,
+            "instalacoes_processadas": sorted(instalacoes_criadas),
+            "tipos_processados": sorted(tipos_criados),
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

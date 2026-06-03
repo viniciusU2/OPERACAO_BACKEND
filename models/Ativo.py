@@ -30,6 +30,11 @@ class Ativo(Base):
     status = Column(String(30), default="OPERANTE")
     vao = Column(String(50))
     fase = Column(String(50))
+    codigo_linha = Column(String(100))
+    estrutura_operacional = Column(String(50))
+    vao_vante_m = Column(DECIMAL(10, 3))
+    sentido = Column(String(50))
+    tipo_estrutura = Column(String(100))
 
     # RELATIONSHIPS
     subestacao = relationship("Subestacao", back_populates="ativos")

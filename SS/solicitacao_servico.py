@@ -23,7 +23,7 @@ from SS.schemas import (
 
 router = APIRouter(prefix="/ss", tags=["Solicitacao de Servico"])
 
-SUBESTACOES_SIGLAS = ["BJD", "GDO", "JAB"]
+SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
 
 
 MAPEAMENTO_CELULAS = {

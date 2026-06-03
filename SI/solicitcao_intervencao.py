@@ -18,7 +18,7 @@ from openpyxl.drawing.image import Image
 
 router = APIRouter(prefix="/si", tags=["Serviço Intervenção"])
 
-SUBESTACOES_SIGLAS = ["BJD", "GDO", "JAB"]
+SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
 
 
 # ==============================

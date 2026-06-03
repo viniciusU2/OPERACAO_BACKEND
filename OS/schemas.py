@@ -1,5 +1,5 @@
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, Literal
 
@@ -12,8 +12,8 @@ class OrdemServicoCreate(BaseModel):
     numero_os: Optional[str] = None
     numero_si: Optional[str] = None
 
-    id_subestacao: Optional[int] = Field(None, gt=0)
-    id_ativo: Optional[int] = Field(None, gt=0)
+    id_subestacao: Optional[int] = None
+    id_ativo: Optional[int] = None
 
     especie: Optional[str] = None
     codigo_ativo: Optional[str] = None
@@ -36,7 +36,7 @@ class OrdemServicoCreate(BaseModel):
     causa_secundaria: Optional[str] = None
 
     # ================= CONTROLE =================
-    prioridade: Optional[Literal["BAIXA", "MEDIA", "ALTA"]] = "MEDIA"
+    prioridade: Optional[str] = "MEDIA"
     responsavel: Optional[str] = None
     responsavel_manutencao: Optional[str] = None
     responsavel_operacao: Optional[str] = None
@@ -45,12 +45,7 @@ class OrdemServicoCreate(BaseModel):
     substituto: Optional[str] = None
 
     centro_custos: Optional[str] = None
-    status: Literal[
-        "ABERTA",
-        "PROGRAMADA",
-        "EM_EXECUCAO",
-        "ENCERRADA"
-    ] = "ABERTA"
+    status: Optional[str] = "ABERTA"
 
     # ================= DATAS =================
     data_abertura_ss: Optional[datetime] = None
