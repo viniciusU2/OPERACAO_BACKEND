@@ -153,3 +153,38 @@ class OrdemServicoCreateLote(BaseModel):
     observacoes: Optional[str] = None
     centro_custos: str = "RIALMA TRANSMISSORA V"
     status: str = "ABERTA"
+
+
+class BaixaOSLoteTipoAtivo(BaseModel):
+    id_tipo_ativo: int
+    id_subestacao: Optional[int] = None
+    vaos: Optional[list[str]] = None
+    status_origem: Optional[list[str]] = None
+    status_destino: str = "ENCERRADA"
+    data_inicio_execucao: datetime
+    data_fim_execucao: Optional[datetime] = None
+    incremento_minutos_por_fase: int = 0
+    responsavel_manutencao: Optional[str] = None
+    responsavel_operacao: Optional[str] = None
+    derivar_responsaveis: bool = True
+    observacao_baixa: Optional[str] = None
+
+
+class BaixaOSLoteItemResponse(BaseModel):
+    id_os: int
+    numero_os: str
+    codigo_ativo: Optional[str] = None
+    vao: Optional[str] = None
+    fase: Optional[str] = None
+    status: Optional[str] = None
+    data_inicio_execucao: Optional[datetime] = None
+    data_fim_execucao: Optional[datetime] = None
+    responsavel_manutencao: Optional[str] = None
+    responsavel_operacao: Optional[str] = None
+
+
+class BaixaOSLoteResponse(BaseModel):
+    mensagem: str
+    total: int
+    por_vao: dict[str, int]
+    ordens: list[BaixaOSLoteItemResponse]

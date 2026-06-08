@@ -16,6 +16,7 @@ class Usuario(Base):
     foto = Column(String(500), nullable=True)
 
     ativo = Column(Boolean, default=True)
+    id_subestacao_padrao = Column(Integer, nullable=True)
 
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     role = Column(String(200), default="usuario")

@@ -5,7 +5,14 @@ from pymysql import IntegrityError
 from sqlalchemy.orm import Session
 from database import get_db
 from models.OS_models import OrdemServico
-from OS.schemas import OrdemServicoCreate, OrdemServicoCreateLote, OrdemServicoResponse, OrdemServicoUpdate
+from OS.schemas import (
+    BaixaOSLoteResponse,
+    BaixaOSLoteTipoAtivo,
+    OrdemServicoCreate,
+    OrdemServicoCreateLote,
+    OrdemServicoResponse,
+    OrdemServicoUpdate,
+)
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database import get_db
@@ -528,6 +535,211 @@ def deletar_os(
     db.commit()
 
     return {"message": "OS excluída com sucesso"}
+
+
+def normalizar_texto_filtro(valor: str | None):
+    return str(valor or "").strip().upper()
+
+
+def chave_ordenacao_codigo(codigo: str | None):
+    codigo_normalizado = normalizar_texto_filtro(codigo)
+    match = re.search(r"(\d+)", codigo_normalizado)
+    if match:
+        return (int(match.group(1)), codigo_normalizado)
+    return (999999, codigo_normalizado)
+
+
+def indice_fase(fase: str | None):
+    ordem = {
+        "AZ": 0,
+        "BR": 1,
+        "VM": 2,
+        "A": 0,
+        "B": 1,
+        "C": 2,
+        "TRIFASICO": 0,
+        "NA": 0,
+        "N/A": 0,
+    }
+    return ordem.get(normalizar_texto_filtro(fase), 0)
+
+
+def derivar_responsaveis_os(
+    db: Session,
+    id_tipo_ativo: int,
+    id_subestacao: int | None,
+):
+    query = (
+        db.query(OS_models.OrdemServico)
+        .join(Ativo, Ativo.id_ativo == OS_models.OrdemServico.id_ativo)
+        .filter(
+            Ativo.id_tipo_ativo == id_tipo_ativo,
+            (
+                (OS_models.OrdemServico.responsavel_manutencao.isnot(None))
+                | (OS_models.OrdemServico.responsavel_operacao.isnot(None))
+                | (OS_models.OrdemServico.responsavel.isnot(None))
+            ),
+        )
+    )
+
+    if id_subestacao:
+        query = query.filter(OS_models.OrdemServico.id_subestacao == id_subestacao)
+
+    referencia = query.order_by(
+        OS_models.OrdemServico.data_fim_execucao.desc(),
+        OS_models.OrdemServico.criado_em.desc(),
+        OS_models.OrdemServico.id_os.desc(),
+    ).first()
+
+    if not referencia:
+        return None, None
+
+    return (
+        referencia.responsavel_manutencao or referencia.responsavel,
+        referencia.responsavel_operacao,
+    )
+
+
+@router.post("/baixa-lote-tipo-ativo", response_model=BaixaOSLoteResponse)
+def baixar_os_lote_por_tipo_ativo(
+    payload: BaixaOSLoteTipoAtivo,
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin", "mantenedor")),
+):
+    if payload.incremento_minutos_por_fase < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="incremento_minutos_por_fase nao pode ser negativo",
+        )
+
+    if payload.data_fim_execucao and payload.data_fim_execucao < payload.data_inicio_execucao:
+        raise HTTPException(
+            status_code=400,
+            detail="data_fim_execucao nao pode ser anterior a data_inicio_execucao",
+        )
+
+    query = (
+        db.query(OS_models.OrdemServico)
+        .join(Ativo, Ativo.id_ativo == OS_models.OrdemServico.id_ativo)
+        .filter(Ativo.id_tipo_ativo == payload.id_tipo_ativo)
+    )
+
+    if payload.id_subestacao:
+        query = query.filter(OS_models.OrdemServico.id_subestacao == payload.id_subestacao)
+
+    status_origem = payload.status_origem or ["ABERTA", "PROGRAMADA", "EM_EXECUCAO"]
+    if status_origem:
+        query = query.filter(OS_models.OrdemServico.status.in_(status_origem))
+
+    if payload.vaos:
+        vaos_normalizados = {normalizar_texto_filtro(vao) for vao in payload.vaos}
+    else:
+        vaos_normalizados = set()
+
+    ordens = query.all()
+
+    if payload.vaos:
+        ordens = [
+            ordem
+            for ordem in ordens
+            if normalizar_texto_filtro(ordem.ativo.vao if ordem.ativo else ordem.localizacao)
+            in vaos_normalizados
+        ]
+
+    if not ordens:
+        raise HTTPException(
+            status_code=404,
+            detail="Nenhuma OS encontrada para baixa com os filtros informados",
+        )
+
+    ordens.sort(
+        key=lambda ordem: (
+            normalizar_texto_filtro(ordem.ativo.vao if ordem.ativo else ordem.localizacao),
+            chave_ordenacao_codigo(ordem.ativo.codigo_ativo if ordem.ativo else ordem.codigo_ativo),
+            indice_fase(ordem.ativo.fase if ordem.ativo else ordem.complemento),
+            ordem.id_os,
+        )
+    )
+
+    responsavel_manutencao = payload.responsavel_manutencao
+    responsavel_operacao = payload.responsavel_operacao
+
+    if payload.derivar_responsaveis and (
+        not responsavel_manutencao or not responsavel_operacao
+    ):
+        manutencao_derivada, operacao_derivada = derivar_responsaveis_os(
+            db,
+            payload.id_tipo_ativo,
+            payload.id_subestacao,
+        )
+        responsavel_manutencao = responsavel_manutencao or manutencao_derivada
+        responsavel_operacao = responsavel_operacao or operacao_derivada
+
+    duracao = None
+    if payload.data_fim_execucao:
+        duracao = payload.data_fim_execucao - payload.data_inicio_execucao
+
+    por_vao: dict[str, int] = {}
+    ordens_atualizadas = []
+    indice_por_vao_fase: dict[str, dict[str, int]] = {}
+
+    for ordem in ordens:
+        ativo = ordem.ativo
+        vao = normalizar_texto_filtro(ativo.vao if ativo else ordem.localizacao) or "SEM_VAO"
+        fase = normalizar_texto_filtro(ativo.fase if ativo else ordem.complemento)
+
+        fases_do_vao = indice_por_vao_fase.setdefault(vao, {})
+        if fase not in fases_do_vao:
+            fases_do_vao[fase] = len(fases_do_vao)
+
+        offset = timedelta(
+            minutes=payload.incremento_minutos_por_fase * fases_do_vao[fase]
+        )
+        inicio_execucao = payload.data_inicio_execucao + offset
+        fim_execucao = inicio_execucao + duracao if duracao else inicio_execucao
+
+        ordem.status = payload.status_destino
+        ordem.data_inicio_execucao = inicio_execucao
+        ordem.data_fim_execucao = fim_execucao
+
+        if responsavel_manutencao:
+            ordem.responsavel_manutencao = responsavel_manutencao
+        if responsavel_operacao:
+            ordem.responsavel_operacao = responsavel_operacao
+
+        if payload.observacao_baixa:
+            observacoes = ordem.observacoes or ""
+            separador = "\n" if observacoes else ""
+            ordem.observacoes = f"{observacoes}{separador}{payload.observacao_baixa}"
+
+        por_vao[vao] = por_vao.get(vao, 0) + 1
+        ordens_atualizadas.append(ordem)
+
+    db.commit()
+
+    for ordem in ordens_atualizadas:
+        db.refresh(ordem)
+
+    return {
+        "mensagem": "Baixa em lote realizada com sucesso",
+        "total": len(ordens_atualizadas),
+        "por_vao": por_vao,
+        "ordens": [
+            {
+                "id_os": ordem.id_os,
+                "numero_os": ordem.numero_os,
+                "codigo_ativo": ordem.ativo.codigo_ativo if ordem.ativo else None,
+                "vao": ordem.ativo.vao if ordem.ativo else ordem.localizacao,
+                "fase": ordem.ativo.fase if ordem.ativo else ordem.complemento,
+                "status": ordem.status,
+                "data_inicio_execucao": ordem.data_inicio_execucao,
+                "data_fim_execucao": ordem.data_fim_execucao,
+                "responsavel_manutencao": ordem.responsavel_manutencao,
+                "responsavel_operacao": ordem.responsavel_operacao,
+            }
+            for ordem in ordens_atualizadas
+        ],
+    }
 
 
 @router.post("/lote-por-tipo-ativo", response_model=List[OrdemServicoResponse])

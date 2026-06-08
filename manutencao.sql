@@ -1249,6 +1249,7 @@ CREATE TABLE IF NOT EXISTS `usuarios` (
   `senha_hash` varchar(255) NOT NULL,
   `foto` varchar(500) DEFAULT NULL,
   `ativo` tinyint(1) DEFAULT NULL,
+  `id_subestacao_padrao` int(11) DEFAULT NULL,
   `criado_em` datetime DEFAULT current_timestamp(),
   `role` varchar(200) DEFAULT NULL,
   PRIMARY KEY (`id`),

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException
 from fastapi import APIRouter, Depends
 from jose import jwt
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from auth import schemas
@@ -18,6 +19,16 @@ ALGORITHM = "HS256"
 
 router = APIRouter(prefix="", tags=["AUTENTICACAO"])
 
+
+def garantir_colunas_usuarios(db: Session):
+    existe = db.execute(
+        text("SHOW COLUMNS FROM usuarios LIKE :coluna"),
+        {"coluna": "id_subestacao_padrao"},
+    ).first()
+    if not existe:
+        db.execute(text("ALTER TABLE usuarios ADD COLUMN id_subestacao_padrao INT NULL"))
+        db.commit()
+
 def criar_token(data: dict):
     to_encode = data.copy()
     
@@ -29,6 +40,7 @@ def criar_token(data: dict):
 
 @router.post("/login")
 def login(data: schemas.UsuarioLogin, db: Session = Depends(get_db)):
+    garantir_colunas_usuarios(db)
     usuario = db.query(Usuario).filter(Usuario.email == data.email).first()
 
     if not usuario:
@@ -48,6 +60,7 @@ def login(data: schemas.UsuarioLogin, db: Session = Depends(get_db)):
 
 @router.post("/register")
 def register(data: schemas.UsuarioCreate, db: Session = Depends(get_db)):
+    garantir_colunas_usuarios(db)
     usuario_existente = db.query(Usuario).filter(Usuario.email == data.email).first()
 
     if usuario_existente:
@@ -74,6 +87,7 @@ def listar_usuarios(
     db: Session = Depends(get_db),
     _usuario=Depends(require_roles("admin")),
 ):
+    garantir_colunas_usuarios(db)
     return db.query(Usuario).order_by(Usuario.nome.asc()).all()
 
 
@@ -82,6 +96,7 @@ def listar_usuarios_ativos(
     db: Session = Depends(get_db),
     _usuario=Depends(require_roles("admin", "mantenedor")),
 ):
+    garantir_colunas_usuarios(db)
     return (
         db.query(Usuario)
         .filter(Usuario.ativo.is_(True))
@@ -97,6 +112,7 @@ def atualizar_usuario_admin(
     db: Session = Depends(get_db),
     usuario_admin=Depends(require_roles("admin")),
 ):
+    garantir_colunas_usuarios(db)
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
 
     if not usuario:
@@ -122,6 +138,9 @@ def atualizar_usuario_admin(
                 detail="Nao e possivel desativar o proprio usuario",
             )
         usuario.ativo = bool(payload["ativo"])
+
+    if "id_subestacao_padrao" in payload:
+        usuario.id_subestacao_padrao = payload["id_subestacao_padrao"]
 
     db.commit()
     db.refresh(usuario)

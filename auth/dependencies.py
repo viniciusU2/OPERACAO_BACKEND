@@ -4,6 +4,7 @@ from typing import Callable
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import text
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
@@ -21,6 +22,16 @@ def get_secret_key():
     if not secret_key:
         raise HTTPException(status_code=500, detail="SECRET_KEY nao configurada")
     return secret_key
+
+
+def garantir_colunas_usuarios(db: Session):
+    existe = db.execute(
+        text("SHOW COLUMNS FROM usuarios LIKE :coluna"),
+        {"coluna": "id_subestacao_padrao"},
+    ).first()
+    if not existe:
+        db.execute(text("ALTER TABLE usuarios ADD COLUMN id_subestacao_padrao INT NULL"))
+        db.commit()
 
 
 def get_current_user(
@@ -43,6 +54,7 @@ def get_current_user(
     if not email:
         raise HTTPException(status_code=401, detail="Token invalido")
 
+    garantir_colunas_usuarios(db)
     usuario = db.query(Usuario).filter(Usuario.email == email).first()
     if not usuario or not usuario.ativo:
         raise HTTPException(status_code=401, detail="Usuario inativo ou nao encontrado")

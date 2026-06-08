@@ -8,6 +8,7 @@ class UsuarioBase(BaseModel):
     nome: str
     email: EmailStr
     foto: Optional[str] = None
+    id_subestacao_padrao: Optional[int] = None
 
 
 # CREATE (cadastro)
@@ -54,3 +55,4 @@ class UsuarioAtivoOption(BaseModel):
 class UsuarioAdminUpdate(BaseModel):
     role: Optional[str] = None
     ativo: Optional[bool] = None
+    id_subestacao_padrao: Optional[int] = None
