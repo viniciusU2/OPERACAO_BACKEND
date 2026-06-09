@@ -16,6 +16,7 @@ from sqlalchemy import text
 import pandas as pd
 from models.instalacao_models import Subestacao
 from models.familias_models import TipoAtivo
+from collections import Counter
 
 
 router = APIRouter(prefix="", tags=["ATIVO"])
@@ -34,6 +35,10 @@ def valor_decimal(valor):
         return None
 
     return float(valor)
+
+
+def texto_vazio(valor):
+    return valor is None or not str(valor).strip()
 
 
 def normalizar_codigo_torre(codigo_linha: str, estrutura: str):
@@ -200,6 +205,85 @@ def editar_ativo(
         )
 
     return ativo_db
+
+
+def pontuacao_referencia(ativo, referencia):
+    pontos = 0
+
+    if ativo.codigo_ativo and ativo.codigo_ativo == referencia.codigo_ativo:
+        pontos += 4
+    if ativo.vao and ativo.vao == referencia.vao:
+        pontos += 2
+    if ativo.fase and ativo.fase == referencia.fase:
+        pontos += 2
+    if ativo.tensao_nominal_kv and referencia.tensao_nominal_kv:
+        if float(ativo.tensao_nominal_kv) == float(referencia.tensao_nominal_kv):
+            pontos += 2
+
+    return pontos
+
+
+@router.post("/ativos/atualizar-fabricantes-gor")
+def atualizar_fabricantes_gor(
+    id_subestacao_gor: int = 2,
+    db: Session = Depends(get_db)
+):
+    referencias = [
+        ativo
+        for ativo in db.query(Ativo).filter(Ativo.id_subestacao != id_subestacao_gor).all()
+        if not texto_vazio(ativo.fabricante)
+    ]
+
+    faltantes = [
+        ativo
+        for ativo in db.query(Ativo).filter(Ativo.id_subestacao == id_subestacao_gor).all()
+        if texto_vazio(ativo.fabricante)
+    ]
+
+    fabricantes_por_tipo = {}
+    for tipo_id in {ref.id_tipo_ativo for ref in referencias}:
+        fabricantes = [
+            str(ref.fabricante).strip()
+            for ref in referencias
+            if ref.id_tipo_ativo == tipo_id and not texto_vazio(ref.fabricante)
+        ]
+        if fabricantes:
+            fabricantes_por_tipo[tipo_id] = Counter(fabricantes).most_common(1)[0][0]
+
+    atualizados = 0
+    sem_referencia = []
+
+    for ativo in faltantes:
+        candidatos = [
+            ref
+            for ref in referencias
+            if ref.id_tipo_ativo == ativo.id_tipo_ativo
+        ]
+        candidatos = sorted(
+            candidatos,
+            key=lambda ref: pontuacao_referencia(ativo, ref),
+            reverse=True,
+        )
+
+        melhor = candidatos[0] if candidatos and pontuacao_referencia(ativo, candidatos[0]) > 0 else None
+        fabricante = getattr(melhor, "fabricante", None) or fabricantes_por_tipo.get(ativo.id_tipo_ativo)
+
+        if texto_vazio(fabricante):
+            sem_referencia.append(ativo.codigo_ativo)
+            continue
+
+        ativo.fabricante = str(fabricante).strip()
+        atualizados += 1
+
+    db.commit()
+
+    return {
+        "mensagem": "Fabricantes da GOR atualizados",
+        "id_subestacao_gor": id_subestacao_gor,
+        "ativos_sem_fabricante_encontrados": len(faltantes),
+        "fabricantes_atualizados": atualizados,
+        "sem_referencia": sem_referencia,
+    }
 
 
 

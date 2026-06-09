@@ -529,6 +529,7 @@ CREATE TABLE IF NOT EXISTS `ordem_servico` (
   `id_os` int(11) NOT NULL AUTO_INCREMENT,
   `numero_os` varchar(30) NOT NULL,
   `numero_si` varchar(30) DEFAULT NULL,
+  `numero_ss` varchar(30) DEFAULT NULL,
   `id_subestacao` int(11) DEFAULT NULL,
   `id_ativo` int(11) DEFAULT NULL,
   `especie` varchar(50) DEFAULT NULL,
@@ -1162,6 +1163,7 @@ INSERT INTO `solicitacao_intervencao` (`id_si`, `numero_si`, `numero_sgi`, `id_s
 CREATE TABLE IF NOT EXISTS `solicitacao_servico` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `numero_ss` varchar(20) DEFAULT NULL,
+  `numero_os` varchar(30) DEFAULT NULL,
   `data_hora_solicitacao` datetime DEFAULT NULL,
   `data_hora_abertura` datetime DEFAULT NULL,
   `data_hora_limite` datetime DEFAULT NULL,

@@ -215,6 +215,7 @@ SI_COLUNAS = [
 SS_COLUNAS = [
     ("ID", "id"),
     ("Numero SS", "numero_ss"),
+    ("Numero OS", "numero_os"),
     ("Data Solicitacao", "data_hora_solicitacao"),
     ("Data Abertura", "data_hora_abertura"),
     ("Data Limite", "data_hora_limite"),

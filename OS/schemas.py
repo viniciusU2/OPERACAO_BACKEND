@@ -11,6 +11,7 @@ class OrdemServicoCreate(BaseModel):
     # ================= IDENTIFICAÇÃO =================
     numero_os: Optional[str] = None
     numero_si: Optional[str] = None
+    numero_ss: Optional[str] = None
 
     id_subestacao: Optional[int] = None
     id_ativo: Optional[int] = None
@@ -36,7 +37,7 @@ class OrdemServicoCreate(BaseModel):
     causa_secundaria: Optional[str] = None
 
     # ================= CONTROLE =================
-    prioridade: Optional[str] = "MEDIA"
+    prioridade: Optional[str] = "NIVEL_3"
     responsavel: Optional[str] = None
     responsavel_manutencao: Optional[str] = None
     responsavel_operacao: Optional[str] = None
@@ -74,6 +75,7 @@ class OrdemServicoResponse(OrdemServicoCreate):
 class OrdemServicoUpdate(BaseModel):
     numero_os: Optional[str]
     numero_si: Optional[str]
+    numero_ss: Optional[str] = None
 
     id_subestacao: Optional[int]
     id_ativo: Optional[int]
@@ -116,7 +118,9 @@ class OrdemServicoUpdate(BaseModel):
 
 class OrdemServicoCreateLote(BaseModel):
     id_subestacao: int
-    id_tipo_ativo: int                     # EAT, SPCS, TELECON, etc.
+    id_tipo_ativo: Optional[int] = None
+    codigo_ativo: Optional[str] = None
+    incluir_reserva: bool = False
 
     numero_si: Optional[str] = None
     numero_os: Optional[str] = None
@@ -135,7 +139,7 @@ class OrdemServicoCreateLote(BaseModel):
     causa_primaria: Optional[str] = None
     causa_secundaria: Optional[str] = None
 
-    prioridade: str = "MEDIA"
+    prioridade: str = "NIVEL_3"
     responsavel: Optional[str] = None
     responsavel_manutencao: Optional[str] = None
     responsavel_operacao: Optional[str] = None

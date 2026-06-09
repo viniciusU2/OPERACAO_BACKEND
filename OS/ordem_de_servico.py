@@ -2,6 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pymysql import IntegrityError
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from database import get_db
 from models.OS_models import OrdemServico
@@ -18,6 +19,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.Ativo import Ativo
 from models.instalacao_models import Subestacao
+from models.SS_models import SolicitacaoServico
 from models import OS_models
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
@@ -29,6 +31,10 @@ from fastapi.background import BackgroundTasks
 from typing import List
 from fastapi.responses import FileResponse
 from auth.dependencies import require_roles
+from utils.documentos_operacao import (
+    especie_documento_por_ativo,
+    normalizar_prioridade_operacao,
+)
 
 
 
@@ -258,6 +264,10 @@ def criar_ordem_servico(
         codigo_ativo = ativo.codigo_ativo
 
     # 🔥 GERAR NUMERO OS
+    if ativo:
+        os_data.especie = especie_documento_por_ativo(ativo) or os_data.especie
+
+    os_data.prioridade = normalizar_prioridade_operacao(os_data.prioridade)
     os_data.numero_os,  os_data.numero_apr = gerar_numero_os(db, sigla, codigo_ativo)
 
     # 🔹 Criar OS
@@ -486,6 +496,22 @@ def editar_ordem_servico(
         
 
 
+    if os_db.id_ativo:
+        ativo = db.query(Ativo).filter(Ativo.id_ativo == os_db.id_ativo).first()
+        if ativo:
+            os_db.especie = especie_documento_por_ativo(ativo) or os_db.especie
+
+    os_db.prioridade = normalizar_prioridade_operacao(os_db.prioridade)
+
+    status_atualizado = str(os_db.status or "").strip().upper()
+    if os_db.numero_ss and status_atualizado in {"ENCERRADA", "CONCLUIDA"}:
+        ss_vinculada = db.query(SolicitacaoServico).filter(
+            SolicitacaoServico.numero_ss == os_db.numero_ss
+        ).first()
+        if ss_vinculada:
+            ss_vinculada.status = "ENCERRADA"
+            ss_vinculada.numero_os = os_db.numero_os
+
     try:
         db.commit()
         db.refresh(os_db)
@@ -712,6 +738,17 @@ def baixar_os_lote_por_tipo_ativo(
             separador = "\n" if observacoes else ""
             ordem.observacoes = f"{observacoes}{separador}{payload.observacao_baixa}"
 
+        if ordem.numero_ss and str(payload.status_destino or "").strip().upper() in {
+            "ENCERRADA",
+            "CONCLUIDA",
+        }:
+            ss_vinculada = db.query(SolicitacaoServico).filter(
+                SolicitacaoServico.numero_ss == ordem.numero_ss
+            ).first()
+            if ss_vinculada:
+                ss_vinculada.status = "ENCERRADA"
+                ss_vinculada.numero_os = ordem.numero_os
+
         por_vao[vao] = por_vao.get(vao, 0) + 1
         ordens_atualizadas.append(ordem)
 
@@ -760,11 +797,38 @@ def criar_os_lote_por_tipo_ativo(
 
     instalacao_nome = subestacao.nome   # ← Aqui pegamos o nome real da subestação
 
+    codigo_ativo_filtro = str(payload.codigo_ativo or "").strip()
+    if not payload.id_tipo_ativo and not codigo_ativo_filtro:
+        raise HTTPException(
+            status_code=400,
+            detail="Informe id_tipo_ativo ou codigo_ativo para gerar OS em lote.",
+        )
+
     # ====================== 2. BUSCAR ATIVOS ======================
-    ativos = db.query(Ativo).filter(
+    query_ativos = db.query(Ativo).filter(
         Ativo.id_subestacao == payload.id_subestacao,
-        Ativo.id_tipo_ativo == payload.id_tipo_ativo
-    ).all()
+    )
+
+    if payload.id_tipo_ativo:
+        query_ativos = query_ativos.filter(Ativo.id_tipo_ativo == payload.id_tipo_ativo)
+
+    if codigo_ativo_filtro:
+        query_ativos = query_ativos.filter(
+            text("UPPER(TRIM(codigo_ativo)) = UPPER(TRIM(:codigo_ativo))")
+        ).params(codigo_ativo=codigo_ativo_filtro)
+
+    ativos = query_ativos.all()
+
+    if codigo_ativo_filtro:
+        fases_desejadas = {"AZ", "BR", "VM"}
+        if payload.incluir_reserva:
+            fases_desejadas.update({"RES", "RESERVA"})
+
+        ativos = [
+            ativo
+            for ativo in ativos
+            if str(ativo.fase or "").strip().upper() in fases_desejadas
+        ]
 
     if not ativos:
         raise HTTPException(
@@ -853,7 +917,7 @@ def criar_os_lote_por_tipo_ativo(
             numero_os=numero_os_final,
             id_subestacao=payload.id_subestacao,
             id_ativo=ativo.id_ativo,
-            especie=payload.especie or getattr(payload, "tipo_ativo", None),
+            especie=especie_documento_por_ativo(ativo) or payload.especie or getattr(payload, "tipo_ativo", None),
             numero_si=payload.numero_si,
             numero_apr=numero_apr_final,
 
@@ -868,7 +932,7 @@ def criar_os_lote_por_tipo_ativo(
             causa_primaria=payload.causa_primaria,
             causa_secundaria=payload.causa_secundaria,
 
-            prioridade=payload.prioridade,
+            prioridade=normalizar_prioridade_operacao(payload.prioridade),
             responsavel=payload.responsavel,
             responsavel_manutencao=payload.responsavel_manutencao,
             responsavel_operacao=payload.responsavel_operacao,
@@ -1132,6 +1196,7 @@ def gerar_os_por_planos_manutencao(db: Session):
                     numero_apr=numero_apr,
                     id_subestacao=ativo.id_subestacao,
                     id_ativo=ativo.id_ativo,
+                    especie=especie_documento_por_ativo(ativo),
                     instalacao=subestacao.nome,
                     localizacao=ativo.vao,
                     complemento=ativo.fase,
@@ -1140,6 +1205,7 @@ def gerar_os_por_planos_manutencao(db: Session):
                     data_fim_programado=data_programada,
                     responsavel=ultima_os_com_equipe.responsavel if ultima_os_com_equipe else None,
                     substituto=ultima_os_com_equipe.substituto if ultima_os_com_equipe else None,
+                    prioridade="NIVEL_3",
                     status="ABERTA",
                 )
 

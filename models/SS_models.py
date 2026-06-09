@@ -9,6 +9,7 @@ class SolicitacaoServico(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     numero_ss = Column(String(20), unique=True, index=True)
+    numero_os = Column(String(30))
 
     data_hora_solicitacao = Column(DateTime)
     data_hora_abertura = Column(DateTime)

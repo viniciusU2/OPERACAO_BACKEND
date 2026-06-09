@@ -9,6 +9,7 @@ class OrdemServico(Base):
     id_os = Column(Integer, primary_key=True, index=True)
     numero_os = Column(String(30), unique=True, nullable=False)
     numero_si = Column(String(30))
+    numero_ss = Column(String(30))
 
     id_subestacao = Column(Integer, ForeignKey("subestacao.id_subestacao"))
     id_ativo = Column(Integer, ForeignKey("ativo.id_ativo"))

@@ -30,6 +30,16 @@ db = SessionLocal()
 try:
     ativos.garantir_colunas_torre(db)
     inspecoes.garantir_colunas_inspecao(db)
+    coluna_numero_ss_os = db.execute(
+        text("SHOW COLUMNS FROM ordem_servico LIKE 'numero_ss'")
+    ).first()
+    if not coluna_numero_ss_os:
+        db.execute(text("ALTER TABLE ordem_servico ADD COLUMN numero_ss VARCHAR(30) NULL"))
+    coluna_numero_os_ss = db.execute(
+        text("SHOW COLUMNS FROM solicitacao_servico LIKE 'numero_os'")
+    ).first()
+    if not coluna_numero_os_ss:
+        db.execute(text("ALTER TABLE solicitacao_servico ADD COLUMN numero_os VARCHAR(30) NULL"))
     colunas_texto = db.execute(
         text(
             """

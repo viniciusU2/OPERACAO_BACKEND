@@ -7,6 +7,7 @@ from typing import Optional
 class SolicitacaoServicoBase(BaseModel):
 
     numero_ss: Optional[str] = None
+    numero_os: Optional[str] = None
 
     data_hora_solicitacao: Optional[datetime] = None
     data_hora_abertura: Optional[datetime] = None
@@ -50,6 +51,7 @@ class SolicitacaoServicoCreate(SolicitacaoServicoBase):
 class SolicitacaoServicoUpdate(BaseModel):
 
     numero_ss: Optional[str] = None
+    numero_os: Optional[str] = None
 
     data_hora_solicitacao: Optional[datetime] = None
     data_hora_abertura: Optional[datetime] = None

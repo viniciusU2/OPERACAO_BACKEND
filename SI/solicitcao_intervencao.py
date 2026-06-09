@@ -7,6 +7,10 @@ from models.SI_models import solicitacao_intervencao
 from models.instalacao_models import Subestacao
 from models.Ativo import Ativo
 from SI.schemas import SICreate, SIResponse, SIUpdate
+from utils.documentos_operacao import (
+    especie_documento_por_ativo,
+    normalizar_prioridade_operacao,
+)
 
 import os
 import shutil
@@ -26,6 +30,7 @@ def garantir_colunas_si(db: Session):
     colunas = {
         "natureza": "VARCHAR(255) NULL",
         "caracteristica_intervencao": "VARCHAR(100) NULL",
+        "prioridade": "VARCHAR(20) NULL DEFAULT 'NIVEL_3'",
     }
 
     for coluna, definicao in colunas.items():
@@ -298,6 +303,13 @@ def criar_si(dados: SICreate, db: Session = Depends(get_db)):
     garantir_colunas_si(db)
 
     data = dados.dict()
+    if data.get("id_ativo"):
+        ativo = db.query(Ativo).filter(Ativo.id_ativo == data["id_ativo"]).first()
+        if ativo:
+            data["especie"] = especie_documento_por_ativo(ativo) or data.get("especie")
+
+    data["prioridade"] = normalizar_prioridade_operacao(data.get("prioridade"))
+
     if not data.get("numero_si"):
         data["numero_si"] = gerar_numero_si(
             db,
@@ -355,6 +367,13 @@ def editar_si(id_si: int, dados: SIUpdate, db: Session = Depends(get_db)):
 
     for campo, valor in dados.dict(exclude_unset=True).items():
         setattr(si, campo, valor)
+
+    if si.id_ativo:
+        ativo = db.query(Ativo).filter(Ativo.id_ativo == si.id_ativo).first()
+        if ativo:
+            si.especie = especie_documento_por_ativo(ativo) or si.especie
+
+    si.prioridade = normalizar_prioridade_operacao(si.prioridade)
 
     db.commit()
     db.refresh(si)

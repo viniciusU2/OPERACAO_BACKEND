@@ -13,12 +13,15 @@ from sqlalchemy.orm import Session
 from database import get_db
 from auth.dependencies import require_roles
 from models.Ativo import Ativo
+from models.OS_models import OrdemServico
 from models.SS_models import SolicitacaoServico
+from models.instalacao_models import Subestacao
 from SS.schemas import (
     SolicitacaoServicoCreate,
     SolicitacaoServicoResponse,
     SolicitacaoServicoUpdate,
 )
+from utils.documentos_operacao import especie_documento_por_ativo
 
 
 router = APIRouter(prefix="/ss", tags=["Solicitacao de Servico"])
@@ -115,6 +118,32 @@ def gerar_numero_ss(db: Session, sigla: str):
 
     proximo = max(numeros) + 1 if numeros else 1
     return f"SS-{sigla}-{str(proximo).zfill(4)}-{ano_atual}"
+
+
+def gerar_numero_os_atendimento_ss(db: Session, sigla: str, codigo_ativo: str | None):
+    ano_atual = datetime.now().year
+    registros = (
+        db.query(OrdemServico.numero_os)
+        .filter(OrdemServico.numero_os.like(f"OS-{sigla}-%-{ano_atual}%"))
+        .all()
+    )
+
+    numeros = []
+    for (numero_os,) in registros:
+        match = re.search(rf"OS-{sigla}-(\d+)-{ano_atual}", numero_os or "")
+        if match:
+            numeros.append(int(match.group(1)))
+
+    proximo = max(numeros) + 1 if numeros else 1
+    numero_formatado = str(proximo).zfill(4)
+    numero_os = f"OS-{sigla}-{numero_formatado}-{ano_atual}"
+    numero_apr = f"APR-{sigla}-{numero_formatado}-{ano_atual}"
+
+    if codigo_ativo:
+        codigo_seguro = re.sub(r"[^A-Za-z0-9\-]", "", codigo_ativo)
+        numero_os = f"{numero_os}-{codigo_seguro}"
+
+    return numero_os, numero_apr
 
 
 def gerar_xlsx(modelo, destino, contexto, mapeamento):
@@ -245,6 +274,96 @@ def deletar_ss(
     db.commit()
 
     return {"message": "SS deletada com sucesso"}
+
+
+@router.post("/{id_ss}/atender")
+def atender_ss(
+    id_ss: int,
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin", "mantenedor")),
+):
+    ss = db.query(SolicitacaoServico).filter(
+        SolicitacaoServico.id == id_ss
+    ).first()
+
+    if not ss:
+        raise HTTPException(404, "SS nao encontrada")
+
+    os_existente = db.query(OrdemServico).filter(
+        OrdemServico.numero_ss == ss.numero_ss
+    ).first()
+
+    if os_existente:
+        ss.numero_os = os_existente.numero_os
+        db.commit()
+        db.refresh(ss)
+        return {
+            "message": "SS ja possui OS vinculada",
+            "ss": ss,
+            "os": os_existente,
+        }
+
+    ativo = db.query(Ativo).filter(
+        Ativo.id_ativo == ss.id_ativo
+    ).first() if ss.id_ativo else None
+
+    if not ativo or not ativo.id_subestacao:
+        raise HTTPException(
+            status_code=400,
+            detail="SS precisa estar vinculada a um ativo com subestacao para gerar OS",
+        )
+
+    subestacao = db.query(Subestacao).filter(
+        Subestacao.id_subestacao == ativo.id_subestacao
+    ).first()
+
+    if not subestacao:
+        raise HTTPException(400, "Subestacao do ativo nao encontrada")
+
+    sigla = sigla_por_subestacao(ativo.id_subestacao)
+    numero_os, numero_apr = gerar_numero_os_atendimento_ss(
+        db,
+        sigla,
+        ativo.codigo_ativo,
+    )
+
+    nova_os = OrdemServico(
+        numero_os=numero_os,
+        numero_apr=numero_apr,
+        numero_ss=ss.numero_ss,
+        id_subestacao=ativo.id_subestacao,
+        id_ativo=ativo.id_ativo,
+        especie=especie_documento_por_ativo(ativo) or ativo.especie,
+        instalacao=subestacao.nome,
+        localizacao=ativo.vao or ss.localizacao,
+        complemento=ativo.fase or ss.complemento,
+        origens=f"SS {ss.numero_ss}",
+        defeito=ss.descricao_problema,
+        esquema_servicos=ss.esquema_servico,
+        prioridade=ss.prioridade,
+        responsavel=ss.equipe,
+        responsavel_manutencao=ss.equipe,
+        data_abertura_ss=ss.data_hora_abertura or datetime.now(),
+        descricao_servicos=ss.descricao_problema,
+        causa_primaria=ss.causa,
+        causa_secundaria=ss.causa_secundaria,
+        centro_custos=ss.centro_custo,
+        status="PROGRAMADA",
+    )
+
+    ss.status = "PROGRAMADA"
+    ss.numero_os = nova_os.numero_os
+
+    db.add(nova_os)
+    db.commit()
+    db.refresh(nova_os)
+    db.refresh(ss)
+
+    return {
+        "message": "SS atendida e OS criada com sucesso",
+        "ss": ss,
+        "os": nova_os,
+    }
 
 
 @router.get("/{id_ss}/download")
