@@ -40,6 +40,27 @@ try:
     ).first()
     if not coluna_numero_os_ss:
         db.execute(text("ALTER TABLE solicitacao_servico ADD COLUMN numero_os VARCHAR(30) NULL"))
+
+    colunas_ordem_servico_plano = {
+        "id_plano_manutencao": "INT NULL",
+        "id_plano_item": "INT NULL",
+        "id_plano_execucao": "INT NULL",
+        "origem": "VARCHAR(50) NULL",
+    }
+    for coluna, definicao in colunas_ordem_servico_plano.items():
+        existe = db.execute(
+            text("SHOW COLUMNS FROM ordem_servico LIKE :coluna"),
+            {"coluna": coluna},
+        ).first()
+        if not existe:
+            db.execute(text(f"ALTER TABLE ordem_servico ADD COLUMN {coluna} {definicao}"))
+
+    coluna_execucao_os = db.execute(
+        text("SHOW COLUMNS FROM plano_execucao LIKE 'id_os'")
+    ).first()
+    if not coluna_execucao_os:
+        db.execute(text("ALTER TABLE plano_execucao ADD COLUMN id_os INT NULL"))
+
     colunas_texto = db.execute(
         text(
             """

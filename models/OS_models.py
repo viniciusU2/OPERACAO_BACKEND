@@ -13,6 +13,10 @@ class OrdemServico(Base):
 
     id_subestacao = Column(Integer, ForeignKey("subestacao.id_subestacao"))
     id_ativo = Column(Integer, ForeignKey("ativo.id_ativo"))
+    id_plano_manutencao = Column(Integer, ForeignKey("plano_manutencao.id_plano_manutencao"))
+    id_plano_item = Column(Integer, ForeignKey("plano_item.id_plano_item"))
+    id_plano_execucao = Column(Integer, ForeignKey("plano_execucao.id_execucao"))
+    origem = Column(String(50))
 
     especie = Column(String(50))
     numero_apr = Column(String(50))

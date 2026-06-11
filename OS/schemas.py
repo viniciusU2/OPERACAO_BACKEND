@@ -15,6 +15,10 @@ class OrdemServicoCreate(BaseModel):
 
     id_subestacao: Optional[int] = None
     id_ativo: Optional[int] = None
+    id_plano_manutencao: Optional[int] = None
+    id_plano_item: Optional[int] = None
+    id_plano_execucao: Optional[int] = None
+    origem: Optional[str] = None
 
     especie: Optional[str] = None
     codigo_ativo: Optional[str] = None
@@ -79,6 +83,10 @@ class OrdemServicoUpdate(BaseModel):
 
     id_subestacao: Optional[int]
     id_ativo: Optional[int]
+    id_plano_manutencao: Optional[int] = None
+    id_plano_item: Optional[int] = None
+    id_plano_execucao: Optional[int] = None
+    origem: Optional[str] = None
 
     especie: Optional[str]
     numero_apr: Optional[str]
@@ -192,3 +200,8 @@ class BaixaOSLoteResponse(BaseModel):
     total: int
     por_vao: dict[str, int]
     ordens: list[BaixaOSLoteItemResponse]
+
+
+class GerarOsPlanosRequest(BaseModel):
+    data_simulacao: Optional[datetime] = None
+    simular: bool = False

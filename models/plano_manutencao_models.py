@@ -141,6 +141,12 @@ class PlanoExecucao(Base):
         nullable=False
     )
 
+    id_os = Column(
+        Integer,
+        ForeignKey("ordem_servico.id_os", ondelete="SET NULL"),
+        nullable=True
+    )
+
     ultima_execucao = Column(DateTime)
     proxima_execucao = Column(DateTime, nullable=False)
 
