@@ -36,6 +36,15 @@ def limpar(valor):
     return valor
 
 
+def valor_campo(registro, campo: str):
+    valor = registro
+    for parte in campo.split("."):
+        valor = getattr(valor, parte, None)
+        if valor is None:
+            return ""
+    return valor
+
+
 def aplicar_estilo(ws):
     fill = PatternFill("solid", fgColor="1F2937")
     font = Font(color="FFFFFF", bold=True)
@@ -80,7 +89,7 @@ def adicionar_aba(wb, titulo: str, colunas: list[tuple[str, str]], registros):
 
     for registro in registros:
         ws.append([
-            limpar(getattr(registro, campo, ""))
+            limpar(valor_campo(registro, campo))
             for _, campo in colunas
         ])
 
@@ -229,6 +238,9 @@ SS_COLUNAS = [
     ("Localizacao", "localizacao"),
     ("Complemento", "complemento"),
     ("Ativo", "id_ativo"),
+    ("Codigo Ativo", "ativo.codigo_ativo"),
+    ("Tipo Ativo", "ativo.tipo_ativo.nome"),
+    ("Fase", "ativo.fase"),
     ("Esquema Servico", "esquema_servico"),
     ("Centro Custo", "centro_custo"),
     ("Causa", "causa"),

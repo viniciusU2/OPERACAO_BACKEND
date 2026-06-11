@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from pymysql import IntegrityError
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from database import get_db
 from models.OS_models import OrdemServico
@@ -505,18 +506,16 @@ def editar_ordem_servico(
     os_db.prioridade = normalizar_prioridade_operacao(os_db.prioridade)
 
     status_atualizado = str(os_db.status or "").strip().upper()
-    if os_db.numero_ss and status_atualizado in {"ENCERRADA", "CONCLUIDA"}:
-        ss_vinculada = db.query(SolicitacaoServico).filter(
-            SolicitacaoServico.numero_ss == os_db.numero_ss
-        ).first()
-        if ss_vinculada:
-            ss_vinculada.status = "ENCERRADA"
-            ss_vinculada.numero_os = os_db.numero_os
-
-    if status_atualizado in {"ENCERRADA", "CONCLUIDA"}:
-        avancar_execucoes_plano_por_os(db, os_db)
 
     try:
+        if os_db.numero_ss and status_atualizado in {"ENCERRADA", "CONCLUIDA"}:
+            ss_vinculada = db.query(SolicitacaoServico).filter(
+                SolicitacaoServico.numero_ss == os_db.numero_ss
+            ).first()
+            if ss_vinculada:
+                ss_vinculada.status = "ENCERRADA"
+                ss_vinculada.numero_os = os_db.numero_os
+
         db.commit()
         db.refresh(os_db)
     except IntegrityError:
@@ -525,6 +524,21 @@ def editar_ordem_servico(
             status_code=409,
             detail="Número da OS já existe"
         )
+
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=str(getattr(exc, "orig", exc))
+        )
+
+    if status_atualizado in {"ENCERRADA", "CONCLUIDA"}:
+        try:
+            avancar_execucoes_plano_por_os(db, os_db)
+            db.commit()
+            db.refresh(os_db)
+        except SQLAlchemyError:
+            db.rollback()
 
     return os_db
 
@@ -753,16 +767,28 @@ def baixar_os_lote_por_tipo_ativo(
                 ss_vinculada.status = "ENCERRADA"
                 ss_vinculada.numero_os = ordem.numero_os
 
-        if str(payload.status_destino or "").strip().upper() in {
-            "ENCERRADA",
-            "CONCLUIDA",
-        }:
-            avancar_execucoes_plano_por_os(db, ordem, fim_execucao)
-
         por_vao[vao] = por_vao.get(vao, 0) + 1
         ordens_atualizadas.append(ordem)
 
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=str(getattr(exc, "orig", exc))
+        )
+
+    if str(payload.status_destino or "").strip().upper() in {
+        "ENCERRADA",
+        "CONCLUIDA",
+    }:
+        try:
+            for ordem in ordens_atualizadas:
+                avancar_execucoes_plano_por_os(db, ordem, ordem.data_fim_execucao)
+            db.commit()
+        except SQLAlchemyError:
+            db.rollback()
 
     for ordem in ordens_atualizadas:
         db.refresh(ordem)
@@ -1071,6 +1097,15 @@ def avancar_execucoes_plano_por_os(
     if not getattr(ordem, "id_os", None):
         return
 
+    if str(getattr(ordem, "origem", "") or "").strip().upper() != "PLANO_MANUTENCAO":
+        return
+
+    coluna_vinculo_existe = db.execute(
+        text("SHOW COLUMNS FROM plano_execucao LIKE 'id_os'")
+    ).first()
+    if not coluna_vinculo_existe:
+        return
+
     data_base = data_execucao or ordem.data_fim_execucao or datetime.now()
     execucoes = (
         db.query(PlanoExecucao)
@@ -1094,6 +1129,48 @@ def avancar_execucoes_plano_por_os(
 
 def valor_periodicidade(periodicidade: PeriodicidadeEnum):
     return getattr(periodicidade, "value", periodicidade)
+
+
+def meses_por_periodicidade(periodicidade: PeriodicidadeEnum, intervalo: int | None = 1):
+    periodicidade_valor = valor_periodicidade(periodicidade)
+    multiplicador = max(intervalo or 1, 1)
+
+    meses_base = {
+        "MENSAL": 1,
+        "BIMESTRAL": 2,
+        "TRIMESTRAL": 3,
+        "SEMESTRAL": 6,
+        "3_ANOS": 36,
+        "5_ANOS": 60,
+        "6_ANOS": 72,
+    }.get(periodicidade_valor)
+
+    if meses_base is None:
+        return None
+
+    return meses_base * multiplicador
+
+
+def esquema_servico_por_periodicidade(item: PlanoItem):
+    periodicidade = valor_periodicidade(item.periodicidade)
+
+    if periodicidade == "SEMANAL":
+        return "PREVENTIVA SEMANAL"
+
+    meses = meses_por_periodicidade(item.periodicidade, item.intervalo)
+    por_meses = {
+        1: "PREVENTIVA MENSAL",
+        2: "PREVENTIVA BIMESTRAL",
+        3: "PREVENTIVA TRIMESTRAL",
+        6: "PREVENTIVA SEMESTRAL",
+        12: "PREVENTIVA ANUAL",
+        24: "PREVENTIVA BIANUAL",
+        36: "PREVENTIVA TRIANUAL",
+        60: "PREVENTIVA A 5 ANOS",
+        72: "PREVENTIVA A 6 ANOS",
+    }
+
+    return por_meses.get(meses, "MANUTENÇÃO PREVENTIVA")
 
 
 def data_programada_os(execucoes_pendentes: list[tuple[PlanoItem, PlanoExecucao]], hoje: datetime):
@@ -1200,6 +1277,9 @@ def gerar_os_por_planos_manutencao(
                     continue
 
                 data_programada = data_programada_os(execucoes_pendentes, hoje)
+                esquema_servicos_plano = esquema_servico_por_periodicidade(
+                    execucoes_pendentes[0][0]
+                )
 
                 os_existente = (
                     db.query(OrdemServico)
@@ -1225,6 +1305,11 @@ def gerar_os_por_planos_manutencao(
                     os_existente.id_plano_execucao = (
                         os_existente.id_plano_execucao or execucoes_pendentes[0][1].id_execucao
                     )
+                    if not os_existente.esquema_servicos or os_existente.esquema_servicos in {
+                        "MANUTENCAO PREVENTIVA",
+                        "MANUTENÇÃO PREVENTIVA",
+                    }:
+                        os_existente.esquema_servicos = esquema_servicos_plano
                     continue
 
                 subestacao = (
@@ -1263,6 +1348,16 @@ def gerar_os_por_planos_manutencao(
                     .first()
                 )
 
+                itens_descricao = "; ".join(
+                    item.nome_item
+                    for item, _ in execucoes_pendentes
+                    if item.nome_item
+                )
+                emissor_plano = (
+                    f"Plano #{plano.id_plano_manutencao} - "
+                    f"{tipo.nome or plano.descricao_geral or 'Manutencao preventiva'}"
+                )
+
                 nova_os = OrdemServico(
                     numero_os=numero_os,
                     numero_apr=numero_apr,
@@ -1276,7 +1371,18 @@ def gerar_os_por_planos_manutencao(
                     instalacao=subestacao.nome,
                     localizacao=ativo.vao,
                     complemento=ativo.fase,
-                    descricao_servicos=plano.descricao_geral,
+                    origens="PLANO DE MANUTENCAO",
+                    defeito="MANUTENCAO PREVENTIVA PROGRAMADA",
+                    esquema_servicos=esquema_servicos_plano,
+                    descricao_servicos=plano.descricao_geral or "Manutencao preventiva programada",
+                    observacoes=(
+                        f"Itens do plano: {itens_descricao}"
+                        if itens_descricao
+                        else "OS gerada automaticamente pelo plano de manutencao."
+                    ),
+                    causa_primaria="PLANO DE MANUTENCAO",
+                    causa_secundaria="EXECUCAO PROGRAMADA",
+                    emissor=emissor_plano,
                     data_inicio_programado=data_programada,
                     data_fim_programado=data_programada,
                     responsavel=ultima_os_com_equipe.responsavel if ultima_os_com_equipe else None,
