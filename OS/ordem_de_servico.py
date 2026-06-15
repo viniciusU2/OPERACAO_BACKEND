@@ -177,6 +177,18 @@ SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
 # =========================
 # 🔥 GERAR NUMERO OS
 # =========================
+def codigo_ativo_para_numero_os(codigo_ativo: str | None, numero_base: str, limite: int = 30) -> str:
+    codigo = re.sub(r"[^A-Za-z0-9\-]", "", str(codigo_ativo or ""))
+    if not codigo:
+        return numero_base
+
+    tamanho_disponivel = limite - len(numero_base) - 1
+    if tamanho_disponivel <= 0:
+        return numero_base[:limite]
+
+    return f"{numero_base}-{codigo[:tamanho_disponivel]}"
+
+
 def gerar_numero_os(db: Session, sigla: str, codigo_ativo: str | None) -> tuple[str, str]:
     ano_atual = datetime.now().year
 
@@ -202,8 +214,7 @@ def gerar_numero_os(db: Session, sigla: str, codigo_ativo: str | None) -> tuple[
     numero_apr = f"APR-{sigla}-{numero_formatado}-{ano_atual}"
 
     if codigo_ativo:
-        codigo_ativo = re.sub(r"[^A-Za-z0-9\-]", "", codigo_ativo)
-        numero_os = f"{numero_os}-{codigo_ativo}"
+        numero_os = codigo_ativo_para_numero_os(codigo_ativo, numero_os)
 
     return numero_os, numero_apr
 
@@ -942,7 +953,8 @@ def criar_os_lote_por_tipo_ativo(
         numero_atual = numero_base + index
         numero_formatado = str(numero_atual).zfill(padding)
 
-        numero_os_final = f"{prefixo}{numero_formatado}-{ano}-{ativo.codigo_ativo}"
+        numero_os_base = f"{prefixo}{numero_formatado}-{ano}"
+        numero_os_final = codigo_ativo_para_numero_os(ativo.codigo_ativo, numero_os_base)
         numero_apr_final = f"{prefixo2}{numero_formatado}-{ano}"
 
         fase = normalizar_fase(ativo.fase)
