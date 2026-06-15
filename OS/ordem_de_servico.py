@@ -856,7 +856,7 @@ def criar_os_lote_por_tipo_ativo(
     ativos = query_ativos.all()
 
     if codigo_ativo_filtro:
-        fases_desejadas = {"AZ", "BR", "VM"}
+        fases_desejadas = {"AZ", "BR", "VM", "TRIFASICO", "TRIFASICA"}
         if payload.incluir_reserva:
             fases_desejadas.update({"RES", "RESERVA"})
 
