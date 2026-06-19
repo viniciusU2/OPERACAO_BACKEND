@@ -90,6 +90,16 @@ def _periodo(inicio, fim):
     return f"{_hora_br(inicio)} às {_hora_br(fim)}"
 
 
+def _hora_ordem(valor):
+    if isinstance(valor, time):
+        return valor.hour * 60 + valor.minute
+    texto = str(valor or "")
+    match = re.search(r"(\d{1,2})[:h](\d{2})", texto)
+    if match:
+        return int(match.group(1)) * 60 + int(match.group(2))
+    return 0
+
+
 def _nome_arquivo_seguro(texto: str):
     texto = re.sub(r"[^A-Za-z0-9_-]+", "_", texto.strip())
     return texto.strip("_") or "rdo"
@@ -204,7 +214,10 @@ class RdoPdfRenderer:
         for item in configuracoes:
             por_periodo[_periodo(item.periodo_inicio, item.periodo_fim)].append(item)
 
-        periodos = list(por_periodo.keys())
+        periodos = sorted(
+            por_periodo.keys(),
+            key=lambda periodo: min(_hora_ordem(item.periodo_inicio) for item in por_periodo[periodo]),
+        )
         if not periodos:
             periodos = ["00h00min às 23h59min"]
             por_periodo[periodos[0]] = []
