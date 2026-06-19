@@ -27,6 +27,23 @@ router = APIRouter(prefix="/inspecoes", tags=["inspecoes"])
 
 
 def garantir_colunas_inspecao(db: Session):
+    colunas_inspecao = {
+        row[0]
+        for row in db.execute(
+            QueryText(
+                """
+                SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'inspecao'
+                """
+            )
+        ).fetchall()
+    }
+
+    if "ficha_inspecao_url" not in colunas_inspecao:
+        db.execute(QueryText("ALTER TABLE inspecao ADD COLUMN ficha_inspecao_url VARCHAR(500) NULL"))
+
     colunas = {
         row[0]
         for row in db.execute(
@@ -263,6 +280,7 @@ def criar_inspecao(inspecao_in: InspecaoCreate, db: Session = Depends(get_db)):
         data_proxima_inspecao=inspecao_in.data_proxima_inspecao,
         periodicidade=inspecao_in.periodicidade,
         responsavel=inspecao_in.responsavel,
+        ficha_inspecao_url=inspecao_in.ficha_inspecao_url,
         observacao_geral=inspecao_in.observacao_geral or "",
     )
     db.add(db_inspecao)

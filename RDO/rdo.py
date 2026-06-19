@@ -269,6 +269,18 @@ def atualizar_rdo(
     return serializar_rdo(buscar_rdo_ou_404(db, id_rdo))
 
 
+@router.delete("/{id_rdo}")
+def excluir_rdo(
+    id_rdo: int,
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin")),
+):
+    rdo = buscar_rdo_ou_404(db, id_rdo)
+    db.delete(rdo)
+    db.commit()
+    return {"message": "RDO apagado com sucesso"}
+
+
 @router.post("/{id_rdo}/validar", response_model=RdoResponse)
 def validar_rdo(
     id_rdo: int,

@@ -48,6 +48,7 @@ class InspecaoCreate(BaseModel):
     data_proxima_inspecao: Optional[date] = None
     periodicidade: PeriodicidadeEnum
     responsavel: Optional[str] = None
+    ficha_inspecao_url: Optional[str] = None
     observacao_geral: Optional[str] = ""
 
     resultados: List[ResultadoItemCreate]
@@ -62,6 +63,7 @@ class InspecaoRead(BaseModel):
     data_proxima_inspecao: Optional[date] = None
     periodicidade: PeriodicidadeEnum
     responsavel: Optional[str] = None
+    ficha_inspecao_url: Optional[str] = None
     observacao_geral: Optional[str] = ""
     status_geral: StatusItemEnum
     codigo_ativo: Optional[str] = None
@@ -213,6 +215,7 @@ class InspecaoCreate(BaseModel):
     data_proxima_inspecao: Optional[date] = None
     periodicidade: PeriodicidadeEnum
     responsavel: Optional[str] = None
+    ficha_inspecao_url: Optional[str] = None
     observacao_geral: Optional[str] = ""
     resultados: List[ResultadoItemCreate] = Field(default_factory=list)
 
@@ -222,6 +225,7 @@ class InspecaoUpdate(BaseModel):
     data_proxima_inspecao: Optional[date] = None
     periodicidade: Optional[PeriodicidadeEnum] = None
     responsavel: Optional[str] = None
+    ficha_inspecao_url: Optional[str] = None
     observacao_geral: Optional[str] = None
     resultados: Optional[List[ResultadoItemCreate]] = None
 
@@ -250,8 +254,10 @@ class InspecaoRead(BaseModel):
     data_proxima_inspecao: Optional[date] = None
     periodicidade: PeriodicidadeEnum
     responsavel: Optional[str] = None
+    ficha_inspecao_url: Optional[str] = None
     observacao_geral: Optional[str] = ""
     status_geral: StatusItemEnum
+    id_subestacao: Optional[int] = None
     codigo_ativo: Optional[str] = None
     fase: Optional[str] = None
     vao: Optional[str] = None

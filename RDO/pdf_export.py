@@ -22,10 +22,32 @@ LIGHT = (245, 247, 250)
 
 
 def _font(size: int, bold: bool = False):
-    name = "arialbd.ttf" if bold else "arial.ttf"
-    path = Path("C:/Windows/Fonts") / name
-    if path.exists():
-        return ImageFont.truetype(str(path), size=size)
+    custom_font_dir = os.getenv("RDO_FONT_DIR")
+    names = [
+        "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+        "LiberationSans-Bold.ttf" if bold else "LiberationSans-Regular.ttf",
+        "Arial_Bold.ttf" if bold else "Arial.ttf",
+        "arialbd.ttf" if bold else "arial.ttf",
+    ]
+    dirs = [Path(custom_font_dir)] if custom_font_dir else []
+    dirs += [
+        Path(__file__).resolve().parent.parent / "modelos" / "fonts",
+        Path("/usr/share/fonts/truetype/dejavu"),
+        Path("/usr/share/fonts/truetype/liberation"),
+        Path("/usr/share/fonts/truetype/liberation2"),
+        Path("/usr/share/fonts/dejavu"),
+        Path("C:/Windows/Fonts"),
+    ]
+
+    for directory in dirs:
+        for name in names:
+            path = directory / name
+            if path.exists():
+                try:
+                    return ImageFont.truetype(str(path), size=size)
+                except OSError:
+                    continue
+
     return ImageFont.load_default()
 
 

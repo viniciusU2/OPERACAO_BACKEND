@@ -1,0 +1,685 @@
+DATABASE_URL: mysql+pymysql://root:12322233@127.0.0.1:3306/manutencao
+2026-06-19 10:40:39,653 INFO sqlalchemy.engine.Engine SELECT DATABASE()
+2026-06-19 10:40:39,655 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,660 INFO sqlalchemy.engine.Engine SELECT @@sql_mode
+2026-06-19 10:40:39,661 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,662 INFO sqlalchemy.engine.Engine SELECT @@lower_case_table_names
+2026-06-19 10:40:39,663 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,665 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-19 10:40:39,666 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`usuarios`
+2026-06-19 10:40:39,667 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,700 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`ativo`
+2026-06-19 10:40:39,702 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,714 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`ordem_servico`
+2026-06-19 10:40:39,715 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,727 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`solicitacao_servico`
+2026-06-19 10:40:39,728 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,740 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`subestacao`
+2026-06-19 10:40:39,740 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,753 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`solicitacao_intervencao`
+2026-06-19 10:40:39,754 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,767 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`plano_item`
+2026-06-19 10:40:39,768 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,778 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`plano_manutencao`
+2026-06-19 10:40:39,779 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,792 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`plano_execucao`
+2026-06-19 10:40:39,793 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,805 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`inspecao`
+2026-06-19 10:40:39,806 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,819 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`resultado_item_inspecao`
+2026-06-19 10:40:39,819 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,831 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`tipo_ativo`
+2026-06-19 10:40:39,832 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,843 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`livro_registro`
+2026-06-19 10:40:39,845 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,856 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`rdo`
+2026-06-19 10:40:39,857 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,869 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`rdo_configuracao_sistema`
+2026-06-19 10:40:39,870 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,881 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`rdo_evento`
+2026-06-19 10:40:39,882 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,895 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`rdo_evento_vinculo`
+2026-06-19 10:40:39,896 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,908 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`rdo_importacao_pdf`
+2026-06-19 10:40:39,908 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,922 INFO sqlalchemy.engine.Engine DESCRIBE `manutencao`.`rdo_historico_edicao`
+2026-06-19 10:40:39,923 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-06-19 10:40:39,935 INFO sqlalchemy.engine.Engine COMMIT
+2026-06-19 10:40:39,938 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-19 10:40:39,939 INFO sqlalchemy.engine.Engine 
+                SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'ativo'
+                
+2026-06-19 10:40:39,940 INFO sqlalchemy.engine.Engine [generated in 0.00084s] {}
+2026-06-19 10:40:39,972 INFO sqlalchemy.engine.Engine 
+                SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'resultado_item_inspecao'
+                
+2026-06-19 10:40:39,973 INFO sqlalchemy.engine.Engine [generated in 0.00093s] {}
+2026-06-19 10:40:39,986 INFO sqlalchemy.engine.Engine ALTER TABLE resultado_item_inspecao MODIFY COLUMN id_item_template INT NULL
+2026-06-19 10:40:39,987 INFO sqlalchemy.engine.Engine [generated in 0.00156s] {}
+2026-06-19 10:40:40,003 INFO sqlalchemy.engine.Engine SHOW COLUMNS FROM ordem_servico LIKE 'numero_ss'
+2026-06-19 10:40:40,004 INFO sqlalchemy.engine.Engine [generated in 0.00082s] {}
+2026-06-19 10:40:40,032 INFO sqlalchemy.engine.Engine SHOW COLUMNS FROM solicitacao_servico LIKE 'numero_os'
+2026-06-19 10:40:40,033 INFO sqlalchemy.engine.Engine [generated in 0.00102s] {}
+2026-06-19 10:40:40,045 INFO sqlalchemy.engine.Engine SHOW COLUMNS FROM ordem_servico LIKE %(coluna)s
+2026-06-19 10:40:40,046 INFO sqlalchemy.engine.Engine [generated in 0.00089s] {'coluna': 'id_plano_manutencao'}
+2026-06-19 10:40:40,058 INFO sqlalchemy.engine.Engine SHOW COLUMNS FROM ordem_servico LIKE %(coluna)s
+2026-06-19 10:40:40,059 INFO sqlalchemy.engine.Engine [cached since 0.0138s ago] {'coluna': 'id_plano_item'}
+2026-06-19 10:40:40,071 INFO sqlalchemy.engine.Engine SHOW COLUMNS FROM ordem_servico LIKE %(coluna)s
+2026-06-19 10:40:40,072 INFO sqlalchemy.engine.Engine [cached since 0.02695s ago] {'coluna': 'id_plano_execucao'}
+2026-06-19 10:40:40,085 INFO sqlalchemy.engine.Engine SHOW COLUMNS FROM ordem_servico LIKE %(coluna)s
+2026-06-19 10:40:40,086 INFO sqlalchemy.engine.Engine [cached since 0.04096s ago] {'coluna': 'origem'}
+2026-06-19 10:40:40,099 INFO sqlalchemy.engine.Engine SHOW COLUMNS FROM plano_execucao LIKE 'id_os'
+2026-06-19 10:40:40,100 INFO sqlalchemy.engine.Engine [generated in 0.00095s] {}
+2026-06-19 10:40:40,112 INFO sqlalchemy.engine.Engine 
+            SELECT TABLE_NAME, COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND DATA_TYPE IN ('varchar', 'char', 'text', 'mediumtext', 'longtext')
+            
+2026-06-19 10:40:40,113 INFO sqlalchemy.engine.Engine [generated in 0.00113s] {}
+2026-06-19 10:40:40,155 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `codigo_ativo` = REPLACE(`codigo_ativo`, %(old)s, %(new)s) WHERE `codigo_ativo` LIKE %(pattern)s
+2026-06-19 10:40:40,155 INFO sqlalchemy.engine.Engine [generated in 0.00102s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,161 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `fabricante` = REPLACE(`fabricante`, %(old)s, %(new)s) WHERE `fabricante` LIKE %(pattern)s
+2026-06-19 10:40:40,161 INFO sqlalchemy.engine.Engine [generated in 0.00088s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,167 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `modelo` = REPLACE(`modelo`, %(old)s, %(new)s) WHERE `modelo` LIKE %(pattern)s
+2026-06-19 10:40:40,168 INFO sqlalchemy.engine.Engine [generated in 0.00097s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,172 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `especie` = REPLACE(`especie`, %(old)s, %(new)s) WHERE `especie` LIKE %(pattern)s
+2026-06-19 10:40:40,173 INFO sqlalchemy.engine.Engine [generated in 0.00091s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,178 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `numero_serie` = REPLACE(`numero_serie`, %(old)s, %(new)s) WHERE `numero_serie` LIKE %(pattern)s
+2026-06-19 10:40:40,178 INFO sqlalchemy.engine.Engine [generated in 0.00071s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,184 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:40,184 INFO sqlalchemy.engine.Engine [generated in 0.00075s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,189 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `vao` = REPLACE(`vao`, %(old)s, %(new)s) WHERE `vao` LIKE %(pattern)s
+2026-06-19 10:40:40,189 INFO sqlalchemy.engine.Engine [generated in 0.00071s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,193 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `fase` = REPLACE(`fase`, %(old)s, %(new)s) WHERE `fase` LIKE %(pattern)s
+2026-06-19 10:40:40,194 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,200 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `codigo_linha` = REPLACE(`codigo_linha`, %(old)s, %(new)s) WHERE `codigo_linha` LIKE %(pattern)s
+2026-06-19 10:40:40,201 INFO sqlalchemy.engine.Engine [generated in 0.00103s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,205 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `estrutura_operacional` = REPLACE(`estrutura_operacional`, %(old)s, %(new)s) WHERE `estrutura_operacional` LIKE %(pattern)s
+2026-06-19 10:40:40,206 INFO sqlalchemy.engine.Engine [generated in 0.00091s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,211 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `sentido` = REPLACE(`sentido`, %(old)s, %(new)s) WHERE `sentido` LIKE %(pattern)s
+2026-06-19 10:40:40,211 INFO sqlalchemy.engine.Engine [generated in 0.00086s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,218 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `tipo_estrutura` = REPLACE(`tipo_estrutura`, %(old)s, %(new)s) WHERE `tipo_estrutura` LIKE %(pattern)s
+2026-06-19 10:40:40,219 INFO sqlalchemy.engine.Engine [generated in 0.00081s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,223 INFO sqlalchemy.engine.Engine UPDATE `inspecao` SET `responsavel` = REPLACE(`responsavel`, %(old)s, %(new)s) WHERE `responsavel` LIKE %(pattern)s
+2026-06-19 10:40:40,224 INFO sqlalchemy.engine.Engine [generated in 0.00080s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,227 INFO sqlalchemy.engine.Engine UPDATE `inspecao` SET `observacao_geral` = REPLACE(`observacao_geral`, %(old)s, %(new)s) WHERE `observacao_geral` LIKE %(pattern)s
+2026-06-19 10:40:40,227 INFO sqlalchemy.engine.Engine [generated in 0.00083s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,229 INFO sqlalchemy.engine.Engine UPDATE `item_inspecao_template` SET `nome_item` = REPLACE(`nome_item`, %(old)s, %(new)s) WHERE `nome_item` LIKE %(pattern)s
+2026-06-19 10:40:40,230 INFO sqlalchemy.engine.Engine [generated in 0.00083s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,233 INFO sqlalchemy.engine.Engine UPDATE `item_inspecao_template` SET `descricao` = REPLACE(`descricao`, %(old)s, %(new)s) WHERE `descricao` LIKE %(pattern)s
+2026-06-19 10:40:40,234 INFO sqlalchemy.engine.Engine [generated in 0.00088s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,236 INFO sqlalchemy.engine.Engine UPDATE `item_inspecao_template` SET `unidade` = REPLACE(`unidade`, %(old)s, %(new)s) WHERE `unidade` LIKE %(pattern)s
+2026-06-19 10:40:40,237 INFO sqlalchemy.engine.Engine [generated in 0.00099s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,239 INFO sqlalchemy.engine.Engine UPDATE `livro_registro` SET `tipo` = REPLACE(`tipo`, %(old)s, %(new)s) WHERE `tipo` LIKE %(pattern)s
+2026-06-19 10:40:40,240 INFO sqlalchemy.engine.Engine [generated in 0.00081s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,241 INFO sqlalchemy.engine.Engine UPDATE `livro_registro` SET `descricao` = REPLACE(`descricao`, %(old)s, %(new)s) WHERE `descricao` LIKE %(pattern)s
+2026-06-19 10:40:40,242 INFO sqlalchemy.engine.Engine [generated in 0.00078s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,244 INFO sqlalchemy.engine.Engine UPDATE `livro_registro` SET `foto` = REPLACE(`foto`, %(old)s, %(new)s) WHERE `foto` LIKE %(pattern)s
+2026-06-19 10:40:40,245 INFO sqlalchemy.engine.Engine [generated in 0.00072s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,247 INFO sqlalchemy.engine.Engine UPDATE `livro_registro` SET `usuario` = REPLACE(`usuario`, %(old)s, %(new)s) WHERE `usuario` LIKE %(pattern)s
+2026-06-19 10:40:40,248 INFO sqlalchemy.engine.Engine [generated in 0.00112s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,250 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `numero_os` = REPLACE(`numero_os`, %(old)s, %(new)s) WHERE `numero_os` LIKE %(pattern)s
+2026-06-19 10:40:40,251 INFO sqlalchemy.engine.Engine [generated in 0.00074s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,256 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `numero_si` = REPLACE(`numero_si`, %(old)s, %(new)s) WHERE `numero_si` LIKE %(pattern)s
+2026-06-19 10:40:40,257 INFO sqlalchemy.engine.Engine [generated in 0.00089s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,262 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `especie` = REPLACE(`especie`, %(old)s, %(new)s) WHERE `especie` LIKE %(pattern)s
+2026-06-19 10:40:40,263 INFO sqlalchemy.engine.Engine [generated in 0.00087s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,270 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `numero_apr` = REPLACE(`numero_apr`, %(old)s, %(new)s) WHERE `numero_apr` LIKE %(pattern)s
+2026-06-19 10:40:40,271 INFO sqlalchemy.engine.Engine [generated in 0.00089s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,277 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `instalacao` = REPLACE(`instalacao`, %(old)s, %(new)s) WHERE `instalacao` LIKE %(pattern)s
+2026-06-19 10:40:40,278 INFO sqlalchemy.engine.Engine [generated in 0.00100s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,284 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `localizacao` = REPLACE(`localizacao`, %(old)s, %(new)s) WHERE `localizacao` LIKE %(pattern)s
+2026-06-19 10:40:40,285 INFO sqlalchemy.engine.Engine [generated in 0.00084s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,289 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `complemento` = REPLACE(`complemento`, %(old)s, %(new)s) WHERE `complemento` LIKE %(pattern)s
+2026-06-19 10:40:40,290 INFO sqlalchemy.engine.Engine [generated in 0.00086s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,295 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `origens` = REPLACE(`origens`, %(old)s, %(new)s) WHERE `origens` LIKE %(pattern)s
+2026-06-19 10:40:40,296 INFO sqlalchemy.engine.Engine [generated in 0.00085s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,301 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `defeito` = REPLACE(`defeito`, %(old)s, %(new)s) WHERE `defeito` LIKE %(pattern)s
+2026-06-19 10:40:40,302 INFO sqlalchemy.engine.Engine [generated in 0.00088s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,307 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `esquema_servicos` = REPLACE(`esquema_servicos`, %(old)s, %(new)s) WHERE `esquema_servicos` LIKE %(pattern)s
+2026-06-19 10:40:40,308 INFO sqlalchemy.engine.Engine [generated in 0.00085s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,313 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `prioridade` = REPLACE(`prioridade`, %(old)s, %(new)s) WHERE `prioridade` LIKE %(pattern)s
+2026-06-19 10:40:40,314 INFO sqlalchemy.engine.Engine [generated in 0.00088s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,319 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `responsavel` = REPLACE(`responsavel`, %(old)s, %(new)s) WHERE `responsavel` LIKE %(pattern)s
+2026-06-19 10:40:40,320 INFO sqlalchemy.engine.Engine [generated in 0.00097s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,325 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `responsavel_manutencao` = REPLACE(`responsavel_manutencao`, %(old)s, %(new)s) WHERE `responsavel_manutencao` LIKE %(pattern)s
+2026-06-19 10:40:40,326 INFO sqlalchemy.engine.Engine [generated in 0.00132s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,331 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `responsavel_operacao` = REPLACE(`responsavel_operacao`, %(old)s, %(new)s) WHERE `responsavel_operacao` LIKE %(pattern)s
+2026-06-19 10:40:40,332 INFO sqlalchemy.engine.Engine [generated in 0.00104s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,337 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `substituto` = REPLACE(`substituto`, %(old)s, %(new)s) WHERE `substituto` LIKE %(pattern)s
+2026-06-19 10:40:40,338 INFO sqlalchemy.engine.Engine [generated in 0.00085s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,343 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `descricao_servicos` = REPLACE(`descricao_servicos`, %(old)s, %(new)s) WHERE `descricao_servicos` LIKE %(pattern)s
+2026-06-19 10:40:40,344 INFO sqlalchemy.engine.Engine [generated in 0.00081s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,350 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `observacoes` = REPLACE(`observacoes`, %(old)s, %(new)s) WHERE `observacoes` LIKE %(pattern)s
+2026-06-19 10:40:40,351 INFO sqlalchemy.engine.Engine [generated in 0.00095s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,360 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `causa_primaria` = REPLACE(`causa_primaria`, %(old)s, %(new)s) WHERE `causa_primaria` LIKE %(pattern)s
+2026-06-19 10:40:40,361 INFO sqlalchemy.engine.Engine [generated in 0.00088s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,366 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `causa_secundaria` = REPLACE(`causa_secundaria`, %(old)s, %(new)s) WHERE `causa_secundaria` LIKE %(pattern)s
+2026-06-19 10:40:40,367 INFO sqlalchemy.engine.Engine [generated in 0.00081s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,372 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `emissor` = REPLACE(`emissor`, %(old)s, %(new)s) WHERE `emissor` LIKE %(pattern)s
+2026-06-19 10:40:40,373 INFO sqlalchemy.engine.Engine [generated in 0.00085s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,377 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `centro_custos` = REPLACE(`centro_custos`, %(old)s, %(new)s) WHERE `centro_custos` LIKE %(pattern)s
+2026-06-19 10:40:40,378 INFO sqlalchemy.engine.Engine [generated in 0.00082s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,384 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:40,385 INFO sqlalchemy.engine.Engine [generated in 0.00088s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,390 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `numero_ss` = REPLACE(`numero_ss`, %(old)s, %(new)s) WHERE `numero_ss` LIKE %(pattern)s
+2026-06-19 10:40:40,391 INFO sqlalchemy.engine.Engine [generated in 0.00092s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,395 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `origem` = REPLACE(`origem`, %(old)s, %(new)s) WHERE `origem` LIKE %(pattern)s
+2026-06-19 10:40:40,396 INFO sqlalchemy.engine.Engine [generated in 0.00084s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,401 INFO sqlalchemy.engine.Engine UPDATE `plano_item` SET `nome_item` = REPLACE(`nome_item`, %(old)s, %(new)s) WHERE `nome_item` LIKE %(pattern)s
+2026-06-19 10:40:40,402 INFO sqlalchemy.engine.Engine [generated in 0.00085s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,404 INFO sqlalchemy.engine.Engine UPDATE `plano_item` SET `descricao` = REPLACE(`descricao`, %(old)s, %(new)s) WHERE `descricao` LIKE %(pattern)s
+2026-06-19 10:40:40,405 INFO sqlalchemy.engine.Engine [generated in 0.00079s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,408 INFO sqlalchemy.engine.Engine UPDATE `plano_item` SET `unidade` = REPLACE(`unidade`, %(old)s, %(new)s) WHERE `unidade` LIKE %(pattern)s
+2026-06-19 10:40:40,408 INFO sqlalchemy.engine.Engine [generated in 0.00097s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,411 INFO sqlalchemy.engine.Engine UPDATE `plano_manutencao` SET `descricao_geral` = REPLACE(`descricao_geral`, %(old)s, %(new)s) WHERE `descricao_geral` LIKE %(pattern)s
+2026-06-19 10:40:40,412 INFO sqlalchemy.engine.Engine [generated in 0.00093s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,414 INFO sqlalchemy.engine.Engine UPDATE `plano_manutencao` SET `materiais_previstos` = REPLACE(`materiais_previstos`, %(old)s, %(new)s) WHERE `materiais_previstos` LIKE %(pattern)s
+2026-06-19 10:40:40,416 INFO sqlalchemy.engine.Engine [generated in 0.00151s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,418 INFO sqlalchemy.engine.Engine UPDATE `plano_manutencao` SET `procedimentos_instrucoes` = REPLACE(`procedimentos_instrucoes`, %(old)s, %(new)s) WHERE `procedimentos_instrucoes` LIKE %(pattern)s
+2026-06-19 10:40:40,419 INFO sqlalchemy.engine.Engine [generated in 0.00104s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,422 INFO sqlalchemy.engine.Engine UPDATE `plano_manutencao` SET `requisitos_de_seguranca` = REPLACE(`requisitos_de_seguranca`, %(old)s, %(new)s) WHERE `requisitos_de_seguranca` LIKE %(pattern)s
+2026-06-19 10:40:40,423 INFO sqlalchemy.engine.Engine [generated in 0.00105s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,425 INFO sqlalchemy.engine.Engine UPDATE `plano_manutencao` SET `observacao_geral` = REPLACE(`observacao_geral`, %(old)s, %(new)s) WHERE `observacao_geral` LIKE %(pattern)s
+2026-06-19 10:40:40,426 INFO sqlalchemy.engine.Engine [generated in 0.00110s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,429 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `titulo` = REPLACE(`titulo`, %(old)s, %(new)s) WHERE `titulo` LIKE %(pattern)s
+2026-06-19 10:40:40,430 INFO sqlalchemy.engine.Engine [generated in 0.00133s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,433 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `codigo_procedimento` = REPLACE(`codigo_procedimento`, %(old)s, %(new)s) WHERE `codigo_procedimento` LIKE %(pattern)s
+2026-06-19 10:40:40,434 INFO sqlalchemy.engine.Engine [generated in 0.00092s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,436 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `revisao` = REPLACE(`revisao`, %(old)s, %(new)s) WHERE `revisao` LIKE %(pattern)s
+2026-06-19 10:40:40,437 INFO sqlalchemy.engine.Engine [generated in 0.00086s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,439 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `sistema` = REPLACE(`sistema`, %(old)s, %(new)s) WHERE `sistema` LIKE %(pattern)s
+2026-06-19 10:40:40,440 INFO sqlalchemy.engine.Engine [generated in 0.00111s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,443 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `emissor` = REPLACE(`emissor`, %(old)s, %(new)s) WHERE `emissor` LIKE %(pattern)s
+2026-06-19 10:40:40,444 INFO sqlalchemy.engine.Engine [generated in 0.00117s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,447 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `arquivo_pdf` = REPLACE(`arquivo_pdf`, %(old)s, %(new)s) WHERE `arquivo_pdf` LIKE %(pattern)s
+2026-06-19 10:40:40,448 INFO sqlalchemy.engine.Engine [generated in 0.00154s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,451 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:40,452 INFO sqlalchemy.engine.Engine [generated in 0.00086s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,454 INFO sqlalchemy.engine.Engine UPDATE `rdo_configuracao_sistema` SET `subestacao` = REPLACE(`subestacao`, %(old)s, %(new)s) WHERE `subestacao` LIKE %(pattern)s
+2026-06-19 10:40:40,455 INFO sqlalchemy.engine.Engine [generated in 0.00084s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,456 INFO sqlalchemy.engine.Engine UPDATE `rdo_configuracao_sistema` SET `equipamento` = REPLACE(`equipamento`, %(old)s, %(new)s) WHERE `equipamento` LIKE %(pattern)s
+2026-06-19 10:40:40,457 INFO sqlalchemy.engine.Engine [generated in 0.00079s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,459 INFO sqlalchemy.engine.Engine UPDATE `rdo_configuracao_sistema` SET `estado` = REPLACE(`estado`, %(old)s, %(new)s) WHERE `estado` LIKE %(pattern)s
+2026-06-19 10:40:40,460 INFO sqlalchemy.engine.Engine [generated in 0.00092s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,462 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `categoria` = REPLACE(`categoria`, %(old)s, %(new)s) WHERE `categoria` LIKE %(pattern)s
+2026-06-19 10:40:40,463 INFO sqlalchemy.engine.Engine [generated in 0.00083s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,465 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `sistema` = REPLACE(`sistema`, %(old)s, %(new)s) WHERE `sistema` LIKE %(pattern)s
+2026-06-19 10:40:40,466 INFO sqlalchemy.engine.Engine [generated in 0.00108s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,468 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `subestacao` = REPLACE(`subestacao`, %(old)s, %(new)s) WHERE `subestacao` LIKE %(pattern)s
+2026-06-19 10:40:40,469 INFO sqlalchemy.engine.Engine [generated in 0.00092s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,471 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `titulo` = REPLACE(`titulo`, %(old)s, %(new)s) WHERE `titulo` LIKE %(pattern)s
+2026-06-19 10:40:40,471 INFO sqlalchemy.engine.Engine [generated in 0.00078s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,473 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `descricao` = REPLACE(`descricao`, %(old)s, %(new)s) WHERE `descricao` LIKE %(pattern)s
+2026-06-19 10:40:40,474 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,476 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `status_evento` = REPLACE(`status_evento`, %(old)s, %(new)s) WHERE `status_evento` LIKE %(pattern)s
+2026-06-19 10:40:40,476 INFO sqlalchemy.engine.Engine [generated in 0.00083s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,478 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento_vinculo` SET `tipo_vinculo` = REPLACE(`tipo_vinculo`, %(old)s, %(new)s) WHERE `tipo_vinculo` LIKE %(pattern)s
+2026-06-19 10:40:40,479 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,481 INFO sqlalchemy.engine.Engine UPDATE `rdo_historico_edicao` SET `acao` = REPLACE(`acao`, %(old)s, %(new)s) WHERE `acao` LIKE %(pattern)s
+2026-06-19 10:40:40,482 INFO sqlalchemy.engine.Engine [generated in 0.00099s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,484 INFO sqlalchemy.engine.Engine UPDATE `rdo_historico_edicao` SET `campo_alterado` = REPLACE(`campo_alterado`, %(old)s, %(new)s) WHERE `campo_alterado` LIKE %(pattern)s
+2026-06-19 10:40:40,485 INFO sqlalchemy.engine.Engine [generated in 0.00083s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,487 INFO sqlalchemy.engine.Engine UPDATE `rdo_historico_edicao` SET `valor_anterior` = REPLACE(`valor_anterior`, %(old)s, %(new)s) WHERE `valor_anterior` LIKE %(pattern)s
+2026-06-19 10:40:40,487 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,489 INFO sqlalchemy.engine.Engine UPDATE `rdo_historico_edicao` SET `valor_novo` = REPLACE(`valor_novo`, %(old)s, %(new)s) WHERE `valor_novo` LIKE %(pattern)s
+2026-06-19 10:40:40,491 INFO sqlalchemy.engine.Engine [generated in 0.00139s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,493 INFO sqlalchemy.engine.Engine UPDATE `rdo_historico_edicao` SET `observacao` = REPLACE(`observacao`, %(old)s, %(new)s) WHERE `observacao` LIKE %(pattern)s
+2026-06-19 10:40:40,493 INFO sqlalchemy.engine.Engine [generated in 0.00079s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,495 INFO sqlalchemy.engine.Engine UPDATE `rdo_importacao_pdf` SET `nome_arquivo` = REPLACE(`nome_arquivo`, %(old)s, %(new)s) WHERE `nome_arquivo` LIKE %(pattern)s
+2026-06-19 10:40:40,496 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,498 INFO sqlalchemy.engine.Engine UPDATE `rdo_importacao_pdf` SET `texto_extraido` = REPLACE(`texto_extraido`, %(old)s, %(new)s) WHERE `texto_extraido` LIKE %(pattern)s
+2026-06-19 10:40:40,499 INFO sqlalchemy.engine.Engine [generated in 0.00111s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,501 INFO sqlalchemy.engine.Engine UPDATE `rdo_importacao_pdf` SET `dados_extraidos_json` = REPLACE(`dados_extraidos_json`, %(old)s, %(new)s) WHERE `dados_extraidos_json` LIKE %(pattern)s
+2026-06-19 10:40:40,502 INFO sqlalchemy.engine.Engine [generated in 0.00080s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,504 INFO sqlalchemy.engine.Engine UPDATE `rdo_importacao_pdf` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:40,505 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,506 INFO sqlalchemy.engine.Engine UPDATE `resultado_item_inspecao` SET `observacao_item` = REPLACE(`observacao_item`, %(old)s, %(new)s) WHERE `observacao_item` LIKE %(pattern)s
+2026-06-19 10:40:40,507 INFO sqlalchemy.engine.Engine [generated in 0.00079s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,512 INFO sqlalchemy.engine.Engine UPDATE `resultado_item_inspecao` SET `nome_item` = REPLACE(`nome_item`, %(old)s, %(new)s) WHERE `nome_item` LIKE %(pattern)s
+2026-06-19 10:40:40,512 INFO sqlalchemy.engine.Engine [generated in 0.00083s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,515 INFO sqlalchemy.engine.Engine UPDATE `resultado_item_inspecao` SET `foto` = REPLACE(`foto`, %(old)s, %(new)s) WHERE `foto` LIKE %(pattern)s
+2026-06-19 10:40:40,516 INFO sqlalchemy.engine.Engine [generated in 0.00098s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,518 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `numero_si` = REPLACE(`numero_si`, %(old)s, %(new)s) WHERE `numero_si` LIKE %(pattern)s
+2026-06-19 10:40:40,518 INFO sqlalchemy.engine.Engine [generated in 0.00079s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,520 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `numero_sgi` = REPLACE(`numero_sgi`, %(old)s, %(new)s) WHERE `numero_sgi` LIKE %(pattern)s
+2026-06-19 10:40:40,521 INFO sqlalchemy.engine.Engine [generated in 0.00079s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,523 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `especie` = REPLACE(`especie`, %(old)s, %(new)s) WHERE `especie` LIKE %(pattern)s
+2026-06-19 10:40:40,524 INFO sqlalchemy.engine.Engine [generated in 0.00075s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,526 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `numero_apr` = REPLACE(`numero_apr`, %(old)s, %(new)s) WHERE `numero_apr` LIKE %(pattern)s
+2026-06-19 10:40:40,526 INFO sqlalchemy.engine.Engine [generated in 0.00078s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,528 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `tipo` = REPLACE(`tipo`, %(old)s, %(new)s) WHERE `tipo` LIKE %(pattern)s
+2026-06-19 10:40:40,529 INFO sqlalchemy.engine.Engine [generated in 0.00076s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,532 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `documentos_referencia` = REPLACE(`documentos_referencia`, %(old)s, %(new)s) WHERE `documentos_referencia` LIKE %(pattern)s
+2026-06-19 10:40:40,533 INFO sqlalchemy.engine.Engine [generated in 0.00101s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,535 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `justificativa` = REPLACE(`justificativa`, %(old)s, %(new)s) WHERE `justificativa` LIKE %(pattern)s
+2026-06-19 10:40:40,535 INFO sqlalchemy.engine.Engine [generated in 0.00079s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,537 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel` = REPLACE(`responsavel`, %(old)s, %(new)s) WHERE `responsavel` LIKE %(pattern)s
+2026-06-19 10:40:40,538 INFO sqlalchemy.engine.Engine [generated in 0.00082s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,540 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `substituto` = REPLACE(`substituto`, %(old)s, %(new)s) WHERE `substituto` LIKE %(pattern)s
+2026-06-19 10:40:40,541 INFO sqlalchemy.engine.Engine [generated in 0.00084s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,543 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `aproveitamento` = REPLACE(`aproveitamento`, %(old)s, %(new)s) WHERE `aproveitamento` LIKE %(pattern)s
+2026-06-19 10:40:40,543 INFO sqlalchemy.engine.Engine [generated in 0.00080s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,545 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `inclusao_servico` = REPLACE(`inclusao_servico`, %(old)s, %(new)s) WHERE `inclusao_servico` LIKE %(pattern)s
+2026-06-19 10:40:40,546 INFO sqlalchemy.engine.Engine [generated in 0.00084s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,548 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `orgaos` = REPLACE(`orgaos`, %(old)s, %(new)s) WHERE `orgaos` LIKE %(pattern)s
+2026-06-19 10:40:40,549 INFO sqlalchemy.engine.Engine [generated in 0.00084s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,551 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `tipo_progrmacao` = REPLACE(`tipo_progrmacao`, %(old)s, %(new)s) WHERE `tipo_progrmacao` LIKE %(pattern)s
+2026-06-19 10:40:40,552 INFO sqlalchemy.engine.Engine [generated in 0.00081s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,554 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `tipo_progrmacao_diario` = REPLACE(`tipo_progrmacao_diario`, %(old)s, %(new)s) WHERE `tipo_progrmacao_diario` LIKE %(pattern)s
+2026-06-19 10:40:40,555 INFO sqlalchemy.engine.Engine [generated in 0.00096s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,557 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `descricao_servicos` = REPLACE(`descricao_servicos`, %(old)s, %(new)s) WHERE `descricao_servicos` LIKE %(pattern)s
+2026-06-19 10:40:40,558 INFO sqlalchemy.engine.Engine [generated in 0.00092s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,560 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `observacoes` = REPLACE(`observacoes`, %(old)s, %(new)s) WHERE `observacoes` LIKE %(pattern)s
+2026-06-19 10:40:40,560 INFO sqlalchemy.engine.Engine [generated in 0.00079s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,562 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `cabo_aterramento` = REPLACE(`cabo_aterramento`, %(old)s, %(new)s) WHERE `cabo_aterramento` LIKE %(pattern)s
+2026-06-19 10:40:40,563 INFO sqlalchemy.engine.Engine [generated in 0.00078s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,565 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `risco_desligamento` = REPLACE(`risco_desligamento`, %(old)s, %(new)s) WHERE `risco_desligamento` LIKE %(pattern)s
+2026-06-19 10:40:40,566 INFO sqlalchemy.engine.Engine [generated in 0.00095s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,568 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `condicoes_climaticas` = REPLACE(`condicoes_climaticas`, %(old)s, %(new)s) WHERE `condicoes_climaticas` LIKE %(pattern)s
+2026-06-19 10:40:40,569 INFO sqlalchemy.engine.Engine [generated in 0.00090s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,571 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `execucao_periodo_noturno` = REPLACE(`execucao_periodo_noturno`, %(old)s, %(new)s) WHERE `execucao_periodo_noturno` LIKE %(pattern)s
+2026-06-19 10:40:40,572 INFO sqlalchemy.engine.Engine [generated in 0.00080s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,574 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_ons_manutencao` = REPLACE(`responsavel_ons_manutencao`, %(old)s, %(new)s) WHERE `responsavel_ons_manutencao` LIKE %(pattern)s
+2026-06-19 10:40:40,574 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,576 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_cot_manutencao` = REPLACE(`responsavel_cot_manutencao`, %(old)s, %(new)s) WHERE `responsavel_cot_manutencao` LIKE %(pattern)s
+2026-06-19 10:40:40,577 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,579 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_se_manutencao` = REPLACE(`responsavel_se_manutencao`, %(old)s, %(new)s) WHERE `responsavel_se_manutencao` LIKE %(pattern)s
+2026-06-19 10:40:40,579 INFO sqlalchemy.engine.Engine [generated in 0.00086s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,582 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `status_manutencao` = REPLACE(`status_manutencao`, %(old)s, %(new)s) WHERE `status_manutencao` LIKE %(pattern)s
+2026-06-19 10:40:40,583 INFO sqlalchemy.engine.Engine [generated in 0.00099s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,585 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_ons_operacao` = REPLACE(`responsavel_ons_operacao`, %(old)s, %(new)s) WHERE `responsavel_ons_operacao` LIKE %(pattern)s
+2026-06-19 10:40:40,586 INFO sqlalchemy.engine.Engine [generated in 0.00084s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,588 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_cot_operacao` = REPLACE(`responsavel_cot_operacao`, %(old)s, %(new)s) WHERE `responsavel_cot_operacao` LIKE %(pattern)s
+2026-06-19 10:40:40,588 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,590 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_se_operacao` = REPLACE(`responsavel_se_operacao`, %(old)s, %(new)s) WHERE `responsavel_se_operacao` LIKE %(pattern)s
+2026-06-19 10:40:40,591 INFO sqlalchemy.engine.Engine [generated in 0.00076s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,593 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `status_operacao` = REPLACE(`status_operacao`, %(old)s, %(new)s) WHERE `status_operacao` LIKE %(pattern)s
+2026-06-19 10:40:40,593 INFO sqlalchemy.engine.Engine [generated in 0.00081s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,595 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `emissor` = REPLACE(`emissor`, %(old)s, %(new)s) WHERE `emissor` LIKE %(pattern)s
+2026-06-19 10:40:40,596 INFO sqlalchemy.engine.Engine [generated in 0.00078s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,599 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `tipo_programacao` = REPLACE(`tipo_programacao`, %(old)s, %(new)s) WHERE `tipo_programacao` LIKE %(pattern)s
+2026-06-19 10:40:40,600 INFO sqlalchemy.engine.Engine [generated in 0.00088s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,602 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `dias_excecao` = REPLACE(`dias_excecao`, %(old)s, %(new)s) WHERE `dias_excecao` LIKE %(pattern)s
+2026-06-19 10:40:40,602 INFO sqlalchemy.engine.Engine [generated in 0.00078s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,604 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `tempo_retorno` = REPLACE(`tempo_retorno`, %(old)s, %(new)s) WHERE `tempo_retorno` LIKE %(pattern)s
+2026-06-19 10:40:40,605 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,607 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `disponivel` = REPLACE(`disponivel`, %(old)s, %(new)s) WHERE `disponivel` LIKE %(pattern)s
+2026-06-19 10:40:40,608 INFO sqlalchemy.engine.Engine [generated in 0.00075s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,609 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `natureza` = REPLACE(`natureza`, %(old)s, %(new)s) WHERE `natureza` LIKE %(pattern)s
+2026-06-19 10:40:40,610 INFO sqlalchemy.engine.Engine [generated in 0.00081s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,612 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `caracteristica_intervencao` = REPLACE(`caracteristica_intervencao`, %(old)s, %(new)s) WHERE `caracteristica_intervencao` LIKE %(pattern)s
+2026-06-19 10:40:40,613 INFO sqlalchemy.engine.Engine [generated in 0.00078s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,615 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `prioridade` = REPLACE(`prioridade`, %(old)s, %(new)s) WHERE `prioridade` LIKE %(pattern)s
+2026-06-19 10:40:40,616 INFO sqlalchemy.engine.Engine [generated in 0.00108s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,618 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `numero_ss` = REPLACE(`numero_ss`, %(old)s, %(new)s) WHERE `numero_ss` LIKE %(pattern)s
+2026-06-19 10:40:40,619 INFO sqlalchemy.engine.Engine [generated in 0.00083s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,621 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `solicitante` = REPLACE(`solicitante`, %(old)s, %(new)s) WHERE `solicitante` LIKE %(pattern)s
+2026-06-19 10:40:40,622 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,624 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `matricula` = REPLACE(`matricula`, %(old)s, %(new)s) WHERE `matricula` LIKE %(pattern)s
+2026-06-19 10:40:40,624 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,626 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `funcao` = REPLACE(`funcao`, %(old)s, %(new)s) WHERE `funcao` LIKE %(pattern)s
+2026-06-19 10:40:40,627 INFO sqlalchemy.engine.Engine [generated in 0.00080s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,629 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `telefone` = REPLACE(`telefone`, %(old)s, %(new)s) WHERE `telefone` LIKE %(pattern)s
+2026-06-19 10:40:40,630 INFO sqlalchemy.engine.Engine [generated in 0.00084s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,632 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `email` = REPLACE(`email`, %(old)s, %(new)s) WHERE `email` LIKE %(pattern)s
+2026-06-19 10:40:40,633 INFO sqlalchemy.engine.Engine [generated in 0.00098s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,635 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `orgao` = REPLACE(`orgao`, %(old)s, %(new)s) WHERE `orgao` LIKE %(pattern)s
+2026-06-19 10:40:40,636 INFO sqlalchemy.engine.Engine [generated in 0.00078s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,638 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `instalacao` = REPLACE(`instalacao`, %(old)s, %(new)s) WHERE `instalacao` LIKE %(pattern)s
+2026-06-19 10:40:40,638 INFO sqlalchemy.engine.Engine [generated in 0.00078s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,640 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `localizacao` = REPLACE(`localizacao`, %(old)s, %(new)s) WHERE `localizacao` LIKE %(pattern)s
+2026-06-19 10:40:40,641 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,643 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `complemento` = REPLACE(`complemento`, %(old)s, %(new)s) WHERE `complemento` LIKE %(pattern)s
+2026-06-19 10:40:40,643 INFO sqlalchemy.engine.Engine [generated in 0.00081s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,646 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `esquema_servico` = REPLACE(`esquema_servico`, %(old)s, %(new)s) WHERE `esquema_servico` LIKE %(pattern)s
+2026-06-19 10:40:40,647 INFO sqlalchemy.engine.Engine [generated in 0.00095s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,649 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `centro_custo` = REPLACE(`centro_custo`, %(old)s, %(new)s) WHERE `centro_custo` LIKE %(pattern)s
+2026-06-19 10:40:40,650 INFO sqlalchemy.engine.Engine [generated in 0.00089s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,652 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `causa` = REPLACE(`causa`, %(old)s, %(new)s) WHERE `causa` LIKE %(pattern)s
+2026-06-19 10:40:40,653 INFO sqlalchemy.engine.Engine [generated in 0.00076s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,654 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `causa_secundaria` = REPLACE(`causa_secundaria`, %(old)s, %(new)s) WHERE `causa_secundaria` LIKE %(pattern)s
+2026-06-19 10:40:40,655 INFO sqlalchemy.engine.Engine [generated in 0.00078s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,657 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `equipe` = REPLACE(`equipe`, %(old)s, %(new)s) WHERE `equipe` LIKE %(pattern)s
+2026-06-19 10:40:40,658 INFO sqlalchemy.engine.Engine [generated in 0.00077s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,660 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `descricao_problema` = REPLACE(`descricao_problema`, %(old)s, %(new)s) WHERE `descricao_problema` LIKE %(pattern)s
+2026-06-19 10:40:40,661 INFO sqlalchemy.engine.Engine [generated in 0.00089s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,663 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `prioridade` = REPLACE(`prioridade`, %(old)s, %(new)s) WHERE `prioridade` LIKE %(pattern)s
+2026-06-19 10:40:40,664 INFO sqlalchemy.engine.Engine [generated in 0.00109s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,667 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:40,668 INFO sqlalchemy.engine.Engine [generated in 0.00103s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,670 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `numero_os` = REPLACE(`numero_os`, %(old)s, %(new)s) WHERE `numero_os` LIKE %(pattern)s
+2026-06-19 10:40:40,671 INFO sqlalchemy.engine.Engine [generated in 0.00091s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,673 INFO sqlalchemy.engine.Engine UPDATE `subestacao` SET `nome` = REPLACE(`nome`, %(old)s, %(new)s) WHERE `nome` LIKE %(pattern)s
+2026-06-19 10:40:40,673 INFO sqlalchemy.engine.Engine [generated in 0.00067s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,675 INFO sqlalchemy.engine.Engine UPDATE `subestacao` SET `localizacao` = REPLACE(`localizacao`, %(old)s, %(new)s) WHERE `localizacao` LIKE %(pattern)s
+2026-06-19 10:40:40,676 INFO sqlalchemy.engine.Engine [generated in 0.00066s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,677 INFO sqlalchemy.engine.Engine UPDATE `subestacao` SET `concessionaria` = REPLACE(`concessionaria`, %(old)s, %(new)s) WHERE `concessionaria` LIKE %(pattern)s
+2026-06-19 10:40:40,678 INFO sqlalchemy.engine.Engine [generated in 0.00064s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,679 INFO sqlalchemy.engine.Engine UPDATE `subestacao` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:40,680 INFO sqlalchemy.engine.Engine [generated in 0.00073s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,683 INFO sqlalchemy.engine.Engine UPDATE `tipo_ativo` SET `nome` = REPLACE(`nome`, %(old)s, %(new)s) WHERE `nome` LIKE %(pattern)s
+2026-06-19 10:40:40,683 INFO sqlalchemy.engine.Engine [generated in 0.00093s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,685 INFO sqlalchemy.engine.Engine UPDATE `tipo_ativo` SET `descricao` = REPLACE(`descricao`, %(old)s, %(new)s) WHERE `descricao` LIKE %(pattern)s
+2026-06-19 10:40:40,686 INFO sqlalchemy.engine.Engine [generated in 0.00062s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,687 INFO sqlalchemy.engine.Engine UPDATE `usuarios` SET `nome` = REPLACE(`nome`, %(old)s, %(new)s) WHERE `nome` LIKE %(pattern)s
+2026-06-19 10:40:40,688 INFO sqlalchemy.engine.Engine [generated in 0.00061s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,689 INFO sqlalchemy.engine.Engine UPDATE `usuarios` SET `email` = REPLACE(`email`, %(old)s, %(new)s) WHERE `email` LIKE %(pattern)s
+2026-06-19 10:40:40,690 INFO sqlalchemy.engine.Engine [generated in 0.00061s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,691 INFO sqlalchemy.engine.Engine UPDATE `usuarios` SET `senha_hash` = REPLACE(`senha_hash`, %(old)s, %(new)s) WHERE `senha_hash` LIKE %(pattern)s
+2026-06-19 10:40:40,692 INFO sqlalchemy.engine.Engine [generated in 0.00092s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,694 INFO sqlalchemy.engine.Engine UPDATE `usuarios` SET `foto` = REPLACE(`foto`, %(old)s, %(new)s) WHERE `foto` LIKE %(pattern)s
+2026-06-19 10:40:40,695 INFO sqlalchemy.engine.Engine [generated in 0.00085s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,697 INFO sqlalchemy.engine.Engine UPDATE `usuarios` SET `role` = REPLACE(`role`, %(old)s, %(new)s) WHERE `role` LIKE %(pattern)s
+2026-06-19 10:40:40,698 INFO sqlalchemy.engine.Engine [generated in 0.00112s] {'old': 'BJL', 'new': 'BJD', 'pattern': '%BJL%'}
+2026-06-19 10:40:40,700 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `codigo_ativo` = REPLACE(`codigo_ativo`, %(old)s, %(new)s) WHERE `codigo_ativo` LIKE %(pattern)s
+2026-06-19 10:40:40,701 INFO sqlalchemy.engine.Engine [cached since 0.5466s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,705 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `fabricante` = REPLACE(`fabricante`, %(old)s, %(new)s) WHERE `fabricante` LIKE %(pattern)s
+2026-06-19 10:40:40,706 INFO sqlalchemy.engine.Engine [cached since 0.5457s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,711 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `modelo` = REPLACE(`modelo`, %(old)s, %(new)s) WHERE `modelo` LIKE %(pattern)s
+2026-06-19 10:40:40,711 INFO sqlalchemy.engine.Engine [cached since 0.5444s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,716 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `especie` = REPLACE(`especie`, %(old)s, %(new)s) WHERE `especie` LIKE %(pattern)s
+2026-06-19 10:40:40,717 INFO sqlalchemy.engine.Engine [cached since 0.545s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,722 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `numero_serie` = REPLACE(`numero_serie`, %(old)s, %(new)s) WHERE `numero_serie` LIKE %(pattern)s
+2026-06-19 10:40:40,723 INFO sqlalchemy.engine.Engine [cached since 0.5451s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,727 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:40,727 INFO sqlalchemy.engine.Engine [cached since 0.5437s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,733 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `vao` = REPLACE(`vao`, %(old)s, %(new)s) WHERE `vao` LIKE %(pattern)s
+2026-06-19 10:40:40,734 INFO sqlalchemy.engine.Engine [cached since 0.5451s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,738 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `fase` = REPLACE(`fase`, %(old)s, %(new)s) WHERE `fase` LIKE %(pattern)s
+2026-06-19 10:40:40,739 INFO sqlalchemy.engine.Engine [cached since 0.5454s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,743 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `codigo_linha` = REPLACE(`codigo_linha`, %(old)s, %(new)s) WHERE `codigo_linha` LIKE %(pattern)s
+2026-06-19 10:40:40,743 INFO sqlalchemy.engine.Engine [cached since 0.5434s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,748 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `estrutura_operacional` = REPLACE(`estrutura_operacional`, %(old)s, %(new)s) WHERE `estrutura_operacional` LIKE %(pattern)s
+2026-06-19 10:40:40,749 INFO sqlalchemy.engine.Engine [cached since 0.5432s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,753 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `sentido` = REPLACE(`sentido`, %(old)s, %(new)s) WHERE `sentido` LIKE %(pattern)s
+2026-06-19 10:40:40,754 INFO sqlalchemy.engine.Engine [cached since 0.543s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,758 INFO sqlalchemy.engine.Engine UPDATE `ativo` SET `tipo_estrutura` = REPLACE(`tipo_estrutura`, %(old)s, %(new)s) WHERE `tipo_estrutura` LIKE %(pattern)s
+2026-06-19 10:40:40,758 INFO sqlalchemy.engine.Engine [cached since 0.5402s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,763 INFO sqlalchemy.engine.Engine UPDATE `inspecao` SET `responsavel` = REPLACE(`responsavel`, %(old)s, %(new)s) WHERE `responsavel` LIKE %(pattern)s
+2026-06-19 10:40:40,764 INFO sqlalchemy.engine.Engine [cached since 0.5403s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,766 INFO sqlalchemy.engine.Engine UPDATE `inspecao` SET `observacao_geral` = REPLACE(`observacao_geral`, %(old)s, %(new)s) WHERE `observacao_geral` LIKE %(pattern)s
+2026-06-19 10:40:40,767 INFO sqlalchemy.engine.Engine [cached since 0.5402s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,769 INFO sqlalchemy.engine.Engine UPDATE `item_inspecao_template` SET `nome_item` = REPLACE(`nome_item`, %(old)s, %(new)s) WHERE `nome_item` LIKE %(pattern)s
+2026-06-19 10:40:40,769 INFO sqlalchemy.engine.Engine [cached since 0.5402s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,771 INFO sqlalchemy.engine.Engine UPDATE `item_inspecao_template` SET `descricao` = REPLACE(`descricao`, %(old)s, %(new)s) WHERE `descricao` LIKE %(pattern)s
+2026-06-19 10:40:40,772 INFO sqlalchemy.engine.Engine [cached since 0.5391s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,774 INFO sqlalchemy.engine.Engine UPDATE `item_inspecao_template` SET `unidade` = REPLACE(`unidade`, %(old)s, %(new)s) WHERE `unidade` LIKE %(pattern)s
+2026-06-19 10:40:40,775 INFO sqlalchemy.engine.Engine [cached since 0.5389s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,777 INFO sqlalchemy.engine.Engine UPDATE `livro_registro` SET `tipo` = REPLACE(`tipo`, %(old)s, %(new)s) WHERE `tipo` LIKE %(pattern)s
+2026-06-19 10:40:40,777 INFO sqlalchemy.engine.Engine [cached since 0.5388s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,779 INFO sqlalchemy.engine.Engine UPDATE `livro_registro` SET `descricao` = REPLACE(`descricao`, %(old)s, %(new)s) WHERE `descricao` LIKE %(pattern)s
+2026-06-19 10:40:40,780 INFO sqlalchemy.engine.Engine [cached since 0.5389s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,783 INFO sqlalchemy.engine.Engine UPDATE `livro_registro` SET `foto` = REPLACE(`foto`, %(old)s, %(new)s) WHERE `foto` LIKE %(pattern)s
+2026-06-19 10:40:40,784 INFO sqlalchemy.engine.Engine [cached since 0.5393s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,786 INFO sqlalchemy.engine.Engine UPDATE `livro_registro` SET `usuario` = REPLACE(`usuario`, %(old)s, %(new)s) WHERE `usuario` LIKE %(pattern)s
+2026-06-19 10:40:40,787 INFO sqlalchemy.engine.Engine [cached since 0.54s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,789 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `numero_os` = REPLACE(`numero_os`, %(old)s, %(new)s) WHERE `numero_os` LIKE %(pattern)s
+2026-06-19 10:40:40,790 INFO sqlalchemy.engine.Engine [cached since 0.5395s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,796 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `numero_si` = REPLACE(`numero_si`, %(old)s, %(new)s) WHERE `numero_si` LIKE %(pattern)s
+2026-06-19 10:40:40,797 INFO sqlalchemy.engine.Engine [cached since 0.5416s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,803 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `especie` = REPLACE(`especie`, %(old)s, %(new)s) WHERE `especie` LIKE %(pattern)s
+2026-06-19 10:40:40,804 INFO sqlalchemy.engine.Engine [cached since 0.5415s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,810 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `numero_apr` = REPLACE(`numero_apr`, %(old)s, %(new)s) WHERE `numero_apr` LIKE %(pattern)s
+2026-06-19 10:40:40,811 INFO sqlalchemy.engine.Engine [cached since 0.5409s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,818 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `instalacao` = REPLACE(`instalacao`, %(old)s, %(new)s) WHERE `instalacao` LIKE %(pattern)s
+2026-06-19 10:40:40,819 INFO sqlalchemy.engine.Engine [cached since 0.5428s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,824 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `localizacao` = REPLACE(`localizacao`, %(old)s, %(new)s) WHERE `localizacao` LIKE %(pattern)s
+2026-06-19 10:40:40,825 INFO sqlalchemy.engine.Engine [cached since 0.5412s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,830 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `complemento` = REPLACE(`complemento`, %(old)s, %(new)s) WHERE `complemento` LIKE %(pattern)s
+2026-06-19 10:40:40,831 INFO sqlalchemy.engine.Engine [cached since 0.5417s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,836 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `origens` = REPLACE(`origens`, %(old)s, %(new)s) WHERE `origens` LIKE %(pattern)s
+2026-06-19 10:40:40,837 INFO sqlalchemy.engine.Engine [cached since 0.542s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,844 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `defeito` = REPLACE(`defeito`, %(old)s, %(new)s) WHERE `defeito` LIKE %(pattern)s
+2026-06-19 10:40:40,845 INFO sqlalchemy.engine.Engine [cached since 0.5432s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,853 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `esquema_servicos` = REPLACE(`esquema_servicos`, %(old)s, %(new)s) WHERE `esquema_servicos` LIKE %(pattern)s
+2026-06-19 10:40:40,854 INFO sqlalchemy.engine.Engine [cached since 0.5468s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,859 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `prioridade` = REPLACE(`prioridade`, %(old)s, %(new)s) WHERE `prioridade` LIKE %(pattern)s
+2026-06-19 10:40:40,859 INFO sqlalchemy.engine.Engine [cached since 0.5464s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,865 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `responsavel` = REPLACE(`responsavel`, %(old)s, %(new)s) WHERE `responsavel` LIKE %(pattern)s
+2026-06-19 10:40:40,866 INFO sqlalchemy.engine.Engine [cached since 0.5472s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,872 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `responsavel_manutencao` = REPLACE(`responsavel_manutencao`, %(old)s, %(new)s) WHERE `responsavel_manutencao` LIKE %(pattern)s
+2026-06-19 10:40:40,873 INFO sqlalchemy.engine.Engine [cached since 0.5484s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,878 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `responsavel_operacao` = REPLACE(`responsavel_operacao`, %(old)s, %(new)s) WHERE `responsavel_operacao` LIKE %(pattern)s
+2026-06-19 10:40:40,879 INFO sqlalchemy.engine.Engine [cached since 0.5477s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,887 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `substituto` = REPLACE(`substituto`, %(old)s, %(new)s) WHERE `substituto` LIKE %(pattern)s
+2026-06-19 10:40:40,888 INFO sqlalchemy.engine.Engine [cached since 0.5506s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,892 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `descricao_servicos` = REPLACE(`descricao_servicos`, %(old)s, %(new)s) WHERE `descricao_servicos` LIKE %(pattern)s
+2026-06-19 10:40:40,893 INFO sqlalchemy.engine.Engine [cached since 0.5505s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,902 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `observacoes` = REPLACE(`observacoes`, %(old)s, %(new)s) WHERE `observacoes` LIKE %(pattern)s
+2026-06-19 10:40:40,903 INFO sqlalchemy.engine.Engine [cached since 0.5527s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,912 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `causa_primaria` = REPLACE(`causa_primaria`, %(old)s, %(new)s) WHERE `causa_primaria` LIKE %(pattern)s
+2026-06-19 10:40:40,913 INFO sqlalchemy.engine.Engine [cached since 0.5528s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,918 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `causa_secundaria` = REPLACE(`causa_secundaria`, %(old)s, %(new)s) WHERE `causa_secundaria` LIKE %(pattern)s
+2026-06-19 10:40:40,919 INFO sqlalchemy.engine.Engine [cached since 0.5529s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,924 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `emissor` = REPLACE(`emissor`, %(old)s, %(new)s) WHERE `emissor` LIKE %(pattern)s
+2026-06-19 10:40:40,925 INFO sqlalchemy.engine.Engine [cached since 0.5533s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,933 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `centro_custos` = REPLACE(`centro_custos`, %(old)s, %(new)s) WHERE `centro_custos` LIKE %(pattern)s
+2026-06-19 10:40:40,934 INFO sqlalchemy.engine.Engine [cached since 0.5568s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,939 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:40,940 INFO sqlalchemy.engine.Engine [cached since 0.5561s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,945 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `numero_ss` = REPLACE(`numero_ss`, %(old)s, %(new)s) WHERE `numero_ss` LIKE %(pattern)s
+2026-06-19 10:40:40,946 INFO sqlalchemy.engine.Engine [cached since 0.5561s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,951 INFO sqlalchemy.engine.Engine UPDATE `ordem_servico` SET `origem` = REPLACE(`origem`, %(old)s, %(new)s) WHERE `origem` LIKE %(pattern)s
+2026-06-19 10:40:40,952 INFO sqlalchemy.engine.Engine [cached since 0.5569s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,957 INFO sqlalchemy.engine.Engine UPDATE `plano_item` SET `nome_item` = REPLACE(`nome_item`, %(old)s, %(new)s) WHERE `nome_item` LIKE %(pattern)s
+2026-06-19 10:40:40,958 INFO sqlalchemy.engine.Engine [cached since 0.5563s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,959 INFO sqlalchemy.engine.Engine UPDATE `plano_item` SET `descricao` = REPLACE(`descricao`, %(old)s, %(new)s) WHERE `descricao` LIKE %(pattern)s
+2026-06-19 10:40:40,960 INFO sqlalchemy.engine.Engine [cached since 0.5553s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,961 INFO sqlalchemy.engine.Engine UPDATE `plano_item` SET `unidade` = REPLACE(`unidade`, %(old)s, %(new)s) WHERE `unidade` LIKE %(pattern)s
+2026-06-19 10:40:40,962 INFO sqlalchemy.engine.Engine [cached since 0.5542s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,963 INFO sqlalchemy.engine.Engine UPDATE `plano_manutencao` SET `descricao_geral` = REPLACE(`descricao_geral`, %(old)s, %(new)s) WHERE `descricao_geral` LIKE %(pattern)s
+2026-06-19 10:40:40,964 INFO sqlalchemy.engine.Engine [cached since 0.5535s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,966 INFO sqlalchemy.engine.Engine UPDATE `plano_manutencao` SET `materiais_previstos` = REPLACE(`materiais_previstos`, %(old)s, %(new)s) WHERE `materiais_previstos` LIKE %(pattern)s
+2026-06-19 10:40:40,967 INFO sqlalchemy.engine.Engine [cached since 0.5529s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,969 INFO sqlalchemy.engine.Engine UPDATE `plano_manutencao` SET `procedimentos_instrucoes` = REPLACE(`procedimentos_instrucoes`, %(old)s, %(new)s) WHERE `procedimentos_instrucoes` LIKE %(pattern)s
+2026-06-19 10:40:40,969 INFO sqlalchemy.engine.Engine [cached since 0.5512s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,971 INFO sqlalchemy.engine.Engine UPDATE `plano_manutencao` SET `requisitos_de_seguranca` = REPLACE(`requisitos_de_seguranca`, %(old)s, %(new)s) WHERE `requisitos_de_seguranca` LIKE %(pattern)s
+2026-06-19 10:40:40,972 INFO sqlalchemy.engine.Engine [cached since 0.5503s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,974 INFO sqlalchemy.engine.Engine UPDATE `plano_manutencao` SET `observacao_geral` = REPLACE(`observacao_geral`, %(old)s, %(new)s) WHERE `observacao_geral` LIKE %(pattern)s
+2026-06-19 10:40:40,974 INFO sqlalchemy.engine.Engine [cached since 0.5491s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,976 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `titulo` = REPLACE(`titulo`, %(old)s, %(new)s) WHERE `titulo` LIKE %(pattern)s
+2026-06-19 10:40:40,977 INFO sqlalchemy.engine.Engine [cached since 0.5479s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,978 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `codigo_procedimento` = REPLACE(`codigo_procedimento`, %(old)s, %(new)s) WHERE `codigo_procedimento` LIKE %(pattern)s
+2026-06-19 10:40:40,979 INFO sqlalchemy.engine.Engine [cached since 0.5464s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,982 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `revisao` = REPLACE(`revisao`, %(old)s, %(new)s) WHERE `revisao` LIKE %(pattern)s
+2026-06-19 10:40:40,982 INFO sqlalchemy.engine.Engine [cached since 0.5467s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,984 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `sistema` = REPLACE(`sistema`, %(old)s, %(new)s) WHERE `sistema` LIKE %(pattern)s
+2026-06-19 10:40:40,985 INFO sqlalchemy.engine.Engine [cached since 0.5458s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,987 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `emissor` = REPLACE(`emissor`, %(old)s, %(new)s) WHERE `emissor` LIKE %(pattern)s
+2026-06-19 10:40:40,987 INFO sqlalchemy.engine.Engine [cached since 0.5447s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,989 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `arquivo_pdf` = REPLACE(`arquivo_pdf`, %(old)s, %(new)s) WHERE `arquivo_pdf` LIKE %(pattern)s
+2026-06-19 10:40:40,990 INFO sqlalchemy.engine.Engine [cached since 0.5437s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,992 INFO sqlalchemy.engine.Engine UPDATE `rdo` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:40,993 INFO sqlalchemy.engine.Engine [cached since 0.5415s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,994 INFO sqlalchemy.engine.Engine UPDATE `rdo_configuracao_sistema` SET `subestacao` = REPLACE(`subestacao`, %(old)s, %(new)s) WHERE `subestacao` LIKE %(pattern)s
+2026-06-19 10:40:40,995 INFO sqlalchemy.engine.Engine [cached since 0.5413s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:40,998 INFO sqlalchemy.engine.Engine UPDATE `rdo_configuracao_sistema` SET `equipamento` = REPLACE(`equipamento`, %(old)s, %(new)s) WHERE `equipamento` LIKE %(pattern)s
+2026-06-19 10:40:40,999 INFO sqlalchemy.engine.Engine [cached since 0.5425s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,001 INFO sqlalchemy.engine.Engine UPDATE `rdo_configuracao_sistema` SET `estado` = REPLACE(`estado`, %(old)s, %(new)s) WHERE `estado` LIKE %(pattern)s
+2026-06-19 10:40:41,001 INFO sqlalchemy.engine.Engine [cached since 0.5425s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,003 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `categoria` = REPLACE(`categoria`, %(old)s, %(new)s) WHERE `categoria` LIKE %(pattern)s
+2026-06-19 10:40:41,004 INFO sqlalchemy.engine.Engine [cached since 0.542s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,006 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `sistema` = REPLACE(`sistema`, %(old)s, %(new)s) WHERE `sistema` LIKE %(pattern)s
+2026-06-19 10:40:41,006 INFO sqlalchemy.engine.Engine [cached since 0.5417s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,008 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `subestacao` = REPLACE(`subestacao`, %(old)s, %(new)s) WHERE `subestacao` LIKE %(pattern)s
+2026-06-19 10:40:41,009 INFO sqlalchemy.engine.Engine [cached since 0.5414s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,011 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `titulo` = REPLACE(`titulo`, %(old)s, %(new)s) WHERE `titulo` LIKE %(pattern)s
+2026-06-19 10:40:41,011 INFO sqlalchemy.engine.Engine [cached since 0.541s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,013 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `descricao` = REPLACE(`descricao`, %(old)s, %(new)s) WHERE `descricao` LIKE %(pattern)s
+2026-06-19 10:40:41,014 INFO sqlalchemy.engine.Engine [cached since 0.5414s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,016 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento` SET `status_evento` = REPLACE(`status_evento`, %(old)s, %(new)s) WHERE `status_evento` LIKE %(pattern)s
+2026-06-19 10:40:41,017 INFO sqlalchemy.engine.Engine [cached since 0.5413s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,019 INFO sqlalchemy.engine.Engine UPDATE `rdo_evento_vinculo` SET `tipo_vinculo` = REPLACE(`tipo_vinculo`, %(old)s, %(new)s) WHERE `tipo_vinculo` LIKE %(pattern)s
+2026-06-19 10:40:41,019 INFO sqlalchemy.engine.Engine [cached since 0.5412s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,021 INFO sqlalchemy.engine.Engine UPDATE `rdo_historico_edicao` SET `acao` = REPLACE(`acao`, %(old)s, %(new)s) WHERE `acao` LIKE %(pattern)s
+2026-06-19 10:40:41,022 INFO sqlalchemy.engine.Engine [cached since 0.5408s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,023 INFO sqlalchemy.engine.Engine UPDATE `rdo_historico_edicao` SET `campo_alterado` = REPLACE(`campo_alterado`, %(old)s, %(new)s) WHERE `campo_alterado` LIKE %(pattern)s
+2026-06-19 10:40:41,024 INFO sqlalchemy.engine.Engine [cached since 0.5403s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,026 INFO sqlalchemy.engine.Engine UPDATE `rdo_historico_edicao` SET `valor_anterior` = REPLACE(`valor_anterior`, %(old)s, %(new)s) WHERE `valor_anterior` LIKE %(pattern)s
+2026-06-19 10:40:41,027 INFO sqlalchemy.engine.Engine [cached since 0.5402s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,029 INFO sqlalchemy.engine.Engine UPDATE `rdo_historico_edicao` SET `valor_novo` = REPLACE(`valor_novo`, %(old)s, %(new)s) WHERE `valor_novo` LIKE %(pattern)s
+2026-06-19 10:40:41,029 INFO sqlalchemy.engine.Engine [cached since 0.54s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,032 INFO sqlalchemy.engine.Engine UPDATE `rdo_historico_edicao` SET `observacao` = REPLACE(`observacao`, %(old)s, %(new)s) WHERE `observacao` LIKE %(pattern)s
+2026-06-19 10:40:41,032 INFO sqlalchemy.engine.Engine [cached since 0.5397s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,034 INFO sqlalchemy.engine.Engine UPDATE `rdo_importacao_pdf` SET `nome_arquivo` = REPLACE(`nome_arquivo`, %(old)s, %(new)s) WHERE `nome_arquivo` LIKE %(pattern)s
+2026-06-19 10:40:41,035 INFO sqlalchemy.engine.Engine [cached since 0.5398s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,037 INFO sqlalchemy.engine.Engine UPDATE `rdo_importacao_pdf` SET `texto_extraido` = REPLACE(`texto_extraido`, %(old)s, %(new)s) WHERE `texto_extraido` LIKE %(pattern)s
+2026-06-19 10:40:41,037 INFO sqlalchemy.engine.Engine [cached since 0.5393s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,039 INFO sqlalchemy.engine.Engine UPDATE `rdo_importacao_pdf` SET `dados_extraidos_json` = REPLACE(`dados_extraidos_json`, %(old)s, %(new)s) WHERE `dados_extraidos_json` LIKE %(pattern)s
+2026-06-19 10:40:41,040 INFO sqlalchemy.engine.Engine [cached since 0.5387s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,042 INFO sqlalchemy.engine.Engine UPDATE `rdo_importacao_pdf` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:41,042 INFO sqlalchemy.engine.Engine [cached since 0.5387s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,044 INFO sqlalchemy.engine.Engine UPDATE `resultado_item_inspecao` SET `observacao_item` = REPLACE(`observacao_item`, %(old)s, %(new)s) WHERE `observacao_item` LIKE %(pattern)s
+2026-06-19 10:40:41,045 INFO sqlalchemy.engine.Engine [cached since 0.5386s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,048 INFO sqlalchemy.engine.Engine UPDATE `resultado_item_inspecao` SET `nome_item` = REPLACE(`nome_item`, %(old)s, %(new)s) WHERE `nome_item` LIKE %(pattern)s
+2026-06-19 10:40:41,048 INFO sqlalchemy.engine.Engine [cached since 0.5367s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,052 INFO sqlalchemy.engine.Engine UPDATE `resultado_item_inspecao` SET `foto` = REPLACE(`foto`, %(old)s, %(new)s) WHERE `foto` LIKE %(pattern)s
+2026-06-19 10:40:41,053 INFO sqlalchemy.engine.Engine [cached since 0.538s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,055 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `numero_si` = REPLACE(`numero_si`, %(old)s, %(new)s) WHERE `numero_si` LIKE %(pattern)s
+2026-06-19 10:40:41,056 INFO sqlalchemy.engine.Engine [cached since 0.5381s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,058 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `numero_sgi` = REPLACE(`numero_sgi`, %(old)s, %(new)s) WHERE `numero_sgi` LIKE %(pattern)s
+2026-06-19 10:40:41,058 INFO sqlalchemy.engine.Engine [cached since 0.5382s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,060 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `especie` = REPLACE(`especie`, %(old)s, %(new)s) WHERE `especie` LIKE %(pattern)s
+2026-06-19 10:40:41,062 INFO sqlalchemy.engine.Engine [cached since 0.5387s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,064 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `numero_apr` = REPLACE(`numero_apr`, %(old)s, %(new)s) WHERE `numero_apr` LIKE %(pattern)s
+2026-06-19 10:40:41,065 INFO sqlalchemy.engine.Engine [cached since 0.5395s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,067 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `tipo` = REPLACE(`tipo`, %(old)s, %(new)s) WHERE `tipo` LIKE %(pattern)s
+2026-06-19 10:40:41,069 INFO sqlalchemy.engine.Engine [cached since 0.5414s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,071 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `documentos_referencia` = REPLACE(`documentos_referencia`, %(old)s, %(new)s) WHERE `documentos_referencia` LIKE %(pattern)s
+2026-06-19 10:40:41,072 INFO sqlalchemy.engine.Engine [cached since 0.5405s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,074 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `justificativa` = REPLACE(`justificativa`, %(old)s, %(new)s) WHERE `justificativa` LIKE %(pattern)s
+2026-06-19 10:40:41,075 INFO sqlalchemy.engine.Engine [cached since 0.54s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,077 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel` = REPLACE(`responsavel`, %(old)s, %(new)s) WHERE `responsavel` LIKE %(pattern)s
+2026-06-19 10:40:41,077 INFO sqlalchemy.engine.Engine [cached since 0.5403s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,079 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `substituto` = REPLACE(`substituto`, %(old)s, %(new)s) WHERE `substituto` LIKE %(pattern)s
+2026-06-19 10:40:41,080 INFO sqlalchemy.engine.Engine [cached since 0.5403s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,083 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `aproveitamento` = REPLACE(`aproveitamento`, %(old)s, %(new)s) WHERE `aproveitamento` LIKE %(pattern)s
+2026-06-19 10:40:41,084 INFO sqlalchemy.engine.Engine [cached since 0.5414s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,086 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `inclusao_servico` = REPLACE(`inclusao_servico`, %(old)s, %(new)s) WHERE `inclusao_servico` LIKE %(pattern)s
+2026-06-19 10:40:41,087 INFO sqlalchemy.engine.Engine [cached since 0.5414s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,089 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `orgaos` = REPLACE(`orgaos`, %(old)s, %(new)s) WHERE `orgaos` LIKE %(pattern)s
+2026-06-19 10:40:41,089 INFO sqlalchemy.engine.Engine [cached since 0.5412s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,091 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `tipo_progrmacao` = REPLACE(`tipo_progrmacao`, %(old)s, %(new)s) WHERE `tipo_progrmacao` LIKE %(pattern)s
+2026-06-19 10:40:41,092 INFO sqlalchemy.engine.Engine [cached since 0.541s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,094 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `tipo_progrmacao_diario` = REPLACE(`tipo_progrmacao_diario`, %(old)s, %(new)s) WHERE `tipo_progrmacao_diario` LIKE %(pattern)s
+2026-06-19 10:40:41,095 INFO sqlalchemy.engine.Engine [cached since 0.5409s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,097 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `descricao_servicos` = REPLACE(`descricao_servicos`, %(old)s, %(new)s) WHERE `descricao_servicos` LIKE %(pattern)s
+2026-06-19 10:40:41,098 INFO sqlalchemy.engine.Engine [cached since 0.5416s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,100 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `observacoes` = REPLACE(`observacoes`, %(old)s, %(new)s) WHERE `observacoes` LIKE %(pattern)s
+2026-06-19 10:40:41,101 INFO sqlalchemy.engine.Engine [cached since 0.5415s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,103 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `cabo_aterramento` = REPLACE(`cabo_aterramento`, %(old)s, %(new)s) WHERE `cabo_aterramento` LIKE %(pattern)s
+2026-06-19 10:40:41,104 INFO sqlalchemy.engine.Engine [cached since 0.5415s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,105 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `risco_desligamento` = REPLACE(`risco_desligamento`, %(old)s, %(new)s) WHERE `risco_desligamento` LIKE %(pattern)s
+2026-06-19 10:40:41,106 INFO sqlalchemy.engine.Engine [cached since 0.541s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,108 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `condicoes_climaticas` = REPLACE(`condicoes_climaticas`, %(old)s, %(new)s) WHERE `condicoes_climaticas` LIKE %(pattern)s
+2026-06-19 10:40:41,109 INFO sqlalchemy.engine.Engine [cached since 0.5405s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,110 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `execucao_periodo_noturno` = REPLACE(`execucao_periodo_noturno`, %(old)s, %(new)s) WHERE `execucao_periodo_noturno` LIKE %(pattern)s
+2026-06-19 10:40:41,111 INFO sqlalchemy.engine.Engine [cached since 0.5402s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,114 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_ons_manutencao` = REPLACE(`responsavel_ons_manutencao`, %(old)s, %(new)s) WHERE `responsavel_ons_manutencao` LIKE %(pattern)s
+2026-06-19 10:40:41,115 INFO sqlalchemy.engine.Engine [cached since 0.5418s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,117 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_cot_manutencao` = REPLACE(`responsavel_cot_manutencao`, %(old)s, %(new)s) WHERE `responsavel_cot_manutencao` LIKE %(pattern)s
+2026-06-19 10:40:41,118 INFO sqlalchemy.engine.Engine [cached since 0.542s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,120 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_se_manutencao` = REPLACE(`responsavel_se_manutencao`, %(old)s, %(new)s) WHERE `responsavel_se_manutencao` LIKE %(pattern)s
+2026-06-19 10:40:41,121 INFO sqlalchemy.engine.Engine [cached since 0.542s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,123 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `status_manutencao` = REPLACE(`status_manutencao`, %(old)s, %(new)s) WHERE `status_manutencao` LIKE %(pattern)s
+2026-06-19 10:40:41,123 INFO sqlalchemy.engine.Engine [cached since 0.5417s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,125 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_ons_operacao` = REPLACE(`responsavel_ons_operacao`, %(old)s, %(new)s) WHERE `responsavel_ons_operacao` LIKE %(pattern)s
+2026-06-19 10:40:41,126 INFO sqlalchemy.engine.Engine [cached since 0.5409s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,128 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_cot_operacao` = REPLACE(`responsavel_cot_operacao`, %(old)s, %(new)s) WHERE `responsavel_cot_operacao` LIKE %(pattern)s
+2026-06-19 10:40:41,129 INFO sqlalchemy.engine.Engine [cached since 0.5412s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,132 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `responsavel_se_operacao` = REPLACE(`responsavel_se_operacao`, %(old)s, %(new)s) WHERE `responsavel_se_operacao` LIKE %(pattern)s
+2026-06-19 10:40:41,133 INFO sqlalchemy.engine.Engine [cached since 0.5428s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,136 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `status_operacao` = REPLACE(`status_operacao`, %(old)s, %(new)s) WHERE `status_operacao` LIKE %(pattern)s
+2026-06-19 10:40:41,137 INFO sqlalchemy.engine.Engine [cached since 0.5445s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,139 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `emissor` = REPLACE(`emissor`, %(old)s, %(new)s) WHERE `emissor` LIKE %(pattern)s
+2026-06-19 10:40:41,140 INFO sqlalchemy.engine.Engine [cached since 0.5448s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,142 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `tipo_programacao` = REPLACE(`tipo_programacao`, %(old)s, %(new)s) WHERE `tipo_programacao` LIKE %(pattern)s
+2026-06-19 10:40:41,143 INFO sqlalchemy.engine.Engine [cached since 0.5439s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,145 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `dias_excecao` = REPLACE(`dias_excecao`, %(old)s, %(new)s) WHERE `dias_excecao` LIKE %(pattern)s
+2026-06-19 10:40:41,146 INFO sqlalchemy.engine.Engine [cached since 0.5439s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,149 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `tempo_retorno` = REPLACE(`tempo_retorno`, %(old)s, %(new)s) WHERE `tempo_retorno` LIKE %(pattern)s
+2026-06-19 10:40:41,149 INFO sqlalchemy.engine.Engine [cached since 0.5451s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,151 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `disponivel` = REPLACE(`disponivel`, %(old)s, %(new)s) WHERE `disponivel` LIKE %(pattern)s
+2026-06-19 10:40:41,152 INFO sqlalchemy.engine.Engine [cached since 0.5454s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,154 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `natureza` = REPLACE(`natureza`, %(old)s, %(new)s) WHERE `natureza` LIKE %(pattern)s
+2026-06-19 10:40:41,155 INFO sqlalchemy.engine.Engine [cached since 0.5459s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,157 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `caracteristica_intervencao` = REPLACE(`caracteristica_intervencao`, %(old)s, %(new)s) WHERE `caracteristica_intervencao` LIKE %(pattern)s
+2026-06-19 10:40:41,158 INFO sqlalchemy.engine.Engine [cached since 0.5461s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,161 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_intervencao` SET `prioridade` = REPLACE(`prioridade`, %(old)s, %(new)s) WHERE `prioridade` LIKE %(pattern)s
+2026-06-19 10:40:41,162 INFO sqlalchemy.engine.Engine [cached since 0.5468s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,166 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `numero_ss` = REPLACE(`numero_ss`, %(old)s, %(new)s) WHERE `numero_ss` LIKE %(pattern)s
+2026-06-19 10:40:41,167 INFO sqlalchemy.engine.Engine [cached since 0.5481s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,169 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `solicitante` = REPLACE(`solicitante`, %(old)s, %(new)s) WHERE `solicitante` LIKE %(pattern)s
+2026-06-19 10:40:41,170 INFO sqlalchemy.engine.Engine [cached since 0.5486s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,172 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `matricula` = REPLACE(`matricula`, %(old)s, %(new)s) WHERE `matricula` LIKE %(pattern)s
+2026-06-19 10:40:41,173 INFO sqlalchemy.engine.Engine [cached since 0.549s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,175 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `funcao` = REPLACE(`funcao`, %(old)s, %(new)s) WHERE `funcao` LIKE %(pattern)s
+2026-06-19 10:40:41,176 INFO sqlalchemy.engine.Engine [cached since 0.5495s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,178 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `telefone` = REPLACE(`telefone`, %(old)s, %(new)s) WHERE `telefone` LIKE %(pattern)s
+2026-06-19 10:40:41,179 INFO sqlalchemy.engine.Engine [cached since 0.55s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,183 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `email` = REPLACE(`email`, %(old)s, %(new)s) WHERE `email` LIKE %(pattern)s
+2026-06-19 10:40:41,183 INFO sqlalchemy.engine.Engine [cached since 0.5513s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,186 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `orgao` = REPLACE(`orgao`, %(old)s, %(new)s) WHERE `orgao` LIKE %(pattern)s
+2026-06-19 10:40:41,187 INFO sqlalchemy.engine.Engine [cached since 0.5516s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,189 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `instalacao` = REPLACE(`instalacao`, %(old)s, %(new)s) WHERE `instalacao` LIKE %(pattern)s
+2026-06-19 10:40:41,190 INFO sqlalchemy.engine.Engine [cached since 0.552s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,192 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `localizacao` = REPLACE(`localizacao`, %(old)s, %(new)s) WHERE `localizacao` LIKE %(pattern)s
+2026-06-19 10:40:41,192 INFO sqlalchemy.engine.Engine [cached since 0.5521s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,194 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `complemento` = REPLACE(`complemento`, %(old)s, %(new)s) WHERE `complemento` LIKE %(pattern)s
+2026-06-19 10:40:41,195 INFO sqlalchemy.engine.Engine [cached since 0.5526s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,199 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `esquema_servico` = REPLACE(`esquema_servico`, %(old)s, %(new)s) WHERE `esquema_servico` LIKE %(pattern)s
+2026-06-19 10:40:41,200 INFO sqlalchemy.engine.Engine [cached since 0.554s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,202 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `centro_custo` = REPLACE(`centro_custo`, %(old)s, %(new)s) WHERE `centro_custo` LIKE %(pattern)s
+2026-06-19 10:40:41,203 INFO sqlalchemy.engine.Engine [cached since 0.5537s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,205 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `causa` = REPLACE(`causa`, %(old)s, %(new)s) WHERE `causa` LIKE %(pattern)s
+2026-06-19 10:40:41,206 INFO sqlalchemy.engine.Engine [cached since 0.554s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,208 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `causa_secundaria` = REPLACE(`causa_secundaria`, %(old)s, %(new)s) WHERE `causa_secundaria` LIKE %(pattern)s
+2026-06-19 10:40:41,209 INFO sqlalchemy.engine.Engine [cached since 0.5547s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,212 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `equipe` = REPLACE(`equipe`, %(old)s, %(new)s) WHERE `equipe` LIKE %(pattern)s
+2026-06-19 10:40:41,213 INFO sqlalchemy.engine.Engine [cached since 0.5557s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,216 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `descricao_problema` = REPLACE(`descricao_problema`, %(old)s, %(new)s) WHERE `descricao_problema` LIKE %(pattern)s
+2026-06-19 10:40:41,217 INFO sqlalchemy.engine.Engine [cached since 0.5576s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,220 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `prioridade` = REPLACE(`prioridade`, %(old)s, %(new)s) WHERE `prioridade` LIKE %(pattern)s
+2026-06-19 10:40:41,221 INFO sqlalchemy.engine.Engine [cached since 0.5581s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,224 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:41,224 INFO sqlalchemy.engine.Engine [cached since 0.5578s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,227 INFO sqlalchemy.engine.Engine UPDATE `solicitacao_servico` SET `numero_os` = REPLACE(`numero_os`, %(old)s, %(new)s) WHERE `numero_os` LIKE %(pattern)s
+2026-06-19 10:40:41,227 INFO sqlalchemy.engine.Engine [cached since 0.5575s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,232 INFO sqlalchemy.engine.Engine UPDATE `subestacao` SET `nome` = REPLACE(`nome`, %(old)s, %(new)s) WHERE `nome` LIKE %(pattern)s
+2026-06-19 10:40:41,233 INFO sqlalchemy.engine.Engine [cached since 0.5606s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,235 INFO sqlalchemy.engine.Engine UPDATE `subestacao` SET `localizacao` = REPLACE(`localizacao`, %(old)s, %(new)s) WHERE `localizacao` LIKE %(pattern)s
+2026-06-19 10:40:41,236 INFO sqlalchemy.engine.Engine [cached since 0.5612s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,238 INFO sqlalchemy.engine.Engine UPDATE `subestacao` SET `concessionaria` = REPLACE(`concessionaria`, %(old)s, %(new)s) WHERE `concessionaria` LIKE %(pattern)s
+2026-06-19 10:40:41,239 INFO sqlalchemy.engine.Engine [cached since 0.5618s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,241 INFO sqlalchemy.engine.Engine UPDATE `subestacao` SET `status` = REPLACE(`status`, %(old)s, %(new)s) WHERE `status` LIKE %(pattern)s
+2026-06-19 10:40:41,242 INFO sqlalchemy.engine.Engine [cached since 0.5626s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,244 INFO sqlalchemy.engine.Engine UPDATE `tipo_ativo` SET `nome` = REPLACE(`nome`, %(old)s, %(new)s) WHERE `nome` LIKE %(pattern)s
+2026-06-19 10:40:41,245 INFO sqlalchemy.engine.Engine [cached since 0.5624s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,248 INFO sqlalchemy.engine.Engine UPDATE `tipo_ativo` SET `descricao` = REPLACE(`descricao`, %(old)s, %(new)s) WHERE `descricao` LIKE %(pattern)s
+2026-06-19 10:40:41,249 INFO sqlalchemy.engine.Engine [cached since 0.5642s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,251 INFO sqlalchemy.engine.Engine UPDATE `usuarios` SET `nome` = REPLACE(`nome`, %(old)s, %(new)s) WHERE `nome` LIKE %(pattern)s
+2026-06-19 10:40:41,252 INFO sqlalchemy.engine.Engine [cached since 0.5649s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,254 INFO sqlalchemy.engine.Engine UPDATE `usuarios` SET `email` = REPLACE(`email`, %(old)s, %(new)s) WHERE `email` LIKE %(pattern)s
+2026-06-19 10:40:41,255 INFO sqlalchemy.engine.Engine [cached since 0.5661s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,257 INFO sqlalchemy.engine.Engine UPDATE `usuarios` SET `senha_hash` = REPLACE(`senha_hash`, %(old)s, %(new)s) WHERE `senha_hash` LIKE %(pattern)s
+2026-06-19 10:40:41,258 INFO sqlalchemy.engine.Engine [cached since 0.5668s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,260 INFO sqlalchemy.engine.Engine UPDATE `usuarios` SET `foto` = REPLACE(`foto`, %(old)s, %(new)s) WHERE `foto` LIKE %(pattern)s
+2026-06-19 10:40:41,261 INFO sqlalchemy.engine.Engine [cached since 0.5666s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,263 INFO sqlalchemy.engine.Engine UPDATE `usuarios` SET `role` = REPLACE(`role`, %(old)s, %(new)s) WHERE `role` LIKE %(pattern)s
+2026-06-19 10:40:41,264 INFO sqlalchemy.engine.Engine [cached since 0.5669s ago] {'old': 'GDO', 'new': 'GOR', 'pattern': '%GDO%'}
+2026-06-19 10:40:41,266 INFO sqlalchemy.engine.Engine 
+            SELECT id_os, numero_apr
+            FROM ordem_servico
+            WHERE numero_apr LIKE 'OS-%%'
+               OR numero_apr REGEXP '^APR-[A-Z]+--[0-9]+-[0-9]{4}$'
+            
+2026-06-19 10:40:41,267 INFO sqlalchemy.engine.Engine [generated in 0.00087s] {}
+2026-06-19 10:40:41,274 INFO sqlalchemy.engine.Engine COMMIT

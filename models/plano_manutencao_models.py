@@ -189,6 +189,7 @@ class Inspecao(Base):
     )
 
     responsavel = Column(String(100))
+    ficha_inspecao_url = Column(String(500), nullable=True)
     observacao_geral = Column(Text, default="")
 
     status_geral = Column(
