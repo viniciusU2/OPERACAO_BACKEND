@@ -280,7 +280,7 @@ def deletar_ss(
 def atender_ss(
     id_ss: int,
     db: Session = Depends(get_db),
-    _usuario=Depends(require_roles("admin", "mantenedor")),
+    _usuario=Depends(require_roles("admin", "mantenedor", "operador")),
 ):
     ss = db.query(SolicitacaoServico).filter(
         SolicitacaoServico.id == id_ss
@@ -399,3 +399,4 @@ def download_ss(id_ss: int, db: Session = Depends(get_db)):
         filename=nome_arquivo,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+

@@ -49,6 +49,8 @@ def garantir_colunas_inspecao(db: Session):
         db.execute(QueryText("ALTER TABLE resultado_item_inspecao ADD COLUMN valor_referencia DECIMAL(12, 4) NULL"))
     if "tolerancia" not in colunas:
         db.execute(QueryText("ALTER TABLE resultado_item_inspecao ADD COLUMN tolerancia DECIMAL(12, 4) NULL"))
+    if "foto" not in colunas:
+        db.execute(QueryText("ALTER TABLE resultado_item_inspecao ADD COLUMN foto VARCHAR(500) NULL"))
     if "id_item_template" in colunas:
         db.execute(QueryText("ALTER TABLE resultado_item_inspecao MODIFY COLUMN id_item_template INT NULL"))
 
@@ -103,6 +105,7 @@ def atualizar_resultados(db: Session, inspecao: Inspecao, resultados):
                 valor_medido=res.valor_medido,
                 status_item=res.status_item,
                 observacao_item=res.observacao_item,
+                foto=res.foto,
             )
         )
 
@@ -225,6 +228,7 @@ def listar_todas(
     status: Optional[str] = Query(default=None),
     periodicidade: Optional[str] = Query(default=None),
     id_ativo: Optional[int] = Query(default=None),
+    id_subestacao: Optional[int] = Query(default=None),
     db: Session = Depends(get_db),
 ):
     query = db.query(Inspecao).options(
@@ -237,6 +241,10 @@ def listar_todas(
         query = query.filter(Inspecao.periodicidade == periodicidade)
     if id_ativo:
         query = query.filter(Inspecao.id_ativo == id_ativo)
+    if id_subestacao:
+        query = query.join(Ativo, Ativo.id_ativo == Inspecao.id_ativo).filter(
+            Ativo.id_subestacao == id_subestacao
+        )
     return (
         query.order_by(Inspecao.data_inspecao.desc())
         .offset(skip)

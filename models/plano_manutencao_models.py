@@ -207,6 +207,10 @@ class Inspecao(Base):
     )
 
     @property
+    def id_subestacao(self):
+        return self.ativo.id_subestacao if self.ativo else None
+
+    @property
     def codigo_ativo(self):
         return self.ativo.codigo_ativo if self.ativo else None
 
@@ -279,6 +283,7 @@ class ResultadoItemInspecao(Base):
     )
 
     observacao_item = Column(Text)
+    foto = Column(String(500), nullable=True)
 
     inspecao = relationship("Inspecao", back_populates="resultados")
 

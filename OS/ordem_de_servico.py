@@ -659,7 +659,7 @@ def derivar_responsaveis_os(
 def baixar_os_lote_por_tipo_ativo(
     payload: BaixaOSLoteTipoAtivo,
     db: Session = Depends(get_db),
-    _usuario=Depends(require_roles("admin", "mantenedor")),
+    _usuario=Depends(require_roles("admin", "mantenedor", "operador")),
 ):
     if payload.incremento_minutos_por_fase < 0:
         raise HTTPException(
@@ -1197,6 +1197,55 @@ def data_programada_os(execucoes_pendentes: list[tuple[PlanoItem, PlanoExecucao]
     return primeira_data_vencida
 
 
+def montar_previa_os_plano(
+    plano: PlanoManutencao,
+    tipo: TipoAtivo,
+    ativo: Ativo,
+    data_programada: datetime,
+    esquema_servicos: str,
+    execucoes_pendentes: list[tuple[PlanoItem, PlanoExecucao]],
+    responsavel: str | None = None,
+    substituto: str | None = None,
+):
+    itens_descricao = "; ".join(
+        item.nome_item
+        for item, _ in execucoes_pendentes
+        if item.nome_item
+    )
+
+    return {
+        "numero_os": None,
+        "numero_apr": None,
+        "id_plano_manutencao": plano.id_plano_manutencao,
+        "plano": plano.descricao_geral,
+        "id_tipo_ativo": tipo.id_tipo_ativo,
+        "tipo_ativo": tipo.nome,
+        "id_ativo": ativo.id_ativo,
+        "ativo": ativo.codigo_ativo,
+        "fase": ativo.fase,
+        "vao": ativo.vao,
+        "data_programada": data_programada,
+        "esquema_servicos": esquema_servicos,
+        "descricao_servicos": plano.descricao_geral or "Manutencao preventiva programada",
+        "observacoes": (
+            f"Itens do plano: {itens_descricao}"
+            if itens_descricao
+            else "OS gerada automaticamente pelo plano de manutencao."
+        ),
+        "responsavel": responsavel,
+        "substituto": substituto,
+        "itens_plano": [
+            {
+                "id_plano_item": item.id_plano_item,
+                "nome_item": item.nome_item,
+                "periodicidade": valor_periodicidade(item.periodicidade),
+                "proxima_execucao": execucao.proxima_execucao,
+            }
+            for item, execucao in execucoes_pendentes
+        ],
+    }
+
+
 def gerar_os_por_planos_manutencao(
     db: Session,
     hoje: datetime | None = None,
@@ -1204,6 +1253,7 @@ def gerar_os_por_planos_manutencao(
 ):
     hoje = hoje or datetime.now()
     os_criadas = []
+    os_previstas = []
     status_pendente = ["ABERTA", "PROGRAMADA", "EM_EXECUCAO"]
     status_finalizado = {"ENCERRADA", "CONCLUIDA"}
 
@@ -1252,8 +1302,11 @@ def gerar_os_por_planos_manutencao(
                             ultima_execucao=None,
                             proxima_execucao=data_inicial_execucao(item, hoje),
                         )
-                        db.add(execucao)
-                        db.flush()
+                        if not simular:
+                            db.add(execucao)
+                            db.flush()
+
+                    execucao_avaliada = execucao
 
                     if execucao.id_os:
                         os_vinculada = (
@@ -1269,21 +1322,35 @@ def gerar_os_por_planos_manutencao(
                             continue
 
                         if os_vinculada and status_vinculada in status_finalizado:
-                            avancar_execucoes_plano_por_os(
-                                db,
-                                os_vinculada,
-                                os_vinculada.data_fim_execucao or hoje,
-                            )
-                            db.flush()
+                            if simular:
+                                data_base = os_vinculada.data_fim_execucao or hoje
+                                execucao_avaliada = PlanoExecucao(
+                                    id_plano_item=execucao.id_plano_item,
+                                    id_ativo=execucao.id_ativo,
+                                    ultima_execucao=data_base,
+                                    proxima_execucao=proxima_data_execucao(
+                                        item,
+                                        execucao.proxima_execucao or data_base,
+                                        data_base,
+                                    ),
+                                )
+                            else:
+                                avancar_execucoes_plano_por_os(
+                                    db,
+                                    os_vinculada,
+                                    os_vinculada.data_fim_execucao or hoje,
+                                )
+                                db.flush()
+                                execucao_avaliada = execucao
 
-                    if execucao.proxima_execucao and not deve_gerar_os(
+                    if execucao_avaliada.proxima_execucao and not deve_gerar_os(
                         item,
-                        execucao.proxima_execucao,
+                        execucao_avaliada.proxima_execucao,
                         hoje,
                     ):
                         continue
 
-                    execucoes_pendentes.append((item, execucao))
+                    execucoes_pendentes.append((item, execucao_avaliada))
 
                 if not execucoes_pendentes:
                     continue
@@ -1304,6 +1371,9 @@ def gerar_os_por_planos_manutencao(
                 )
 
                 if os_existente:
+                    if simular:
+                        continue
+
                     for item, execucao in execucoes_pendentes:
                         execucao.id_os = os_existente.id_os
 
@@ -1338,12 +1408,6 @@ def gerar_os_por_planos_manutencao(
                 except IndexError:
                     continue
 
-                numero_os, numero_apr = gerar_numero_os(
-                    db,
-                    sigla,
-                    ativo.codigo_ativo,
-                )
-
                 ultima_os_com_equipe = (
                     db.query(OrdemServico)
                     .filter(
@@ -1358,6 +1422,27 @@ def gerar_os_por_planos_manutencao(
                         OrdemServico.id_os.desc(),
                     )
                     .first()
+                )
+
+                if simular:
+                    os_previstas.append(
+                        montar_previa_os_plano(
+                            plano,
+                            tipo,
+                            ativo,
+                            data_programada,
+                            esquema_servicos_plano,
+                            execucoes_pendentes,
+                            ultima_os_com_equipe.responsavel if ultima_os_com_equipe else None,
+                            ultima_os_com_equipe.substituto if ultima_os_com_equipe else None,
+                        )
+                    )
+                    continue
+
+                numero_os, numero_apr = gerar_numero_os(
+                    db,
+                    sigla,
+                    ativo.codigo_ativo,
                 )
 
                 itens_descricao = "; ".join(
@@ -1428,7 +1513,7 @@ def gerar_os_por_planos_manutencao(
     else:
         db.commit()
 
-    return {
+    resposta = {
         "mensagem": (
             "Simulacao de OS preventivas concluida"
             if simular
@@ -1436,9 +1521,15 @@ def gerar_os_por_planos_manutencao(
         ),
         "simulacao": simular,
         "data_referencia": hoje,
-        "total_os": len(os_criadas),
-        "os_criadas": os_criadas,
+        "total_os": len(os_previstas if simular else os_criadas),
     }
+
+    if simular:
+        resposta["os_previstas"] = os_previstas
+    else:
+        resposta["os_criadas"] = os_criadas
+
+    return resposta
 
 
 @router.post("/gerar-os-planos")
@@ -1463,3 +1554,4 @@ def gerar_os_semanal(
         hoje=payload.data_simulacao if payload else None,
         simular=payload.simular if payload else False,
     )
+

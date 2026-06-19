@@ -56,6 +56,7 @@ class InspecaoCreate(BaseModel):
 class InspecaoRead(BaseModel):
     id_inspecao: int
     id_ativo: int
+    id_subestacao: Optional[int] = None
     id_os: Optional[int] = None
     data_inspecao: datetime
     data_proxima_inspecao: Optional[date] = None
@@ -63,6 +64,13 @@ class InspecaoRead(BaseModel):
     responsavel: Optional[str] = None
     observacao_geral: Optional[str] = ""
     status_geral: StatusItemEnum
+    codigo_ativo: Optional[str] = None
+    fase: Optional[str] = None
+    vao: Optional[str] = None
+    instalacao: Optional[str] = None
+    tipo_ativo: Optional[str] = None
+    numero_os: Optional[str] = None
+    numero_apr: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -195,6 +203,7 @@ class ResultadoItemCreate(BaseModel):
     valor_medido: Optional[Decimal] = None
     status_item: StatusItemEnum
     observacao_item: Optional[str] = None
+    foto: Optional[str] = None
 
 
 class InspecaoCreate(BaseModel):
@@ -228,6 +237,7 @@ class ResultadoItemInspecaoRead(BaseModel):
     unidade: Optional[str] = None
     status_item: StatusItemEnum
     observacao_item: Optional[str] = None
+    foto: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
