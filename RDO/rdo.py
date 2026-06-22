@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from auth.dependencies import get_current_user, require_roles
+from auth.dependencies import require_roles
 from database import get_db
 from models.auth_models import Usuario
 from models.rdo_models import (
@@ -201,7 +201,7 @@ def exportar_rdo_pdf(
 def criar_rdo(
     dados: RdoCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_roles("admin")),
 ):
     payload = dados.model_dump(exclude={"configuracoes", "eventos"})
     novo = Rdo(**payload, criado_por=usuario.id, editado_por=usuario.id)
@@ -235,7 +235,7 @@ def atualizar_rdo(
     id_rdo: int,
     dados: RdoUpdate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_roles("admin")),
 ):
     rdo = buscar_rdo_ou_404(db, id_rdo)
     payload = dados.model_dump(exclude_unset=True)
@@ -285,7 +285,7 @@ def excluir_rdo(
 def validar_rdo(
     id_rdo: int,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_roles("admin")),
 ):
     rdo = buscar_rdo_ou_404(db, id_rdo)
     rdo.status = "VALIDADO"
@@ -303,7 +303,7 @@ def criar_configuracao(
     id_rdo: int,
     dados: RdoConfiguracaoCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_roles("admin")),
 ):
     rdo = buscar_rdo_ou_404(db, id_rdo)
     configuracao = RdoConfiguracaoSistema(id_rdo=id_rdo, **dados.model_dump())
@@ -328,7 +328,7 @@ def atualizar_configuracao(
     id_configuracao: int,
     dados: RdoConfiguracaoUpdate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_roles("admin")),
 ):
     configuracao = (
         db.query(RdoConfiguracaoSistema)
@@ -363,7 +363,7 @@ def atualizar_configuracao(
 def excluir_configuracao(
     id_configuracao: int,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_roles("admin")),
 ):
     configuracao = (
         db.query(RdoConfiguracaoSistema)
@@ -392,7 +392,7 @@ def criar_evento(
     id_rdo: int,
     dados: RdoEventoCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_roles("admin")),
 ):
     rdo = buscar_rdo_ou_404(db, id_rdo)
     evento = RdoEvento(
@@ -422,7 +422,7 @@ def atualizar_evento(
     id_evento: int,
     dados: RdoEventoUpdate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_roles("admin")),
 ):
     evento = db.query(RdoEvento).filter(RdoEvento.id_evento == id_evento).first()
     if not evento:
@@ -456,7 +456,7 @@ def atualizar_evento(
 def excluir_evento(
     id_evento: int,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_roles("admin")),
 ):
     evento = db.query(RdoEvento).filter(RdoEvento.id_evento == id_evento).first()
     if not evento:
