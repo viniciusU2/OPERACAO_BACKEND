@@ -12,6 +12,7 @@ class solicitacao_intervencao(Base):
     id_subestacao = Column(Integer, ForeignKey("subestacao.id_subestacao"))
     id_ativo = Column(Integer, ForeignKey("ativo.id_ativo"))
     especie = Column(String(50))
+    numero_os = Column(String(30))
     numero_apr = Column(String(50))
     prioridade = Column(String(20), default="NIVEL_3")
     natureza = Column(String(255))

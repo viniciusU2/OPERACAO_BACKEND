@@ -9,6 +9,7 @@ class SIBase(BaseModel):
     id_subestacao: Optional[int] = None
     id_ativo: Optional[int] = None
     especie: Optional[str] = None
+    numero_os: Optional[str] = None
     numero_apr: Optional[str] = None
     prioridade: Optional[str] = "NIVEL_3"
     natureza: Optional[str] = None
@@ -81,6 +82,7 @@ class SIUpdate(SIBase):
     id_subestacao: Optional[int] = None
     id_ativo: Optional[int] = None
     especie: Optional[str] = None
+    numero_os: Optional[str] = None
     numero_apr: Optional[str] = None
     prioridade: Optional[str] = None
     natureza: Optional[str] = None

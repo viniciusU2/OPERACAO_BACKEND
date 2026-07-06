@@ -28,6 +28,7 @@ SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
 
 def garantir_colunas_si(db: Session):
     colunas = {
+        "numero_os": "VARCHAR(30) NULL",
         "natureza": "VARCHAR(255) NULL",
         "caracteristica_intervencao": "VARCHAR(100) NULL",
         "prioridade": "VARCHAR(20) NULL DEFAULT 'NIVEL_3'",
