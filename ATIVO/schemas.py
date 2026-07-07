@@ -35,6 +35,24 @@ class AtivoBase(BaseModel):
 class AtivoCreate(AtivoBase):
     pass
 
+
+class SubestacaoAtivoResponse(BaseModel):
+    id_subestacao: int
+    nome: str
+    sigla: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+
+class TipoAtivoAtivoResponse(BaseModel):
+    id_tipo_ativo: int
+    nome: str
+
+    class Config:
+        orm_mode = True
+
+
 class AtivoResponse(BaseModel):
     id_ativo: int
     id_subestacao: int
@@ -54,6 +72,8 @@ class AtivoResponse(BaseModel):
     vao_vante_m: Optional[Decimal] = None
     sentido: Optional[str] = None
     tipo_estrutura: Optional[str] = None
+    subestacao: Optional[SubestacaoAtivoResponse] = None
+    tipo_ativo: Optional[TipoAtivoAtivoResponse] = None
 
     class Config:
         orm_mode = True
