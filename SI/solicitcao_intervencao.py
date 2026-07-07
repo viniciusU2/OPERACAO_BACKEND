@@ -207,7 +207,7 @@ def montar_contexto_si(si, ativo=None, sub=None):
     if ativo:
         localizacao = " - ".join(
             str(valor)
-            for valor in (ativo.codigo_ativo, ativo.fase, ativo.vao)
+            for valor in (ativo.codigo_ativo, ativo.fase, ativo.bay)
             if valor not in (None, "")
         )
 

@@ -264,7 +264,7 @@ ATIVO_COLUNAS = [
     ("Tensao Nominal kV", "tensao_nominal_kv"),
     ("Data Instalacao", "data_instalacao"),
     ("Status", "status"),
-    ("Vao", "vao"),
+    ("Bay", "bay"),
     ("Fase", "fase"),
 ]
 

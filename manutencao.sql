@@ -1,4 +1,4 @@
-﻿-- --------------------------------------------------------
+-- --------------------------------------------------------
 -- Servidor:                     127.0.0.1
 -- VersÃ£o do servidor:           11.7.2-MariaDB - mariadb.org binary distribution
 -- OS do Servidor:               Win64
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS `ativo` (
   `tensao_nominal_kv` decimal(6,2) DEFAULT NULL,
   `data_instalacao` date DEFAULT NULL,
   `status` varchar(30) DEFAULT NULL,
-  `vao` varchar(50) DEFAULT NULL,
+  `bay` varchar(50) DEFAULT NULL,
   `fase` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`id_ativo`),
   KEY `id_subestacao` (`id_subestacao`),
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS `ativo` (
 ) ENGINE=InnoDB AUTO_INCREMENT=792 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Copiando dados para a tabela manutencao.ativo: ~400 rows (aproximadamente)
-INSERT INTO `ativo` (`id_ativo`, `id_subestacao`, `id_tipo_ativo`, `codigo_ativo`, `fabricante`, `modelo`, `especie`, `numero_serie`, `tensao_nominal_kv`, `data_instalacao`, `status`, `vao`, `fase`) VALUES
+INSERT INTO `ativo` (`id_ativo`, `id_subestacao`, `id_tipo_ativo`, `codigo_ativo`, `fabricante`, `modelo`, `especie`, `numero_serie`, `tensao_nominal_kv`, `data_instalacao`, `status`, `bay`, `fase`) VALUES
 	(1, 1, 8, '75C2', NULL, NULL, NULL, NULL, NULL, NULL, 'OPERANTE', 'VÃƒO J', 'VM'),
 	(2, 1, 8, '75C4', NULL, NULL, NULL, NULL, NULL, NULL, 'OPERANTE', 'VÃƒO I', 'VM'),
 	(3, 1, 8, '75C2', NULL, NULL, NULL, NULL, NULL, NULL, 'OPERANTE', 'VÃƒO J', 'BR'),

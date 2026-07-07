@@ -335,7 +335,7 @@ def atender_ss(
         id_ativo=ativo.id_ativo,
         especie=especie_documento_por_ativo(ativo) or ativo.especie,
         instalacao=subestacao.nome,
-        localizacao=ativo.vao or ss.localizacao,
+        localizacao=ativo.bay or ss.localizacao,
         complemento=ativo.fase or ss.complemento,
         origens=f"SS {ss.numero_ss}",
         defeito=ss.descricao_problema,

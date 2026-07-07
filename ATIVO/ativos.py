@@ -212,7 +212,7 @@ def pontuacao_referencia(ativo, referencia):
 
     if ativo.codigo_ativo and ativo.codigo_ativo == referencia.codigo_ativo:
         pontos += 4
-    if ativo.vao and ativo.vao == referencia.vao:
+    if ativo.bay and ativo.bay == referencia.bay:
         pontos += 2
     if ativo.fase and ativo.fase == referencia.fase:
         pontos += 2
@@ -301,7 +301,7 @@ async def importar_ativos(file: UploadFile = File(...), db: Session = Depends(ge
             "id_subestacao",
             "id_tipo_ativo",
             "codigo_ativo",
-            "vao",
+            "bay",
             "fase"
         ]
 
@@ -323,7 +323,7 @@ async def importar_ativos(file: UploadFile = File(...), db: Session = Depends(ge
                 id_subestacao=int(row["id_subestacao"]),
                 id_tipo_ativo=int(row["id_tipo_ativo"]),
                 codigo_ativo=str(row["codigo_ativo"]),
-                vao=str(row["vao"]) if pd.notna(row["vao"]) else None,
+                bay=str(row["bay"]) if pd.notna(row["bay"]) else None,
                 numero_serie=str(row["numero_serie"]) if pd.notna(row["numero_serie"]) else None,
                 fabricante=str(row["fabricante"]) if pd.notna(row["fabricante"]) else None,
 
@@ -415,7 +415,7 @@ async def importar_torres(file: UploadFile = File(...), db: Session = Depends(ge
                 "vao_vante_m": valor_decimal(row["vao vante (m)"]),
                 "sentido": sentido,
                 "tipo_estrutura": tipo_estrutura,
-                "vao": f"T{estrutura.zfill(3) if estrutura.isdigit() else estrutura}",
+                "bay": f"T{estrutura.zfill(3) if estrutura.isdigit() else estrutura}",
                 "fase": sentido,
                 "especie": "LINHA DE TRANSMISSAO",
                 "status": "ATIVO",

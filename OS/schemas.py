@@ -170,7 +170,7 @@ class OrdemServicoCreateLote(BaseModel):
 class BaixaOSLoteTipoAtivo(BaseModel):
     id_tipo_ativo: int
     id_subestacao: Optional[int] = None
-    vaos: Optional[list[str]] = None
+    bays: Optional[list[str]] = None
     status_origem: Optional[list[str]] = None
     status_destino: str = "ENCERRADA"
     data_inicio_execucao: datetime
@@ -186,7 +186,7 @@ class BaixaOSLoteItemResponse(BaseModel):
     id_os: int
     numero_os: str
     codigo_ativo: Optional[str] = None
-    vao: Optional[str] = None
+    bay: Optional[str] = None
     fase: Optional[str] = None
     status: Optional[str] = None
     data_inicio_execucao: Optional[datetime] = None
@@ -198,7 +198,7 @@ class BaixaOSLoteItemResponse(BaseModel):
 class BaixaOSLoteResponse(BaseModel):
     mensagem: str
     total: int
-    por_vao: dict[str, int]
+    por_bay: dict[str, int]
     ordens: list[BaixaOSLoteItemResponse]
 
 

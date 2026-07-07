@@ -68,7 +68,7 @@ class InspecaoRead(BaseModel):
     status_geral: StatusItemEnum
     codigo_ativo: Optional[str] = None
     fase: Optional[str] = None
-    vao: Optional[str] = None
+    bay: Optional[str] = None
     instalacao: Optional[str] = None
     tipo_ativo: Optional[str] = None
     numero_os: Optional[str] = None
@@ -193,7 +193,7 @@ class PlanoExecucaoPlanilhaRead(BaseModel):
     codigo_ativo: str
     instalacao: Optional[str] = None
     tipo_ativo: Optional[str] = None
-    vao: Optional[str] = None
+    bay: Optional[str] = None
     fase: Optional[str] = None
     ultima_execucao: Optional[datetime] = None
     proxima_execucao: datetime
@@ -260,7 +260,7 @@ class InspecaoRead(BaseModel):
     id_subestacao: Optional[int] = None
     codigo_ativo: Optional[str] = None
     fase: Optional[str] = None
-    vao: Optional[str] = None
+    bay: Optional[str] = None
     fabricante: Optional[str] = None
     modelo: Optional[str] = None
     instalacao: Optional[str] = None

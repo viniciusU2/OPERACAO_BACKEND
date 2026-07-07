@@ -20,7 +20,7 @@ class AtivoBase(BaseModel):
     tensao_nominal_kv: Optional[float] = None
     data_instalacao: Optional[date] = None
     status: Optional[Literal["ATIVO", "INATIVO"]] = "ATIVO"
-    vao: Optional[str] = None
+    bay: Optional[str] = None
     fase: Optional[str] = None
     codigo_linha: Optional[str] = None
     estrutura_operacional: Optional[str] = None
@@ -47,7 +47,7 @@ class AtivoResponse(BaseModel):
     tensao_nominal_kv: Optional[Decimal] = None
     data_instalacao: Optional[date] = None
     status: str
-    vao: Optional[str] = None
+    bay: Optional[str] = None
     fase: Optional[str] = None
     codigo_linha: Optional[str] = None
     estrutura_operacional: Optional[str] = None

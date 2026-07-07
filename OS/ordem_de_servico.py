@@ -121,7 +121,7 @@ def montar_contexto_os(os, ativo=None):
 
     if ativo:
         codigo_ativo = ativo.codigo_ativo
-        local =  ativo.vao
+        local =  ativo.bay
         fase = ativo.fase
     return {
         # ================= IDENTIFICAÇÃO =================
@@ -686,19 +686,19 @@ def baixar_os_lote_por_tipo_ativo(
     if status_origem:
         query = query.filter(OS_models.OrdemServico.status.in_(status_origem))
 
-    if payload.vaos:
-        vaos_normalizados = {normalizar_texto_filtro(vao) for vao in payload.vaos}
+    if payload.bays:
+        bays_normalizados = {normalizar_texto_filtro(bay) for bay in payload.bays}
     else:
-        vaos_normalizados = set()
+        bays_normalizados = set()
 
     ordens = query.all()
 
-    if payload.vaos:
+    if payload.bays:
         ordens = [
             ordem
             for ordem in ordens
-            if normalizar_texto_filtro(ordem.ativo.vao if ordem.ativo else ordem.localizacao)
-            in vaos_normalizados
+            if normalizar_texto_filtro(ordem.ativo.bay if ordem.ativo else ordem.localizacao)
+            in bays_normalizados
         ]
 
     if not ordens:
@@ -709,7 +709,7 @@ def baixar_os_lote_por_tipo_ativo(
 
     ordens.sort(
         key=lambda ordem: (
-            normalizar_texto_filtro(ordem.ativo.vao if ordem.ativo else ordem.localizacao),
+            normalizar_texto_filtro(ordem.ativo.bay if ordem.ativo else ordem.localizacao),
             chave_ordenacao_codigo(ordem.ativo.codigo_ativo if ordem.ativo else ordem.codigo_ativo),
             indice_fase(ordem.ativo.fase if ordem.ativo else ordem.complemento),
             ordem.id_os,
@@ -734,21 +734,21 @@ def baixar_os_lote_por_tipo_ativo(
     if payload.data_fim_execucao:
         duracao = payload.data_fim_execucao - payload.data_inicio_execucao
 
-    por_vao: dict[str, int] = {}
+    por_bay: dict[str, int] = {}
     ordens_atualizadas = []
-    indice_por_vao_fase: dict[str, dict[str, int]] = {}
+    indice_por_bay_fase: dict[str, dict[str, int]] = {}
 
     for ordem in ordens:
         ativo = ordem.ativo
-        vao = normalizar_texto_filtro(ativo.vao if ativo else ordem.localizacao) or "SEM_VAO"
+        bay = normalizar_texto_filtro(ativo.bay if ativo else ordem.localizacao) or "SEM_BAY"
         fase = normalizar_texto_filtro(ativo.fase if ativo else ordem.complemento)
 
-        fases_do_vao = indice_por_vao_fase.setdefault(vao, {})
-        if fase not in fases_do_vao:
-            fases_do_vao[fase] = len(fases_do_vao)
+        fases_do_bay = indice_por_bay_fase.setdefault(bay, {})
+        if fase not in fases_do_bay:
+            fases_do_bay[fase] = len(fases_do_bay)
 
         offset = timedelta(
-            minutes=payload.incremento_minutos_por_fase * fases_do_vao[fase]
+            minutes=payload.incremento_minutos_por_fase * fases_do_bay[fase]
         )
         inicio_execucao = payload.data_inicio_execucao + offset
         fim_execucao = inicio_execucao + duracao if duracao else inicio_execucao
@@ -778,7 +778,7 @@ def baixar_os_lote_por_tipo_ativo(
                 ss_vinculada.status = "ENCERRADA"
                 ss_vinculada.numero_os = ordem.numero_os
 
-        por_vao[vao] = por_vao.get(vao, 0) + 1
+        por_bay[bay] = por_bay.get(bay, 0) + 1
         ordens_atualizadas.append(ordem)
 
     try:
@@ -807,13 +807,13 @@ def baixar_os_lote_por_tipo_ativo(
     return {
         "mensagem": "Baixa em lote realizada com sucesso",
         "total": len(ordens_atualizadas),
-        "por_vao": por_vao,
+        "por_bay": por_bay,
         "ordens": [
             {
                 "id_os": ordem.id_os,
                 "numero_os": ordem.numero_os,
                 "codigo_ativo": ordem.ativo.codigo_ativo if ordem.ativo else None,
-                "vao": ordem.ativo.vao if ordem.ativo else ordem.localizacao,
+                "bay": ordem.ativo.bay if ordem.ativo else ordem.localizacao,
                 "fase": ordem.ativo.fase if ordem.ativo else ordem.complemento,
                 "status": ordem.status,
                 "data_inicio_execucao": ordem.data_inicio_execucao,
@@ -959,7 +959,7 @@ def criar_os_lote_por_tipo_ativo(
 
         fase = normalizar_fase(ativo.fase)
         complemento = f"Fase: {fase}"
-        local =  f"{ativo.vao}"
+        local =  f"{ativo.bay}"
 
         nova_os = OS_models.OrdemServico(
             numero_os=numero_os_final,
@@ -1223,7 +1223,7 @@ def montar_previa_os_plano(
         "id_ativo": ativo.id_ativo,
         "ativo": ativo.codigo_ativo,
         "fase": ativo.fase,
-        "vao": ativo.vao,
+        "bay": ativo.bay,
         "data_programada": data_programada,
         "esquema_servicos": esquema_servicos,
         "descricao_servicos": plano.descricao_geral or "Manutencao preventiva programada",
@@ -1466,7 +1466,7 @@ def gerar_os_por_planos_manutencao(
                     origem="PLANO_MANUTENCAO",
                     especie=especie_documento_por_ativo(ativo),
                     instalacao=subestacao.nome,
-                    localizacao=ativo.vao,
+                    localizacao=ativo.bay,
                     complemento=ativo.fase,
                     origens="PLANO DE MANUTENCAO",
                     defeito="MANUTENCAO PREVENTIVA PROGRAMADA",

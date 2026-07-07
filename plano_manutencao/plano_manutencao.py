@@ -86,7 +86,7 @@ def montar_execucao_planilha(execucao: PlanoExecucao):
         "codigo_ativo": ativo.codigo_ativo if ativo else "",
         "instalacao": ativo.subestacao.nome if ativo and ativo.subestacao else None,
         "tipo_ativo": tipo_ativo,
-        "vao": ativo.vao if ativo else None,
+        "bay": ativo.bay if ativo else None,
         "fase": ativo.fase if ativo else None,
         "ultima_execucao": execucao.ultima_execucao,
         "proxima_execucao": execucao.proxima_execucao,

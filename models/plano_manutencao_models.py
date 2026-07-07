@@ -220,8 +220,8 @@ class Inspecao(Base):
         return self.ativo.fase if self.ativo else None
 
     @property
-    def vao(self):
-        return self.ativo.vao if self.ativo else None
+    def bay(self):
+        return self.ativo.bay if self.ativo else None
 
     @property
     def fabricante(self):
