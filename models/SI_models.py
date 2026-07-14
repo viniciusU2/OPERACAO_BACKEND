@@ -37,6 +37,9 @@ class solicitacao_intervencao(Base):
     risco_desligamento = Column(Text)
     condicoes_climaticas = Column(Text)
     execucao_periodo_noturno = Column(Text)
+    quais_risco_desligamento = Column(Text)
+    quais_condicoes_climaticas = Column(Text)
+    quais_execucao_periodo_noturno = Column(Text)
 
     responsavel_ons_manutencao = Column(String(100))
     responsavel_cot_manutencao = Column(String(100))

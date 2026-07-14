@@ -32,6 +32,12 @@ def garantir_colunas_si(db: Session):
         "natureza": "VARCHAR(255) NULL",
         "caracteristica_intervencao": "VARCHAR(100) NULL",
         "prioridade": "VARCHAR(20) NULL DEFAULT 'NIVEL_3'",
+        "risco_desligamento": "TEXT NULL",
+        "condicoes_climaticas": "TEXT NULL",
+        "execucao_periodo_noturno": "TEXT NULL",
+        "quais_risco_desligamento": "TEXT NULL",
+        "quais_condicoes_climaticas": "TEXT NULL",
+        "quais_execucao_periodo_noturno": "TEXT NULL",
     }
 
     for coluna, definicao in colunas.items():
@@ -138,8 +144,11 @@ MAPEAMENTO_CELULAS = {
     "OBSERVACOES": "A29",
     "CABO_ATERRAMENTO": "A31",
     "RISCO_DESLIGAMENTO": "A33",
+    "QUAIS_RISCO_DESLIGAMENTO": "C33",
     "CONDICOES_CLIMATICAS": "A36",
+    "QUAIS_CONDICOES_CLIMATICAS": "C36",
     "EXECUCAO_PERIODO_NOTURNO": "A39",
+    "QUAIS_EXECUCAO_PERIODO_NOTURNO": "C39",
     "RESPONSAVEL_MANUTENCAO_ONS": "B42",
     "RESPONSAVEL_MANUTENCAO_COT": "E42",
     "RESPONSAVEL_MANUTENCAO_SE": "H42",
