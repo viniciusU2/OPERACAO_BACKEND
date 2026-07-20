@@ -421,8 +421,16 @@ def sincronizar_colaboradores_usuarios(db: Session):
             .first()
         )
 
+        if not colaborador:
+            colaborador = (
+                db.query(SobreavisoColaborador)
+                .filter(func.lower(SobreavisoColaborador.email) == usuario.email.lower())
+                .first()
+            )
+
         if colaborador:
             colaborador.id_usuario = usuario.id
+            colaborador.matricula = colaborador.matricula or matricula_usuario
             colaborador.id_equipe = colaborador.id_equipe or id_equipe
             colaborador.id_subestacao = colaborador.id_subestacao or usuario.id_subestacao_padrao
             colaborador.nome = usuario.nome
@@ -550,7 +558,7 @@ def listar_colaboradores(
 @router.post("/colaboradores/sincronizar")
 def sincronizar_colaboradores(
     db: Session = Depends(get_db),
-    _usuario=Depends(require_roles("admin", "mantenedor")),
+    _usuario=Depends(require_roles("admin", "mantenedor", "operador")),
 ):
     resumo = sincronizar_colaboradores_usuarios(db)
     total_colaboradores = db.query(SobreavisoColaborador).count()
