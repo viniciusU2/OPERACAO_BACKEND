@@ -13,6 +13,7 @@ from Instalacao import instalacao
 from plano_manutencao import plano_manutencao
 from plano_manutencao import inspecoes
 from RDO import rdo
+from Sobreaviso import sobreaviso
 from auth import auth
 import downloads
 from database import Base, engine
@@ -133,6 +134,7 @@ app.include_router(ativos.router)
 app.include_router(solicitcao_intervencao.router)
 app.include_router(livro_registro.router)
 app.include_router(rdo.router)
+app.include_router(sobreaviso.router)
 app.include_router(downloads.router)
 
 
