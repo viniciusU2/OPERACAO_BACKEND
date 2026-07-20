@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from auth.dependencies import require_roles
+from auth.dependencies import garantir_colunas_usuarios
 from database import get_db
 from models.auth_models import Usuario
 from models.instalacao_models import Subestacao
@@ -379,18 +380,23 @@ def equipe_padrao_id(db: Session) -> int:
 
 
 def sincronizar_colaboradores_usuarios(db: Session):
+    garantir_colunas_usuarios(db)
     garantir_colunas_sobreaviso(db)
     id_equipe = equipe_padrao_id(db)
-    usuarios = (
-        db.query(Usuario)
-        .filter(
-            Usuario.ativo.is_(True),
-            func.lower(func.coalesce(Usuario.role, "usuario")) != "admin",
-        )
-        .all()
-    )
+    usuarios_ativos = db.query(Usuario).filter(Usuario.ativo == True).all()
+    resumo = {
+        "usuarios_ativos": len(usuarios_ativos),
+        "ignorados_admin": 0,
+        "criados": 0,
+        "atualizados": 0,
+    }
 
-    for usuario in usuarios:
+    for usuario in usuarios_ativos:
+        role = (usuario.role or "usuario").strip().lower()
+        if role == "admin":
+            resumo["ignorados_admin"] += 1
+            continue
+
         colaborador = (
             db.query(SobreavisoColaborador)
             .filter(SobreavisoColaborador.id_usuario == usuario.id)
@@ -406,6 +412,7 @@ def sincronizar_colaboradores_usuarios(db: Session):
             colaborador.ativo = 1
             if usuario.id_subestacao_padrao and colaborador.id_subestacao != usuario.id_subestacao_padrao:
                 colaborador.id_subestacao = usuario.id_subestacao_padrao
+            resumo["atualizados"] += 1
             continue
 
         colaborador = (
@@ -422,6 +429,7 @@ def sincronizar_colaboradores_usuarios(db: Session):
             colaborador.email = usuario.email
             colaborador.cargo = colaborador.cargo or usuario.role
             colaborador.ativo = 1
+            resumo["atualizados"] += 1
             continue
 
         db.add(
@@ -436,8 +444,10 @@ def sincronizar_colaboradores_usuarios(db: Session):
                 ativo=1,
             )
         )
+        resumo["criados"] += 1
 
     db.commit()
+    return resumo
 
 
 @router.get("/equipes", response_model=list[EquipeSobreavisoResponse])
@@ -535,6 +545,20 @@ def listar_colaboradores(
             )
         )
     return query.order_by(SobreavisoColaborador.nome).all()
+
+
+@router.post("/colaboradores/sincronizar")
+def sincronizar_colaboradores(
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin", "mantenedor")),
+):
+    resumo = sincronizar_colaboradores_usuarios(db)
+    total_colaboradores = db.query(SobreavisoColaborador).count()
+    return {
+        "message": "Sincronizacao de colaboradores concluida",
+        "total_colaboradores": total_colaboradores,
+        **resumo,
+    }
 
 
 @router.post("/colaboradores", response_model=ColaboradorSobreavisoResponse, status_code=201)

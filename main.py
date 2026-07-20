@@ -64,7 +64,10 @@ try:
     if not coluna_execucao_os:
         db.execute(text("ALTER TABLE plano_execucao ADD COLUMN id_os INT NULL"))
 
-    sobreaviso.sincronizar_colaboradores_usuarios(db)
+    try:
+        sobreaviso.sincronizar_colaboradores_usuarios(db)
+    except Exception as exc:
+        print("Falha ao sincronizar colaboradores de sobreaviso:", exc)
 
     colunas_texto = db.execute(
         text(
