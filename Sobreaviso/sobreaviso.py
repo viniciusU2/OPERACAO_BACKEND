@@ -555,6 +555,7 @@ def listar_colaboradores(
     return query.order_by(SobreavisoColaborador.nome).all()
 
 
+@router.post("/sincronizar-colaboradores")
 @router.post("/colaboradores/sincronizar")
 def sincronizar_colaboradores(
     db: Session = Depends(get_db),
