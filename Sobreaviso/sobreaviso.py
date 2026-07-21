@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from decimal import Decimal
 from typing import Optional
@@ -48,6 +48,10 @@ STATUS_VALIDOS = {"PLANEJADO", "PENDENTE", "APROVADO", "REPROVADO", "CANCELADO"}
 ORIGENS_VALIDAS = {"ADMIN", "GESTOR", "COLABORADOR", "IMPORTACAO"}
 STATUS_INATIVOS_PARA_CONFLITO = {"CANCELADO", "REPROVADO"}
 DIAS_SEMANA = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"]
+MESES_PT = [
+    "JANEIRO", "FEVEREIRO", "MARCO", "ABRIL", "MAIO", "JUNHO",
+    "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO",
+]
 
 
 def calcular_total_horas(inicio: datetime, fim: datetime) -> Decimal:
@@ -351,6 +355,202 @@ def montar_relatorio_folha_ponto(
     ws.cell(row=row, column=8, value="____________________________________________________________ Assinatura do Responsavel")
 
     ws.freeze_panes = "A9"
+    return wb
+
+
+def montar_relatorio_escala_geral(
+    subestacoes: list[Subestacao],
+    colaboradores: list[SobreavisoColaborador],
+    sobreavisos: list[SobreavisoPeriodo],
+    data_inicio: datetime,
+    data_fim: datetime,
+):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ESCALA GERAL"
+    ws.sheet_view.showGridLines = False
+    ws.freeze_panes = "E5"
+
+    dias = []
+    dia = data_inicio.date()
+    ultimo_dia = data_fim.date()
+    while dia <= ultimo_dia:
+        dias.append(dia)
+        dia += timedelta(days=1)
+
+    primeira_coluna_dia = 5
+    coluna_total = primeira_coluna_dia + len(dias)
+    ultima_coluna = get_column_letter(coluna_total)
+
+    azul = "17365D"
+    azul_claro = "DCE6F1"
+    cinza = "D9E1F2"
+    cinza_secao = "E7E6E6"
+    verde_fim_semana = "C6EFCE"
+    azul_escala = "DDEBF7"
+    vermelho = "C00000"
+    branco = "FFFFFF"
+    borda_fina = Side(style="thin", color="707070")
+    borda = Border(left=borda_fina, right=borda_fina, top=borda_fina, bottom=borda_fina)
+
+    ws.column_dimensions["A"].width = 24
+    ws.column_dimensions["B"].width = 9
+    ws.column_dimensions["C"].width = 17
+    ws.column_dimensions["D"].width = 15
+    for indice in range(primeira_coluna_dia, coluna_total):
+        ws.column_dimensions[get_column_letter(indice)].width = 11
+    ws.column_dimensions[ultima_coluna].width = 10
+
+    ws.merge_cells(start_row=1, start_column=4, end_row=1, end_column=coluna_total)
+    ws.cell(1, 4, "ESCALA GERAL DE SOBREAVISO - RIALMA TRANSMISSORA DE ENERGIA V")
+    ws.cell(1, 4).font = Font(name="Arial", size=16, bold=True, color=branco)
+    ws.cell(1, 4).fill = PatternFill("solid", fgColor=azul)
+    ws.cell(1, 4).alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 27
+
+    ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=coluna_total)
+    ws.cell(2, 4, f"COMPETENCIA: {data_inicio.strftime('%d/%m/%Y')} A {data_fim.strftime('%d/%m/%Y')}")
+    ws.cell(2, 4).font = Font(name="Arial", size=10, bold=True, color=azul)
+    ws.cell(2, 4).fill = PatternFill("solid", fgColor=azul_claro)
+    ws.cell(2, 4).alignment = Alignment(horizontal="center")
+
+    ws.merge_cells("A1:C2")
+    ws["A1"] = "RIALMA S.A."
+    ws["A1"].font = Font(name="Arial", size=12, bold=True, color=branco)
+    ws["A1"].fill = PatternFill("solid", fgColor=azul)
+    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+    periodos_por_colaborador: dict[int, list[SobreavisoPeriodo]] = {}
+    for item in sobreavisos:
+        periodos_por_colaborador.setdefault(item.id_colaborador, []).append(item)
+
+    colaboradores_por_subestacao: dict[Optional[int], list[SobreavisoColaborador]] = {}
+    for colaborador in colaboradores:
+        colaboradores_por_subestacao.setdefault(colaborador.id_subestacao, []).append(colaborador)
+
+    grupos = [(sub.id_subestacao, sub.nome, sub.sigla or "SE") for sub in subestacoes]
+    if colaboradores_por_subestacao.get(None):
+        grupos.append((None, "SEM SUBESTACAO DEFINIDA", "-"))
+
+    linha = 4
+    for id_subestacao, nome_subestacao, sigla_subestacao in grupos:
+        ws.merge_cells(start_row=linha, start_column=1, end_row=linha, end_column=coluna_total)
+        ws.cell(linha, 1, f"{MESES_PT[data_fim.month - 1]} - {nome_subestacao.upper()}")
+        ws.cell(linha, 1).font = Font(name="Arial", size=10, bold=True, color=azul)
+        ws.cell(linha, 1).fill = PatternFill("solid", fgColor=cinza_secao)
+        ws.cell(linha, 1).alignment = Alignment(horizontal="left")
+        ws.cell(linha, 1).border = borda
+        linha += 1
+
+        cabecalhos = ["Colaborador", "SE", "Telefone", "Equipe"]
+        for coluna, texto in enumerate(cabecalhos, start=1):
+            celula = ws.cell(linha, coluna, texto)
+            celula.fill = PatternFill("solid", fgColor=cinza)
+            celula.font = Font(name="Arial", size=8, bold=True, color=azul)
+            celula.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            celula.border = borda
+
+        for deslocamento, data_dia in enumerate(dias):
+            coluna = primeira_coluna_dia + deslocamento
+            celula = ws.cell(linha, coluna, f"{data_dia.strftime('%d/%m')}\n{DIAS_SEMANA[data_dia.weekday()]}")
+            celula.fill = PatternFill(
+                "solid",
+                fgColor=verde_fim_semana if data_dia.weekday() >= 5 else cinza,
+            )
+            celula.font = Font(name="Arial", size=7, bold=True, color=azul)
+            celula.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            celula.border = borda
+
+        celula_total = ws.cell(linha, coluna_total, "Total\nhoras")
+        celula_total.fill = PatternFill("solid", fgColor=cinza)
+        celula_total.font = Font(name="Arial", size=8, bold=True, color=azul)
+        celula_total.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        celula_total.border = borda
+        ws.row_dimensions[linha].height = 28
+        linha += 1
+
+        colaboradores_grupo = colaboradores_por_subestacao.get(id_subestacao, [])
+        if not colaboradores_grupo:
+            ws.merge_cells(start_row=linha, start_column=1, end_row=linha, end_column=4)
+            ws.cell(linha, 1, "Nenhum colaborador ativo vinculado a esta subestacao")
+            ws.cell(linha, 1).font = Font(name="Arial", size=8, italic=True, color="666666")
+            ws.cell(linha, 1).alignment = Alignment(horizontal="left")
+            for coluna in range(1, coluna_total + 1):
+                ws.cell(linha, coluna).border = borda
+            linha += 1
+        else:
+            for colaborador in colaboradores_grupo:
+                ws.cell(linha, 1, colaborador.nome)
+                ws.cell(linha, 2, sigla_subestacao)
+                ws.cell(linha, 3, colaborador.telefone or "-")
+                ws.cell(linha, 4, colaborador.equipe.nome if colaborador.equipe else "-")
+                total_horas = Decimal("0")
+
+                for deslocamento, data_dia in enumerate(dias):
+                    coluna = primeira_coluna_dia + deslocamento
+                    inicio_dia = datetime.combine(data_dia, datetime.min.time())
+                    fim_dia = inicio_dia + timedelta(days=1)
+                    intervalos = []
+
+                    for periodo in periodos_por_colaborador.get(colaborador.id_colaborador, []):
+                        inicio = max(periodo.inicio, inicio_dia, data_inicio)
+                        fim = min(periodo.fim, fim_dia, data_fim)
+                        if fim <= inicio:
+                            continue
+                        total_horas += Decimal(str((fim - inicio).total_seconds() / 3600))
+                        fim_texto = "24:00" if fim == fim_dia else fim.strftime("%H:%M")
+                        intervalos.append(f"{inicio.strftime('%H:%M')}-{fim_texto}")
+
+                    celula = ws.cell(linha, coluna, "\n".join(intervalos))
+                    celula.fill = PatternFill(
+                        "solid",
+                        fgColor=verde_fim_semana if data_dia.weekday() >= 5 else azul_escala if intervalos else branco,
+                    )
+                    celula.font = Font(name="Arial", size=7, color=azul, bold=bool(intervalos))
+                    celula.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                    celula.border = borda
+
+                ws.cell(linha, coluna_total, round(float(total_horas), 2))
+                ws.cell(linha, coluna_total).number_format = '0.00" h"'
+                for coluna in range(1, coluna_total + 1):
+                    celula = ws.cell(linha, coluna)
+                    celula.border = borda
+                    if coluna <= 4:
+                        celula.font = Font(name="Arial", size=8)
+                        celula.alignment = Alignment(horizontal="left" if coluna in (1, 3, 4) else "center", vertical="center")
+                ws.row_dimensions[linha].height = 26
+                linha += 1
+
+        ws.merge_cells(start_row=linha, start_column=1, end_row=linha, end_column=coluna_total)
+        ws.cell(linha, 1, "OBSERVACOES:")
+        ws.cell(linha, 1).font = Font(name="Arial", size=8, bold=True, color=vermelho)
+        ws.cell(linha, 1).border = borda
+        linha += 1
+        ws.merge_cells(start_row=linha, start_column=1, end_row=linha, end_column=coluna_total)
+        ws.cell(
+            linha,
+            1,
+            "1 - Horarios apresentados conforme os registros aprovados, pendentes ou planejados do sistema. "
+            "2 - Registros cancelados e reprovados nao integram esta escala. "
+            "3 - O total considera apenas o trecho dentro da competencia selecionada.",
+        )
+        ws.cell(linha, 1).font = Font(name="Arial", size=7, color="404040")
+        ws.cell(linha, 1).alignment = Alignment(wrap_text=True, vertical="top")
+        ws.cell(linha, 1).border = borda
+        ws.row_dimensions[linha].height = 27
+        linha += 2
+
+    ws.auto_filter.ref = f"A5:{ultima_coluna}5"
+    ws.print_area = f"A1:{ultima_coluna}{max(linha - 1, 5)}"
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.paperSize = ws.PAPERSIZE_A3
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.page_margins.left = 0.2
+    ws.page_margins.right = 0.2
+    ws.page_margins.top = 0.35
+    ws.page_margins.bottom = 0.35
+    ws.sheet_view.zoomScale = 70
     return wb
 
 
@@ -794,6 +994,69 @@ def exportar_folha_ponto_sobreaviso(
         f"folha_ponto_sobreaviso_{limpar_nome_arquivo(colaborador.nome)}_"
         f"{data_inicio.strftime('%Y%m%d')}_{data_fim.strftime('%Y%m%d')}.xlsx"
     )
+    output_path = output_dir / filename
+    wb.save(output_path)
+
+    return FileResponse(
+        path=str(output_path),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=filename,
+    )
+
+
+@router.get("/relatorios/escala-geral/exportar")
+def exportar_escala_geral_sobreaviso(
+    data_inicio: datetime,
+    data_fim: datetime,
+    db: Session = Depends(get_db),
+    _usuario=Depends(require_roles("admin", "mantenedor", "operador")),
+):
+    if data_fim < data_inicio:
+        raise HTTPException(status_code=400, detail="Data final deve ser maior ou igual a data inicial")
+    if (data_fim.date() - data_inicio.date()).days > 62:
+        raise HTTPException(status_code=400, detail="O relatorio geral aceita no maximo 63 dias")
+
+    garantir_colunas_sobreaviso(db)
+    subestacoes = (
+        db.query(Subestacao)
+        .filter(func.upper(Subestacao.status) == "ATIVA")
+        .order_by(Subestacao.nome)
+        .all()
+    )
+    colaboradores = (
+        db.query(SobreavisoColaborador)
+        .options(selectinload(SobreavisoColaborador.equipe))
+        .filter(
+            SobreavisoColaborador.ativo == 1,
+            or_(
+                SobreavisoColaborador.cargo.is_(None),
+                func.lower(SobreavisoColaborador.cargo) != "admin",
+            ),
+        )
+        .order_by(SobreavisoColaborador.nome)
+        .all()
+    )
+    sobreavisos = (
+        db.query(SobreavisoPeriodo)
+        .filter(
+            SobreavisoPeriodo.status.notin_({"REPROVADO", "CANCELADO"}),
+            SobreavisoPeriodo.inicio <= data_fim,
+            SobreavisoPeriodo.fim >= data_inicio,
+        )
+        .order_by(SobreavisoPeriodo.inicio)
+        .all()
+    )
+
+    wb = montar_relatorio_escala_geral(
+        subestacoes,
+        colaboradores,
+        sobreavisos,
+        data_inicio,
+        data_fim,
+    )
+    output_dir = Path("exports") / "sobreaviso"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"escala_geral_sobreaviso_{data_inicio.strftime('%Y%m%d')}_{data_fim.strftime('%Y%m%d')}.xlsx"
     output_path = output_dir / filename
     wb.save(output_path)
 
