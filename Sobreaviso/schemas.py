@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class EquipeSobreavisoBase(BaseModel):
@@ -67,12 +67,28 @@ class ColaboradorSobreavisoResponse(ColaboradorSobreavisoBase):
 
 
 class SobreavisoBase(BaseModel):
-    id_colaborador: int
+    model_config = ConfigDict(populate_by_name=True)
+
+    id_colaborador: int = Field(
+        validation_alias=AliasChoices("id_colaborador", "colaboradorId", "colaborador_id"),
+        gt=0,
+    )
     inicio: datetime
     fim: datetime
     status: str = "PENDENTE"
     origem: str = "GESTOR"
     justificativa: Optional[str] = None
+
+    @field_validator("id_colaborador", mode="before")
+    @classmethod
+    def normalizar_colaborador_selecionado(cls, valor):
+        # Selects HTML enviam o valor como string; componentes ricos podem enviar
+        # um objeto {value: ...}. O contrato interno continua sendo sempre um ID.
+        if isinstance(valor, dict):
+            valor = valor.get("value", valor.get("id_colaborador", valor.get("id")))
+        if isinstance(valor, str):
+            valor = valor.strip()
+        return valor
 
     @model_validator(mode="after")
     def validar_periodo(self):
@@ -86,12 +102,27 @@ class SobreavisoCreate(SobreavisoBase):
 
 
 class SobreavisoUpdate(BaseModel):
-    id_colaborador: Optional[int] = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    id_colaborador: Optional[int] = Field(
+        default=None,
+        validation_alias=AliasChoices("id_colaborador", "colaboradorId", "colaborador_id"),
+        gt=0,
+    )
     inicio: Optional[datetime] = None
     fim: Optional[datetime] = None
     status: Optional[str] = None
     origem: Optional[str] = None
     justificativa: Optional[str] = None
+
+    @field_validator("id_colaborador", mode="before")
+    @classmethod
+    def normalizar_colaborador_selecionado(cls, valor):
+        if isinstance(valor, dict):
+            valor = valor.get("value", valor.get("id_colaborador", valor.get("id")))
+        if isinstance(valor, str):
+            valor = valor.strip()
+        return valor
 
     @model_validator(mode="after")
     def validar_periodo(self):

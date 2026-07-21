@@ -94,7 +94,11 @@ def registrar_historico(
     )
 
 
-def buscar_colaborador_ou_404(db: Session, id_colaborador: int) -> SobreavisoColaborador:
+def buscar_colaborador_ou_404(
+    db: Session,
+    id_colaborador: int,
+    exigir_ativo: bool = False,
+) -> SobreavisoColaborador:
     colaborador = (
         db.query(SobreavisoColaborador)
         .filter(SobreavisoColaborador.id_colaborador == id_colaborador)
@@ -102,6 +106,8 @@ def buscar_colaborador_ou_404(db: Session, id_colaborador: int) -> SobreavisoCol
     )
     if not colaborador:
         raise HTTPException(status_code=404, detail="Colaborador de sobreaviso nao encontrado")
+    if exigir_ativo and not bool(colaborador.ativo):
+        raise HTTPException(status_code=400, detail="O colaborador selecionado esta inativo")
     return colaborador
 
 
@@ -813,7 +819,7 @@ def criar_sobreaviso(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(require_roles("admin", "mantenedor", "operador")),
 ):
-    buscar_colaborador_ou_404(db, dados.id_colaborador)
+    buscar_colaborador_ou_404(db, dados.id_colaborador, exigir_ativo=True)
     status = normalizar_status(dados.status)
     origem = normalizar_origem(dados.origem)
 
@@ -859,7 +865,7 @@ def atualizar_sobreaviso(
     inicio = payload.get("inicio", sobreaviso.inicio)
     fim = payload.get("fim", sobreaviso.fim)
 
-    buscar_colaborador_ou_404(db, id_colaborador)
+    buscar_colaborador_ou_404(db, id_colaborador, exigir_ativo=True)
     if existe_sobreposicao(db, id_colaborador, inicio, fim, id_sobreaviso):
         raise HTTPException(status_code=400, detail="Ja existe sobreaviso no mesmo periodo para este colaborador")
 
