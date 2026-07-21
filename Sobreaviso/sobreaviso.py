@@ -379,8 +379,8 @@ def montar_relatorio_escala_geral(
         dia += timedelta(days=1)
 
     primeira_coluna_dia = 5
-    coluna_total = primeira_coluna_dia + len(dias)
-    ultima_coluna = get_column_letter(coluna_total)
+    coluna_final = primeira_coluna_dia + len(dias) - 1
+    ultima_coluna = get_column_letter(coluna_final)
 
     azul = "17365D"
     azul_claro = "DCE6F1"
@@ -397,18 +397,17 @@ def montar_relatorio_escala_geral(
     ws.column_dimensions["B"].width = 9
     ws.column_dimensions["C"].width = 17
     ws.column_dimensions["D"].width = 15
-    for indice in range(primeira_coluna_dia, coluna_total):
+    for indice in range(primeira_coluna_dia, coluna_final + 1):
         ws.column_dimensions[get_column_letter(indice)].width = 11
-    ws.column_dimensions[ultima_coluna].width = 10
 
-    ws.merge_cells(start_row=1, start_column=4, end_row=1, end_column=coluna_total)
+    ws.merge_cells(start_row=1, start_column=4, end_row=1, end_column=coluna_final)
     ws.cell(1, 4, "ESCALA GERAL DE SOBREAVISO - RIALMA TRANSMISSORA DE ENERGIA V")
     ws.cell(1, 4).font = Font(name="Arial", size=16, bold=True, color=branco)
     ws.cell(1, 4).fill = PatternFill("solid", fgColor=azul)
     ws.cell(1, 4).alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 27
 
-    ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=coluna_total)
+    ws.merge_cells(start_row=2, start_column=4, end_row=2, end_column=coluna_final)
     ws.cell(2, 4, f"COMPETENCIA: {data_inicio.strftime('%d/%m/%Y')} A {data_fim.strftime('%d/%m/%Y')}")
     ws.cell(2, 4).font = Font(name="Arial", size=10, bold=True, color=azul)
     ws.cell(2, 4).fill = PatternFill("solid", fgColor=azul_claro)
@@ -433,7 +432,7 @@ def montar_relatorio_escala_geral(
 
     linha = 4
     for id_subestacao, nome_subestacao, sigla_subestacao in grupos:
-        ws.merge_cells(start_row=linha, start_column=1, end_row=linha, end_column=coluna_total)
+        ws.merge_cells(start_row=linha, start_column=1, end_row=linha, end_column=coluna_final)
         ws.cell(linha, 1, f"{MESES_PT[data_fim.month - 1]} - {nome_subestacao.upper()}")
         ws.cell(linha, 1).font = Font(name="Arial", size=10, bold=True, color=azul)
         ws.cell(linha, 1).fill = PatternFill("solid", fgColor=cinza_secao)
@@ -460,11 +459,6 @@ def montar_relatorio_escala_geral(
             celula.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
             celula.border = borda
 
-        celula_total = ws.cell(linha, coluna_total, "Total\nhoras")
-        celula_total.fill = PatternFill("solid", fgColor=cinza)
-        celula_total.font = Font(name="Arial", size=8, bold=True, color=azul)
-        celula_total.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        celula_total.border = borda
         ws.row_dimensions[linha].height = 28
         linha += 1
 
@@ -474,7 +468,7 @@ def montar_relatorio_escala_geral(
             ws.cell(linha, 1, "Nenhum colaborador ativo vinculado a esta subestacao")
             ws.cell(linha, 1).font = Font(name="Arial", size=8, italic=True, color="666666")
             ws.cell(linha, 1).alignment = Alignment(horizontal="left")
-            for coluna in range(1, coluna_total + 1):
+            for coluna in range(1, coluna_final + 1):
                 ws.cell(linha, coluna).border = borda
             linha += 1
         else:
@@ -483,8 +477,6 @@ def montar_relatorio_escala_geral(
                 ws.cell(linha, 2, sigla_subestacao)
                 ws.cell(linha, 3, colaborador.telefone or "-")
                 ws.cell(linha, 4, colaborador.equipe.nome if colaborador.equipe else "-")
-                total_horas = Decimal("0")
-
                 for deslocamento, data_dia in enumerate(dias):
                     coluna = primeira_coluna_dia + deslocamento
                     inicio_dia = datetime.combine(data_dia, datetime.min.time())
@@ -496,7 +488,6 @@ def montar_relatorio_escala_geral(
                         fim = min(periodo.fim, fim_dia, data_fim)
                         if fim <= inicio:
                             continue
-                        total_horas += Decimal(str((fim - inicio).total_seconds() / 3600))
                         fim_texto = "24:00" if fim == fim_dia else fim.strftime("%H:%M")
                         intervalos.append(f"{inicio.strftime('%H:%M')}-{fim_texto}")
 
@@ -509,9 +500,7 @@ def montar_relatorio_escala_geral(
                     celula.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
                     celula.border = borda
 
-                ws.cell(linha, coluna_total, round(float(total_horas), 2))
-                ws.cell(linha, coluna_total).number_format = '0.00" h"'
-                for coluna in range(1, coluna_total + 1):
+                for coluna in range(1, coluna_final + 1):
                     celula = ws.cell(linha, coluna)
                     celula.border = borda
                     if coluna <= 4:
@@ -520,18 +509,17 @@ def montar_relatorio_escala_geral(
                 ws.row_dimensions[linha].height = 26
                 linha += 1
 
-        ws.merge_cells(start_row=linha, start_column=1, end_row=linha, end_column=coluna_total)
+        ws.merge_cells(start_row=linha, start_column=1, end_row=linha, end_column=coluna_final)
         ws.cell(linha, 1, "OBSERVACOES:")
         ws.cell(linha, 1).font = Font(name="Arial", size=8, bold=True, color=vermelho)
         ws.cell(linha, 1).border = borda
         linha += 1
-        ws.merge_cells(start_row=linha, start_column=1, end_row=linha, end_column=coluna_total)
+        ws.merge_cells(start_row=linha, start_column=1, end_row=linha, end_column=coluna_final)
         ws.cell(
             linha,
             1,
             "1 - Horarios apresentados conforme os registros aprovados, pendentes ou planejados do sistema. "
-            "2 - Registros cancelados e reprovados nao integram esta escala. "
-            "3 - O total considera apenas o trecho dentro da competencia selecionada.",
+            "2 - Registros cancelados e reprovados nao integram esta escala.",
         )
         ws.cell(linha, 1).font = Font(name="Arial", size=7, color="404040")
         ws.cell(linha, 1).alignment = Alignment(wrap_text=True, vertical="top")
@@ -1163,6 +1151,49 @@ def atualizar_sobreaviso(
     )
     db.commit()
     return buscar_sobreaviso_ou_404(db, id_sobreaviso)
+
+
+@router.delete("/{id_sobreaviso}")
+def excluir_sobreaviso_cancelado(
+    id_sobreaviso: int,
+    db: Session = Depends(get_db),
+    _usuario: Usuario = Depends(require_roles("admin")),
+):
+    sobreaviso = buscar_sobreaviso_ou_404(db, id_sobreaviso)
+    if sobreaviso.status != "CANCELADO":
+        raise HTTPException(
+            status_code=400,
+            detail="Somente sobreavisos cancelados podem ser excluidos",
+        )
+
+    solicitacoes_ids = [
+        item[0]
+        for item in db.query(SobreavisoSolicitacaoAjuste.id_solicitacao)
+        .filter(SobreavisoSolicitacaoAjuste.id_sobreaviso == id_sobreaviso)
+        .all()
+    ]
+
+    try:
+        if solicitacoes_ids:
+            db.query(SobreavisoHistorico).filter(
+                SobreavisoHistorico.entidade == "SOLICITACAO_AJUSTE",
+                SobreavisoHistorico.entidade_id.in_(solicitacoes_ids),
+            ).delete(synchronize_session=False)
+
+        db.query(SobreavisoSolicitacaoAjuste).filter(
+            SobreavisoSolicitacaoAjuste.id_sobreaviso == id_sobreaviso
+        ).delete(synchronize_session=False)
+        db.query(SobreavisoHistorico).filter(
+            SobreavisoHistorico.entidade == "SOBREAVISO",
+            SobreavisoHistorico.entidade_id == id_sobreaviso,
+        ).delete(synchronize_session=False)
+        db.delete(sobreaviso)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return {"message": "Sobreaviso cancelado excluido", "id_sobreaviso": id_sobreaviso}
 
 
 def alterar_status_sobreaviso(
