@@ -97,8 +97,44 @@ class SobreavisoBase(BaseModel):
         return self
 
 
-class SobreavisoCreate(SobreavisoBase):
+class SobreavisoIntervaloBase(BaseModel):
+    tipo: str
+    inicio: datetime
+    fim: datetime
+    id_ocorrencia: Optional[int] = None
+    observacao: Optional[str] = None
+
+    @field_validator("tipo")
+    @classmethod
+    def validar_tipo(cls, valor: str):
+        normalizado = valor.strip().upper()
+        if normalizado not in {"SOBREAVISO", "ATENDIMENTO"}:
+            raise ValueError("Tipo de intervalo deve ser SOBREAVISO ou ATENDIMENTO")
+        return normalizado
+
+    @model_validator(mode="after")
+    def validar_intervalo(self):
+        if self.fim <= self.inicio:
+            raise ValueError("O fim do intervalo deve ser maior que o inicio")
+        return self
+
+
+class SobreavisoIntervaloCreate(SobreavisoIntervaloBase):
     pass
+
+
+class SobreavisoIntervaloResponse(SobreavisoIntervaloBase):
+    id_intervalo: int
+    id_sobreaviso: int
+    criado_em: Optional[datetime] = None
+    atualizado_em: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SobreavisoCreate(SobreavisoBase):
+    intervalos: list[SobreavisoIntervaloCreate] = []
 
 
 class SobreavisoUpdate(BaseModel):
@@ -114,6 +150,7 @@ class SobreavisoUpdate(BaseModel):
     status: Optional[str] = None
     origem: Optional[str] = None
     justificativa: Optional[str] = None
+    intervalos: Optional[list[SobreavisoIntervaloCreate]] = None
 
     @field_validator("id_colaborador", mode="before")
     @classmethod
@@ -134,11 +171,13 @@ class SobreavisoUpdate(BaseModel):
 class SobreavisoResponse(SobreavisoBase):
     id_sobreaviso: int
     total_horas: Decimal
+    total_horas_atendimento: Decimal = Decimal("0")
     criado_por: Optional[int] = None
     atualizado_por: Optional[int] = None
     criado_em: Optional[datetime] = None
     atualizado_em: Optional[datetime] = None
     colaborador: Optional[ColaboradorSobreavisoResponse] = None
+    intervalos: list[SobreavisoIntervaloResponse] = []
 
     class Config:
         from_attributes = True

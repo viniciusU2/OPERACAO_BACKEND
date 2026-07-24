@@ -51,6 +51,7 @@ class SobreavisoPeriodo(Base):
     inicio = Column(DateTime, nullable=False, index=True)
     fim = Column(DateTime, nullable=False, index=True)
     total_horas = Column(DECIMAL(10, 2), nullable=False, default=0)
+    total_horas_atendimento = Column(DECIMAL(10, 2), nullable=False, default=0)
     status = Column(String(30), nullable=False, default="PENDENTE")
     origem = Column(String(30), nullable=False, default="GESTOR")
     justificativa = Column(Text, nullable=True)
@@ -65,6 +66,35 @@ class SobreavisoPeriodo(Base):
         back_populates="sobreaviso",
         cascade="all, delete-orphan",
     )
+    intervalos = relationship(
+        "SobreavisoIntervalo",
+        back_populates="sobreaviso",
+        cascade="all, delete-orphan",
+        order_by="SobreavisoIntervalo.inicio",
+    )
+
+
+class SobreavisoIntervalo(Base):
+    __tablename__ = "sobreaviso_intervalo"
+
+    id_intervalo = Column(Integer, primary_key=True, index=True)
+    id_sobreaviso = Column(
+        Integer,
+        ForeignKey("sobreaviso_periodo.id_sobreaviso", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    tipo = Column(String(20), nullable=False, index=True)
+    inicio = Column(DateTime, nullable=False, index=True)
+    fim = Column(DateTime, nullable=False, index=True)
+    id_ocorrencia = Column(Integer, nullable=True, index=True)
+    observacao = Column(Text, nullable=True)
+    criado_por = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    atualizado_por = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    criado_em = Column(DateTime, default=datetime.utcnow)
+    atualizado_em = Column(DateTime, nullable=True)
+
+    sobreaviso = relationship("SobreavisoPeriodo", back_populates="intervalos")
 
 
 class SobreavisoSolicitacaoAjuste(Base):

@@ -23,6 +23,7 @@ from models.sobreaviso_models import (
     SobreavisoColaborador,
     SobreavisoEquipe,
     SobreavisoHistorico,
+    SobreavisoIntervalo,
     SobreavisoPeriodo,
     SobreavisoSolicitacaoAjuste,
 )
@@ -37,6 +38,8 @@ from Sobreaviso.schemas import (
     ResumoSobreavisoResponse,
     SobreavisoCreate,
     SobreavisoResponse,
+    SobreavisoIntervaloCreate,
+    SobreavisoIntervaloResponse,
     SobreavisoUpdate,
     SolicitacaoAjusteCreate,
     SolicitacaoAjusteResponse,
@@ -59,6 +62,54 @@ def calcular_total_horas(inicio: datetime, fim: datetime) -> Decimal:
         raise HTTPException(status_code=400, detail="O fim deve ser maior que o inicio")
     segundos = (fim - inicio).total_seconds()
     return Decimal(str(round(segundos / 3600, 2)))
+
+
+def validar_intervalos(
+    inicio_programado: datetime,
+    fim_programado: datetime,
+    intervalos: list[SobreavisoIntervaloCreate],
+):
+    """Valida a linha do tempo e devolve os totais por tipo."""
+    ordenados = sorted(intervalos, key=lambda item: item.inicio)
+    anterior = None
+    total_sobreaviso = Decimal("0")
+    total_atendimento = Decimal("0")
+    for item in ordenados:
+        if item.inicio < inicio_programado or item.fim > fim_programado:
+            raise HTTPException(status_code=400, detail="Intervalo fora do periodo programado")
+        if anterior and item.inicio < anterior.fim:
+            raise HTTPException(status_code=400, detail="Nao sao permitidos intervalos sobrepostos")
+        horas = calcular_total_horas(item.inicio, item.fim)
+        if item.tipo == "SOBREAVISO":
+            total_sobreaviso += horas
+        else:
+            total_atendimento += horas
+        anterior = item
+    return ordenados, total_sobreaviso, total_atendimento
+
+
+def substituir_intervalos(
+    db: Session,
+    sobreaviso: SobreavisoPeriodo,
+    intervalos: list[SobreavisoIntervaloCreate],
+    usuario: Usuario,
+):
+    ordenados, total_sobreaviso, total_atendimento = validar_intervalos(
+        sobreaviso.inicio, sobreaviso.fim, intervalos
+    )
+    sobreaviso.intervalos.clear()
+    for item in ordenados:
+        sobreaviso.intervalos.append(SobreavisoIntervalo(
+            tipo=item.tipo,
+            inicio=item.inicio,
+            fim=item.fim,
+            id_ocorrencia=item.id_ocorrencia,
+            observacao=item.observacao,
+            criado_por=usuario.id,
+            atualizado_por=usuario.id,
+        ))
+    sobreaviso.total_horas = total_sobreaviso
+    sobreaviso.total_horas_atendimento = total_atendimento
 
 
 def normalizar_status(status: str) -> str:
@@ -118,7 +169,10 @@ def buscar_colaborador_ou_404(
 def buscar_sobreaviso_ou_404(db: Session, id_sobreaviso: int) -> SobreavisoPeriodo:
     sobreaviso = (
         db.query(SobreavisoPeriodo)
-        .options(selectinload(SobreavisoPeriodo.colaborador))
+        .options(
+            selectinload(SobreavisoPeriodo.colaborador),
+            selectinload(SobreavisoPeriodo.intervalos),
+        )
         .filter(SobreavisoPeriodo.id_sobreaviso == id_sobreaviso)
         .first()
     )
@@ -214,7 +268,7 @@ def montar_relatorio_folha_ponto(
 ):
     wb = Workbook()
     ws = wb.active
-    ws.title = "FOLHA DE PONTO"
+    ws.title = "FOLHA DE PONTO GERAL"
 
     thin = Side(style="thin", color="444444")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -226,7 +280,7 @@ def montar_relatorio_folha_ponto(
         ws.column_dimensions[get_column_letter(col)].width = 13
 
     ws.merge_cells("A1:N1")
-    ws["A1"] = f"FOLHA DE PONTO - {data_inicio.strftime('%d/%m/%Y')} A {data_fim.strftime('%d/%m/%Y')}"
+    ws["A1"] = f"FOLHA DE PONTO GERAL - {data_inicio.strftime('%d/%m/%Y')} A {data_fim.strftime('%d/%m/%Y')}"
     ws["A1"].font = Font(bold=True, color="FFFFFF", size=14)
     ws["A1"].fill = title_fill
     ws["A1"].alignment = Alignment(horizontal="center")
@@ -296,7 +350,6 @@ def montar_relatorio_folha_ponto(
     dia_atual = data_inicio.date()
     while dia_atual <= data_fim.date():
         eventos = horas_por_dia.get(dia_atual.isoformat(), [])
-        primeiro = eventos[0] if eventos else None
         total_dia = sum((evento[2] for evento in eventos), Decimal("0"))
 
         ws.cell(row=row, column=1, value=dia_atual.day)
@@ -305,13 +358,24 @@ def montar_relatorio_folha_ponto(
         ws.cell(row=row, column=4, value=dia_atual)
         ws.cell(row=row, column=8, value="0:00")
 
-        if primeiro:
-            inicio, fim, _, observacao = primeiro
+        if eventos:
+            # O mesmo dia pode ter varios trechos de sobreaviso. A folha tem
+            # apenas uma linha diaria, portanto exibe a faixa completa e as
+            # interrupcoes na coluna INTERVALO, sem ocultar os trechos seguintes.
+            inicio = eventos[0][0]
+            fim = eventos[-1][1]
+            lacunas = []
+            for evento_anterior, proximo_evento in zip(eventos, eventos[1:]):
+                if proximo_evento[0] > evento_anterior[1]:
+                    lacunas.append(
+                        f"{formatar_hora_excel(evento_anterior[1])}-{formatar_hora_excel(proximo_evento[0])}"
+                    )
+            observacoes = [evento[3] for evento in eventos if evento[3]]
             ws.cell(row=row, column=9, value=formatar_hora_excel(inicio))
-            ws.cell(row=row, column=10, value="")
+            ws.cell(row=row, column=10, value=" / ".join(lacunas))
             ws.cell(row=row, column=11, value="24:00" if fim.hour == 23 and fim.minute == 59 else formatar_hora_excel(fim))
             ws.cell(row=row, column=12, value=horas_para_texto(total_dia))
-            ws.cell(row=row, column=13, value=observacao)
+            ws.cell(row=row, column=13, value=" | ".join(dict.fromkeys(observacoes)))
             ws.cell(row=row, column=14, value=horas_para_texto(total_dia))
         else:
             ws.cell(row=row, column=12, value="0:00")
@@ -562,7 +626,39 @@ def garantir_colunas_sobreaviso(db: Session):
     ).first()
     if not existe:
         db.execute(text("ALTER TABLE sobreaviso_colaborador ADD COLUMN id_subestacao INT NULL"))
-        db.commit()
+    total_atendimento = db.execute(
+        text("SHOW COLUMNS FROM sobreaviso_periodo LIKE :coluna"),
+        {"coluna": "total_horas_atendimento"},
+    ).first()
+    if not total_atendimento:
+        db.execute(text("ALTER TABLE sobreaviso_periodo ADD COLUMN total_horas_atendimento DECIMAL(10,2) NOT NULL DEFAULT 0"))
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS sobreaviso_intervalo (
+            id_intervalo INT AUTO_INCREMENT PRIMARY KEY,
+            id_sobreaviso INT NOT NULL,
+            tipo VARCHAR(20) NOT NULL,
+            inicio DATETIME NOT NULL,
+            fim DATETIME NOT NULL,
+            id_ocorrencia INT NULL,
+            observacao TEXT NULL,
+            criado_por INT NULL,
+            atualizado_por INT NULL,
+            criado_em DATETIME NULL,
+            atualizado_em DATETIME NULL,
+            INDEX ix_sobreaviso_intervalo_sobreaviso (id_sobreaviso),
+            INDEX ix_sobreaviso_intervalo_inicio (inicio),
+            CONSTRAINT fk_sobreaviso_intervalo_periodo FOREIGN KEY (id_sobreaviso)
+                REFERENCES sobreaviso_periodo(id_sobreaviso) ON DELETE CASCADE
+        ) ENGINE=InnoDB
+    """))
+    db.execute(text("""
+        INSERT INTO sobreaviso_intervalo (id_sobreaviso, tipo, inicio, fim, criado_por, atualizado_por, criado_em)
+        SELECT p.id_sobreaviso, 'SOBREAVISO', p.inicio, p.fim, p.criado_por, p.atualizado_por, p.criado_em
+        FROM sobreaviso_periodo p
+        LEFT JOIN sobreaviso_intervalo i ON i.id_sobreaviso = p.id_sobreaviso
+        WHERE i.id_intervalo IS NULL
+    """))
+    db.commit()
 
 
 def equipe_padrao_id(db: Session) -> int:
@@ -1082,6 +1178,7 @@ def criar_sobreaviso(
         inicio=dados.inicio,
         fim=dados.fim,
         total_horas=calcular_total_horas(dados.inicio, dados.fim),
+        total_horas_atendimento=Decimal("0"),
         status=status,
         origem=origem,
         justificativa=dados.justificativa,
@@ -1090,6 +1187,8 @@ def criar_sobreaviso(
     )
     db.add(sobreaviso)
     db.flush()
+    if dados.intervalos:
+        substituir_intervalos(db, sobreaviso, dados.intervalos, usuario)
     registrar_historico(
         db,
         "SOBREAVISO",
@@ -1128,6 +1227,7 @@ def atualizar_sobreaviso(
         "justificativa": sobreaviso.justificativa,
     }
 
+    intervalos = payload.pop("intervalos", None)
     for campo, valor in payload.items():
         if campo == "status" and valor is not None:
             valor = normalizar_status(valor)
@@ -1135,7 +1235,14 @@ def atualizar_sobreaviso(
             valor = normalizar_origem(valor)
         setattr(sobreaviso, campo, valor)
 
-    sobreaviso.total_horas = calcular_total_horas(inicio, fim)
+    if intervalos is not None:
+        substituir_intervalos(db, sobreaviso, intervalos, usuario)
+    elif sobreaviso.intervalos:
+        # Uma alteracao da escala nao pode deixar a linha do tempo fora da faixa.
+        validar_intervalos(inicio, fim, sobreaviso.intervalos)
+    else:
+        sobreaviso.total_horas = calcular_total_horas(inicio, fim)
+        sobreaviso.total_horas_atendimento = Decimal("0")
     sobreaviso.atualizado_por = usuario.id
     sobreaviso.atualizado_em = datetime.utcnow()
 
