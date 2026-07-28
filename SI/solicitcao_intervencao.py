@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from auth.dependencies import require_roles
 from database import get_db
 from models.SI_models import solicitacao_intervencao
@@ -77,7 +77,8 @@ def formatar_risco_postergacao(valor):
         "SIM_EQUIPAMENTO": "SIM - Equipamento",
         "SIM_PESSOA": "SIM - Pessoa",
     }
-    return valores.get(str(valor or "").strip(), limpar(valor))
+    valor_normalizado = str(valor or "NAO").strip().upper()
+    return valores.get(valor_normalizado, limpar(valor))
 
 from openpyxl.utils import range_boundaries
 
@@ -355,7 +356,12 @@ def criar_si(dados: SICreate, db: Session = Depends(get_db)):
 @router.get("", response_model=list[SIResponse])
 def listar_si(db: Session = Depends(get_db)):
     garantir_colunas_si(db)
-    return db.query(solicitacao_intervencao).all()
+    return (
+        db.query(solicitacao_intervencao)
+        .options(selectinload(solicitacao_intervencao.ativo))
+        .order_by(solicitacao_intervencao.id_si.desc())
+        .all()
+    )
 
 
 # ==============================

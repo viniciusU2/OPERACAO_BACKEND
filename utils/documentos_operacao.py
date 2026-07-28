@@ -36,11 +36,11 @@ def abreviar_tipo_ativo(nome):
     if "TP" in normalizado or "POTENCIAL" in normalizado:
         return "TP"
     if "REATOR" in normalizado:
-        return "RC"
+        return "RE"
     if "TRANSFORMADOR" in normalizado or "TRAFO" in normalizado:
         return "TR"
     if "BARRA" in normalizado:
-        return "BR"
+        return "BA"
     if "TORRE" in normalizado:
         return "TOR"
 

@@ -48,3 +48,7 @@ class SolicitacaoServico(Base):
     @property
     def id_ss(self):
         return self.id
+
+    @property
+    def codigo_ativo(self):
+        return self.ativo.codigo_ativo if self.ativo else None

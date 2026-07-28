@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pymysql import IntegrityError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from database import get_db
 from models.OS_models import OrdemServico
 from OS.schemas import (
@@ -177,19 +177,7 @@ SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
 # =========================
 # 🔥 GERAR NUMERO OS
 # =========================
-def codigo_ativo_para_numero_os(codigo_ativo: str | None, numero_base: str, limite: int = 30) -> str:
-    codigo = re.sub(r"[^A-Za-z0-9\-]", "", str(codigo_ativo or ""))
-    if not codigo:
-        return numero_base
-
-    tamanho_disponivel = limite - len(numero_base) - 1
-    if tamanho_disponivel <= 0:
-        return numero_base[:limite]
-
-    return f"{numero_base}-{codigo[:tamanho_disponivel]}"
-
-
-def gerar_numero_os(db: Session, sigla: str, codigo_ativo: str | None) -> tuple[str, str]:
+def gerar_numero_os(db: Session, sigla: str) -> tuple[str, str]:
     ano_atual = datetime.now().year
 
     # 🔹 Buscar OS existentes da mesma subestação e ano
@@ -212,9 +200,6 @@ def gerar_numero_os(db: Session, sigla: str, codigo_ativo: str | None) -> tuple[
     # 🔹 Sanitizar código do ativo (opcional mas recomendado)
     numero_os = f"OS-{sigla}-{numero_formatado}-{ano_atual}"
     numero_apr = f"APR-{sigla}-{numero_formatado}-{ano_atual}"
-
-    if codigo_ativo:
-        numero_os = codigo_ativo_para_numero_os(codigo_ativo, numero_os)
 
     return numero_os, numero_apr
 
@@ -281,7 +266,7 @@ def criar_ordem_servico(
         os_data.especie = especie_documento_por_ativo(ativo) or os_data.especie
 
     os_data.prioridade = normalizar_prioridade_operacao(os_data.prioridade)
-    os_data.numero_os,  os_data.numero_apr = gerar_numero_os(db, sigla, codigo_ativo)
+    os_data.numero_os, os_data.numero_apr = gerar_numero_os(db, sigla)
 
     # 🔹 Criar OS
     data = os_data.dict(exclude={"codigo_ativo"})
@@ -438,7 +423,9 @@ def listar_os(
     id_ativo: int | None = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(OS_models.OrdemServico)
+    query = db.query(OS_models.OrdemServico).options(
+        selectinload(OS_models.OrdemServico.ativo).selectinload(Ativo.tipo_ativo)
+    )
 
     if id_ativo:
         query = query.filter(
@@ -454,6 +441,9 @@ def listar_os(
 ):
     return (
         db.query(OS_models.OrdemServico)
+        .options(
+            selectinload(OS_models.OrdemServico.ativo).selectinload(Ativo.tipo_ativo)
+        )
         .filter(OS_models.OrdemServico.id_ativo == id_ativo)
         .all()
     )
@@ -925,7 +915,7 @@ def criar_os_lote_por_tipo_ativo(
 
    
 
-    payload.numero_os,  payload.numero_apr = gerar_numero_os(db, sigla, codigo_ativo)
+    payload.numero_os, payload.numero_apr = gerar_numero_os(db, sigla)
     
   
 
@@ -954,7 +944,7 @@ def criar_os_lote_por_tipo_ativo(
         numero_formatado = str(numero_atual).zfill(padding)
 
         numero_os_base = f"{prefixo}{numero_formatado}-{ano}"
-        numero_os_final = codigo_ativo_para_numero_os(ativo.codigo_ativo, numero_os_base)
+        numero_os_final = numero_os_base
         numero_apr_final = f"{prefixo2}{numero_formatado}-{ano}"
 
         fase = normalizar_fase(ativo.fase)
@@ -1439,11 +1429,7 @@ def gerar_os_por_planos_manutencao(
                     )
                     continue
 
-                numero_os, numero_apr = gerar_numero_os(
-                    db,
-                    sigla,
-                    ativo.codigo_ativo,
-                )
+                numero_os, numero_apr = gerar_numero_os(db, sigla)
 
                 itens_descricao = "; ".join(
                     item.nome_item

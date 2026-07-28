@@ -37,7 +37,7 @@ class solicitacao_intervencao(Base):
     risco_desligamento = Column(Text)
     condicoes_climaticas = Column(Text)
     execucao_periodo_noturno = Column(Text)
-    postergacao_traz_risco = Column(String(30))
+    postergacao_traz_risco = Column(String(30), default="NAO")
     quais_risco_desligamento = Column(Text)
     quais_condicoes_climaticas = Column(Text)
     quais_execucao_periodo_noturno = Column(Text)
@@ -73,3 +73,8 @@ class solicitacao_intervencao(Base):
 
 
     subestacao = relationship("Subestacao", back_populates="solicitacao_intervencao")
+    ativo = relationship("Ativo")
+
+    @property
+    def codigo_ativo(self):
+        return self.ativo.codigo_ativo if self.ativo else None

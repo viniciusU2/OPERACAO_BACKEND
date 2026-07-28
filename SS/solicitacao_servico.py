@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from openpyxl.utils import range_boundaries
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from auth.dependencies import require_roles
@@ -120,7 +120,7 @@ def gerar_numero_ss(db: Session, sigla: str):
     return f"SS-{sigla}-{str(proximo).zfill(4)}-{ano_atual}"
 
 
-def gerar_numero_os_atendimento_ss(db: Session, sigla: str, codigo_ativo: str | None):
+def gerar_numero_os_atendimento_ss(db: Session, sigla: str):
     ano_atual = datetime.now().year
     registros = (
         db.query(OrdemServico.numero_os)
@@ -138,10 +138,6 @@ def gerar_numero_os_atendimento_ss(db: Session, sigla: str, codigo_ativo: str | 
     numero_formatado = str(proximo).zfill(4)
     numero_os = f"OS-{sigla}-{numero_formatado}-{ano_atual}"
     numero_apr = f"APR-{sigla}-{numero_formatado}-{ano_atual}"
-
-    if codigo_ativo:
-        codigo_seguro = re.sub(r"[^A-Za-z0-9\-]", "", codigo_ativo)
-        numero_os = f"{numero_os}-{codigo_seguro}"
 
     return numero_os, numero_apr
 
@@ -220,7 +216,11 @@ def criar_ss(ss: SolicitacaoServicoCreate, db: Session = Depends(get_db)):
 
 @router.get("", response_model=list[SolicitacaoServicoResponse])
 def listar_ss(db: Session = Depends(get_db)):
-    return db.query(SolicitacaoServico).all()
+    return (
+        db.query(SolicitacaoServico)
+        .options(selectinload(SolicitacaoServico.ativo))
+        .all()
+    )
 
 
 @router.get("/{id_ss}", response_model=SolicitacaoServicoResponse)
@@ -324,7 +324,6 @@ def atender_ss(
     numero_os, numero_apr = gerar_numero_os_atendimento_ss(
         db,
         sigla,
-        ativo.codigo_ativo,
     )
 
     nova_os = OrdemServico(

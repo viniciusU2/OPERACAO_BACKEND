@@ -91,5 +91,6 @@ class SolicitacaoServicoResponse(SolicitacaoServicoBase):
 
     id: int
     id_ss: int
+    codigo_ativo: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
