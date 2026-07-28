@@ -35,6 +35,7 @@ def garantir_colunas_si(db: Session):
         "risco_desligamento": "TEXT NULL",
         "condicoes_climaticas": "TEXT NULL",
         "execucao_periodo_noturno": "TEXT NULL",
+        "postergacao_traz_risco": "VARCHAR(30) NULL",
         "quais_risco_desligamento": "TEXT NULL",
         "quais_condicoes_climaticas": "TEXT NULL",
         "quais_execucao_periodo_noturno": "TEXT NULL",
@@ -68,6 +69,15 @@ def limpar(valor):
     if isinstance(valor, datetime):
         return valor.strftime("%d/%m/%Y %H:%M")
     return str(valor)
+
+
+def formatar_risco_postergacao(valor):
+    valores = {
+        "NAO": "NÃO",
+        "SIM_EQUIPAMENTO": "SIM - Equipamento",
+        "SIM_PESSOA": "SIM - Pessoa",
+    }
+    return valores.get(str(valor or "").strip(), limpar(valor))
 
 from openpyxl.utils import range_boundaries
 
@@ -136,6 +146,7 @@ MAPEAMENTO_CELULAS = {
     "SUBSTITUTO": "F19",
     "APROVEITAMENTO": "A21",
     "INCLUSAO_SERVICO": "E21",
+    "POSTERGACAO_TRAZ_RISCO": "G21",
     "ORGAOS": "I21",
     "TIPO_PROGRAMACAO": "A24",
     "DIAS_EXCECAO": "C24",
@@ -255,6 +266,9 @@ def montar_contexto_si(si, ativo=None, sub=None):
 
         "APROVEITAMENTO": sim_nao(getattr(si, "aproveitamento", "")),
         "INCLUSAO_SERVICO": sim_nao(getattr(si, "inclusao_servico", "")),
+        "POSTERGACAO_TRAZ_RISCO": formatar_risco_postergacao(
+            getattr(si, "postergacao_traz_risco", "")
+        ),
         "ORGAOS": limpar(getattr(si, "orgaos", "")),
         "TIPO_PROGRAMACAO": limpar(primeiro(
             getattr(si, "tipo_programacao", ""),

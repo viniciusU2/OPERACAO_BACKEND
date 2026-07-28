@@ -39,6 +39,7 @@ class SIBase(BaseModel):
     risco_desligamento: Optional[str] = None
     condicoes_climaticas: Optional[str] = None
     execucao_periodo_noturno: Optional[str] = None
+    postergacao_traz_risco: Optional[str] = None
     quais_risco_desligamento: Optional[str] = None
     quais_condicoes_climaticas: Optional[str] = None
     quais_execucao_periodo_noturno: Optional[str] = None
