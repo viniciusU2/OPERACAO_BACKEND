@@ -276,10 +276,22 @@ def montar_relatorio_folha_ponto(
     section_fill = PatternFill("solid", fgColor="E2F0D9")
     title_fill = PatternFill("solid", fgColor="1F4E78")
 
-    for col in range(1, 15):
-        ws.column_dimensions[get_column_letter(col)].width = 13
+    larguras_colunas = {
+        "A": 14,
+        "B": 20,
+        "C": 18,
+        "D": 24,
+        "E": 14,
+        "F": 20,
+        "G": 14,
+        "H": 15,
+        "I": 22,
+        "J": 13,
+    }
+    for coluna, largura in larguras_colunas.items():
+        ws.column_dimensions[coluna].width = largura
 
-    ws.merge_cells("A1:N1")
+    ws.merge_cells("A1:J1")
     ws["A1"] = f"FOLHA DE PONTO GERAL - {data_inicio.strftime('%d/%m/%Y')} A {data_fim.strftime('%d/%m/%Y')}"
     ws["A1"].font = Font(bold=True, color="FFFFFF", size=14)
     ws["A1"].fill = title_fill
@@ -291,12 +303,10 @@ def montar_relatorio_folha_ponto(
     ws["D2"] = colaborador.matricula
     ws["A3"] = "FUNCAO:"
     ws["B3"] = colaborador.cargo or ""
-    ws["C3"] = "JORNADA DE TRABALHO:"
-    ws["D3"] = "07:00 AS 17:00 HS"
-    ws["K3"] = "MES:"
-    ws["L3"] = data_fim.strftime("%m")
-    ws["M3"] = "ANO:"
-    ws["N3"] = data_fim.year
+    ws["G3"] = "MES:"
+    ws["H3"] = data_fim.strftime("%m")
+    ws["I3"] = "ANO:"
+    ws["J3"] = data_fim.year
     ws["A4"] = "EMPRESA"
     ws["B4"] = "RIALMA TRANSMISSORA"
     ws["C4"] = "LOCALIDADE:"
@@ -310,10 +320,8 @@ def montar_relatorio_folha_ponto(
 
     ws.merge_cells("A7:D7")
     ws["A7"] = "DIAS"
-    ws.merge_cells("E7:H7")
-    ws["E7"] = "EXPEDIENTE NORMAL"
-    ws.merge_cells("I7:N7")
-    ws["I7"] = "SOBREAVISO"
+    ws.merge_cells("E7:J7")
+    ws["E7"] = "SOBREAVISO"
     ws["A8"] = "DIA"
     ws["B8"] = "CODIGO"
     ws["C8"] = "N."
@@ -322,15 +330,11 @@ def montar_relatorio_folha_ponto(
     ws["F8"] = "INTERVALO"
     ws["G8"] = "TERMINO"
     ws["H8"] = "TOTAL DIARIO"
-    ws["I8"] = "INICIO"
-    ws["J8"] = "INTERVALO"
-    ws["K8"] = "TERMINO"
-    ws["L8"] = "TOTAL DIARIO"
-    ws["M8"] = "OBSERVACOES"
-    ws["N8"] = "TOTAL"
+    ws["I8"] = "OBSERVACOES"
+    ws["J8"] = "TOTAL"
 
     for row in range(7, 9):
-        for col in range(1, 15):
+        for col in range(1, 11):
             cell = ws.cell(row=row, column=col)
             cell.fill = section_fill if row == 7 else header_fill
             cell.font = Font(bold=True)
@@ -356,8 +360,6 @@ def montar_relatorio_folha_ponto(
         ws.cell(row=row, column=2, value=DIAS_SEMANA[dia_atual.weekday()])
         ws.cell(row=row, column=3, value=dia_atual.weekday() + 1)
         ws.cell(row=row, column=4, value=dia_atual)
-        ws.cell(row=row, column=8, value="0:00")
-
         if eventos:
             # O mesmo dia pode ter varios trechos de sobreaviso. A folha tem
             # apenas uma linha diaria, portanto exibe a faixa completa e as
@@ -371,21 +373,21 @@ def montar_relatorio_folha_ponto(
                         f"{formatar_hora_excel(evento_anterior[1])}-{formatar_hora_excel(proximo_evento[0])}"
                     )
             observacoes = [evento[3] for evento in eventos if evento[3]]
-            ws.cell(row=row, column=9, value=formatar_hora_excel(inicio))
-            ws.cell(row=row, column=10, value=" / ".join(lacunas))
-            ws.cell(row=row, column=11, value="24:00" if fim.hour == 23 and fim.minute == 59 else formatar_hora_excel(fim))
-            ws.cell(row=row, column=12, value=horas_para_texto(total_dia))
-            ws.cell(row=row, column=13, value=" | ".join(dict.fromkeys(observacoes)))
-            ws.cell(row=row, column=14, value=horas_para_texto(total_dia))
+            ws.cell(row=row, column=5, value=formatar_hora_excel(inicio))
+            ws.cell(row=row, column=6, value=" / ".join(lacunas))
+            ws.cell(row=row, column=7, value="24:00" if fim.hour == 23 and fim.minute == 59 else formatar_hora_excel(fim))
+            ws.cell(row=row, column=8, value=horas_para_texto(total_dia))
+            ws.cell(row=row, column=9, value=" | ".join(dict.fromkeys(observacoes)))
+            ws.cell(row=row, column=10, value=horas_para_texto(total_dia))
         else:
-            ws.cell(row=row, column=12, value="0:00")
-            ws.cell(row=row, column=14, value="0:00")
+            ws.cell(row=row, column=8, value="0:00")
+            ws.cell(row=row, column=10, value="0:00")
 
-        for col in range(1, 15):
+        for col in range(1, 11):
             cell = ws.cell(row=row, column=col)
             cell.border = border
             cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        ws.cell(row=row, column=13).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        ws.cell(row=row, column=9).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
         ws.cell(row=row, column=4).number_format = "dd/mm/yyyy"
 
         row += 1
@@ -400,8 +402,8 @@ def montar_relatorio_folha_ponto(
         Decimal("0"),
     )
     ws.cell(row=row, column=1, value="TOTAL")
-    ws.cell(row=row, column=14, value=horas_para_texto(total_geral))
-    for col in range(1, 15):
+    ws.cell(row=row, column=10, value=horas_para_texto(total_geral))
+    for col in range(1, 11):
         cell = ws.cell(row=row, column=col)
         cell.font = Font(bold=True)
         cell.fill = header_fill
@@ -409,14 +411,14 @@ def montar_relatorio_folha_ponto(
         cell.alignment = Alignment(horizontal="center")
 
     row += 2
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
-    ws.merge_cells(start_row=row, start_column=8, end_row=row, end_column=14)
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
+    ws.merge_cells(start_row=row, start_column=6, end_row=row, end_column=10)
     ws.cell(row=row, column=1, value="Reconheco a exatidao destas Anotacoes:")
     row += 1
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
-    ws.merge_cells(start_row=row, start_column=8, end_row=row, end_column=14)
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
+    ws.merge_cells(start_row=row, start_column=6, end_row=row, end_column=10)
     ws.cell(row=row, column=1, value="____________________________________________________________ Assinatura do Funcionario")
-    ws.cell(row=row, column=8, value="____________________________________________________________ Assinatura do Responsavel")
+    ws.cell(row=row, column=6, value="____________________________________________________________ Assinatura do Responsavel")
 
     ws.freeze_panes = "A9"
     return wb
