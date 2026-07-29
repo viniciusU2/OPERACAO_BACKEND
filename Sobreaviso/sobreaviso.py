@@ -1226,6 +1226,8 @@ def atualizar_sobreaviso(
         "status": sobreaviso.status,
         "justificativa": sobreaviso.justificativa,
     }
+    inicio_anterior = sobreaviso.inicio
+    fim_anterior = sobreaviso.fim
 
     intervalos = payload.pop("intervalos", None)
     for campo, valor in payload.items():
@@ -1238,8 +1240,28 @@ def atualizar_sobreaviso(
     if intervalos is not None:
         substituir_intervalos(db, sobreaviso, intervalos, usuario)
     elif sobreaviso.intervalos:
-        # Uma alteracao da escala nao pode deixar a linha do tempo fora da faixa.
-        validar_intervalos(inicio, fim, sobreaviso.intervalos)
+        intervalo_unico_programado = (
+            len(sobreaviso.intervalos) == 1
+            and sobreaviso.intervalos[0].tipo == "SOBREAVISO"
+            and sobreaviso.intervalos[0].inicio == inicio_anterior
+            and sobreaviso.intervalos[0].fim == fim_anterior
+        )
+
+        if intervalo_unico_programado and (
+            inicio != inicio_anterior or fim != fim_anterior
+        ):
+            # Compatibilidade com os registros do modelo antigo: o intervalo
+            # integral acompanha a alteracao do periodo programado.
+            intervalo = sobreaviso.intervalos[0]
+            intervalo.inicio = inicio
+            intervalo.fim = fim
+            intervalo.atualizado_por = usuario.id
+            intervalo.atualizado_em = datetime.utcnow()
+            sobreaviso.total_horas = calcular_total_horas(inicio, fim)
+            sobreaviso.total_horas_atendimento = Decimal("0")
+        else:
+            # Periodos com atendimentos preservam a linha do tempo auditavel.
+            validar_intervalos(inicio, fim, sobreaviso.intervalos)
     else:
         sobreaviso.total_horas = calcular_total_horas(inicio, fim)
         sobreaviso.total_horas_atendimento = Decimal("0")
