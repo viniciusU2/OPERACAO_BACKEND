@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+﻿from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -26,8 +26,9 @@ class solicitacao_intervencao(Base):
     justificativa = Column(String(100))
     responsavel = Column(String(100))
     substituto = Column(String(100))
-    aproveitamento = Column(String(30), default="NÃO")
-    inclusao_servico = Column(String(30), default="NÃO")
+    aproveitamento = Column(String(30), default="NÃƒO")
+    inclusao_servico = Column(String(30), default="NÃƒO")
+    acarreta_risco_perdas_multiplas = Column(String(30), default="NAO")
     orgaos = Column(String(100))
     tipo_progrmacao = Column(String(30), default="DIARIO")
     tipo_progrmacao_diario = Column(String(30))
@@ -70,11 +71,41 @@ class solicitacao_intervencao(Base):
 
     criado_em = Column(DateTime, default=datetime.utcnow)
     emissor = Column(Text)
+    editado_por = Column(Text)
 
 
     subestacao = relationship("Subestacao", back_populates="solicitacao_intervencao")
     ativo = relationship("Ativo")
+    liberacoes = relationship("SILiberacao", back_populates="si", cascade="all, delete-orphan")
 
     @property
     def codigo_ativo(self):
         return self.ativo.codigo_ativo if self.ativo else None
+
+
+class SILiberacao(Base):
+    __tablename__ = "si_liberacao"
+
+    id_liberacao = Column(Integer, primary_key=True, index=True)
+    id_si = Column(Integer, ForeignKey("solicitacao_intervencao.id_si"), nullable=False, index=True)
+
+    data_utilizacao = Column(Date, nullable=False)
+    data_hora_liberacao = Column(DateTime, nullable=False)
+    usuario_solicitou_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    usuario_solicitou = Column(String(200), nullable=False)
+    operador_liberou = Column(String(200))
+
+    data_hora_devolucao = Column(DateTime)
+    usuario_devolveu_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    usuario_devolveu = Column(String(200))
+    operador_recebeu_devolucao = Column(String(200))
+
+    observacoes = Column(Text)
+    status = Column(String(30), default="EM_EXECUCAO", nullable=False)
+    criado_em = Column(DateTime, default=datetime.utcnow)
+    atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    si = relationship("solicitacao_intervencao", back_populates="liberacoes")
+    usuario_solicitou_rel = relationship("Usuario", foreign_keys=[usuario_solicitou_id])
+    usuario_devolveu_rel = relationship("Usuario", foreign_keys=[usuario_devolveu_id])
+

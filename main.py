@@ -20,6 +20,7 @@ from database import Base, engine
 from ATIVO import ativos
 from sqlalchemy import text
 from models import rdo_models
+from models import APR_models
 
 
 

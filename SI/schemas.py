@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+﻿from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import date, datetime
 
 
 class SIBase(BaseModel):
@@ -26,8 +26,10 @@ class SIBase(BaseModel):
     responsavel: Optional[str] = None
     substituto: Optional[str] = None
 
-    aproveitamento: Optional[str] = "NÃO"
-    inclusao_servico: Optional[str] = "NÃO"
+    aproveitamento: Optional[str] = "NÃƒO"
+    inclusao_servico: Optional[str] = "NÃƒO"
+
+    acarreta_risco_perdas_multiplas: Optional[str] = "NAO"
 
     orgaos: Optional[str] = None
     tipo_progrmacao: Optional[str] = "DIARIO"
@@ -44,11 +46,13 @@ class SIBase(BaseModel):
     quais_condicoes_climaticas: Optional[str] = None
     quais_execucao_periodo_noturno: Optional[str] = None
 
-    # manutenção
+    # manutenÃ§Ã£o
     responsavel_ons_manutencao: Optional[str] = None
     responsavel_cot_manutencao: Optional[str] = None
     responsavel_se_manutencao: Optional[str] = None
     emissor: Optional[str] = None
+    editado_por: Optional[str] = None
+    editado_por: Optional[str] = None
 
     
     responsavel_data_ons_manutencao: Optional[datetime] = None
@@ -56,7 +60,7 @@ class SIBase(BaseModel):
     responsavel_data_se_manutencao: Optional[datetime] = None
     status_manutencao: Optional[str] = "ABERTA"
 
-    # operação
+    # operaÃ§Ã£o
     responsavel_ons_operacao: Optional[str] = None
     responsavel_cot_operacao: Optional[str] = None
     responsavel_se_operacao: Optional[str] = None
@@ -80,7 +84,7 @@ class SICreate(SIBase):
 
 
 class SIUpdate(SIBase):
-    # tudo opcional pra edição
+    # tudo opcional pra ediÃ§Ã£o
     numero_si: Optional[str] = None
     numero_sgi: Optional[str] = None
     id_subestacao: Optional[int] = None
@@ -105,3 +109,42 @@ class SIResponse(SIBase):
 
     class Config:
         from_attributes = True
+
+
+class SILiberacaoManutencaoCreate(BaseModel):
+    data_utilizacao: Optional[date] = None
+    data_hora_liberacao: Optional[datetime] = None
+    operador_liberou: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+class SILiberacaoOperacaoUpdate(BaseModel):
+    data_hora_devolucao: Optional[datetime] = None
+    operador_recebeu_devolucao: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+class SILiberacaoCancelarUpdate(BaseModel):
+    observacoes: Optional[str] = None
+
+
+class SILiberacaoResponse(BaseModel):
+    id_liberacao: int
+    id_si: int
+    data_utilizacao: date
+    data_hora_liberacao: datetime
+    usuario_solicitou_id: Optional[int] = None
+    usuario_solicitou: str
+    operador_liberou: Optional[str] = None
+    data_hora_devolucao: Optional[datetime] = None
+    usuario_devolveu_id: Optional[int] = None
+    usuario_devolveu: Optional[str] = None
+    operador_recebeu_devolucao: Optional[str] = None
+    observacoes: Optional[str] = None
+    status: str
+    criado_em: datetime
+    atualizado_em: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+

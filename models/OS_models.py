@@ -16,6 +16,7 @@ class OrdemServico(Base):
     id_plano_manutencao = Column(Integer, ForeignKey("plano_manutencao.id_plano_manutencao"))
     id_plano_item = Column(Integer, ForeignKey("plano_item.id_plano_item"))
     id_plano_execucao = Column(Integer, ForeignKey("plano_execucao.id_execucao"))
+    id_frente_servico = Column(Integer, ForeignKey("frente_servico.id_frente_servico"))
     origem = Column(String(50))
 
     especie = Column(String(50))
@@ -44,6 +45,7 @@ class OrdemServico(Base):
     causa_primaria = Column(Text)
     causa_secundaria = Column(Text)
     emissor = Column(Text)
+    editado_por = Column(Text)
 
     data_abertura_ss = Column(DateTime)
     data_inicio_execucao = Column(DateTime)

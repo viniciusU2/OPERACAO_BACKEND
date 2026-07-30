@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import shutil
 from datetime import datetime
@@ -8,10 +8,11 @@ from fastapi.responses import FileResponse
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from openpyxl.utils import range_boundaries
+from sqlalchemy import text
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
-from auth.dependencies import require_roles
+from auth.dependencies import get_current_user, require_roles
 from models.Ativo import Ativo
 from models.OS_models import OrdemServico
 from models.SS_models import SolicitacaoServico
@@ -24,7 +25,24 @@ from SS.schemas import (
 from utils.documentos_operacao import especie_documento_por_ativo
 
 
-router = APIRouter(prefix="/ss", tags=["Solicitacao de Servico"])
+router = APIRouter(prefix="/ss", tags=["Solicita??o de Servi?o"])
+
+
+def garantir_colunas_ss(db: Session):
+    colunas = {
+        "emissor": "TEXT NULL",
+        "editado_por": "TEXT NULL",
+    }
+
+    for coluna, definicao in colunas.items():
+        existe = db.execute(
+            text("SHOW COLUMNS FROM solicitacao_servico LIKE :coluna"),
+            {"coluna": coluna},
+        ).first()
+        if not existe:
+            db.execute(text(f"ALTER TABLE solicitacao_servico ADD COLUMN {coluna} {definicao}"))
+
+    db.commit()
 
 SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
 
@@ -193,6 +211,7 @@ def montar_contexto_ss(ss, ativo=None):
 
 @router.post("", response_model=SolicitacaoServicoResponse)
 def criar_ss(ss: SolicitacaoServicoCreate, db: Session = Depends(get_db)):
+    garantir_colunas_ss(db)
     data = ss.model_dump()
     id_subestacao = data.pop("id_subestacao", None)
     if not data.get("numero_ss"):
@@ -216,6 +235,7 @@ def criar_ss(ss: SolicitacaoServicoCreate, db: Session = Depends(get_db)):
 
 @router.get("", response_model=list[SolicitacaoServicoResponse])
 def listar_ss(db: Session = Depends(get_db)):
+    garantir_colunas_ss(db)
     return (
         db.query(SolicitacaoServico)
         .options(selectinload(SolicitacaoServico.ativo))
@@ -225,6 +245,7 @@ def listar_ss(db: Session = Depends(get_db)):
 
 @router.get("/{id_ss}", response_model=SolicitacaoServicoResponse)
 def buscar_ss(id_ss: int, db: Session = Depends(get_db)):
+    garantir_colunas_ss(db)
     ss = db.query(SolicitacaoServico).filter(
         SolicitacaoServico.id == id_ss
     ).first()
@@ -240,7 +261,9 @@ def editar_ss(
     id_ss: int,
     dados: SolicitacaoServicoUpdate,
     db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
 ):
+    garantir_colunas_ss(db)
     ss = db.query(SolicitacaoServico).filter(
         SolicitacaoServico.id == id_ss
     ).first()
@@ -249,7 +272,11 @@ def editar_ss(
         raise HTTPException(404, "SS nao encontrada")
 
     for campo, valor in dados.model_dump(exclude_unset=True).items():
+        if campo == "emissor":
+            continue
         setattr(ss, campo, valor)
+
+    ss.editado_por = getattr(usuario, "nome", None) or getattr(usuario, "email", None)
 
     db.commit()
     db.refresh(ss)
@@ -398,4 +425,5 @@ def download_ss(id_ss: int, db: Session = Depends(get_db)):
         filename=nome_arquivo,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
 

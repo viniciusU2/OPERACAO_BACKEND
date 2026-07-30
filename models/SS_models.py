@@ -43,6 +43,9 @@ class SolicitacaoServico(Base):
 
     status = Column(String(20), default="ABERTA")
 
+    emissor = Column(Text)
+    editado_por = Column(Text)
+
     ativo = relationship("Ativo")
 
     @property

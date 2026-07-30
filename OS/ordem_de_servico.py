@@ -26,21 +26,46 @@ from models import OS_models
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 import shutil
+import zipfile
 from datetime import datetime
 import os
 import re
 from fastapi.background import BackgroundTasks
 from typing import List
 from fastapi.responses import FileResponse
-from auth.dependencies import require_roles
+from auth.dependencies import get_current_user, require_roles
 from utils.documentos_operacao import (
     especie_documento_por_ativo,
     normalizar_prioridade_operacao,
 )
+from OS.apr_service import (
+    criar_frente_para_ordens,
+    gerar_apr_xlsm,
+    nome_arquivo_seguro as nome_arquivo_apr_seguro,
+    obter_frente_por_os,
+)
+from models.APR_models import APR
 
 
 
 router = APIRouter(prefix="/os", tags=["Ordem de Serviço"])
+
+
+def garantir_colunas_os(db: Session):
+    colunas = {
+        "editado_por": "TEXT NULL",
+        "id_frente_servico": "INT NULL",
+    }
+
+    for coluna, definicao in colunas.items():
+        existe = db.execute(
+            text("SHOW COLUMNS FROM ordem_servico LIKE :coluna"),
+            {"coluna": coluna},
+        ).first()
+        if not existe:
+            db.execute(text(f"ALTER TABLE ordem_servico ADD COLUMN {coluna} {definicao}"))
+
+    db.commit()
 
 def remover_arquivo(path: str):
     if os.path.exists(path):
@@ -214,6 +239,7 @@ def criar_ordem_servico(
     os_data: OrdemServicoCreate,
     db: Session = Depends(get_db)
 ):
+    garantir_colunas_os(db)
     print(os_data)
 
     # 🔹 Validação de datas
@@ -276,12 +302,26 @@ def criar_ordem_servico(
     db.add(nova_os)
 
     try:
+        db.flush()
+        criar_frente_para_ordens(
+            db,
+            [nova_os],
+            origem="MANUAL",
+            numero_apr=nova_os.numero_apr,
+            usuario=nova_os.emissor,
+        )
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=400,
-            detail="Erro ao gerar número da OS. Tente novamente."
+            detail="Erro ao gerar numero da OS/APR. Tente novamente."
+        )
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao criar Frente de Servico/APR da OS: {str(exc)}"
         )
 
     db.refresh(nova_os)
@@ -307,6 +347,92 @@ def criar_ordem_servico(
 
     return nova_os
 
+
+
+@router.get("/{id_os}/apr/download")
+def baixar_apr_os(id_os: int, db: Session = Depends(get_db)):
+    os_db = (
+        db.query(OS_models.OrdemServico)
+        .filter(OS_models.OrdemServico.id_os == id_os)
+        .first()
+    )
+
+    if not os_db:
+        raise HTTPException(status_code=404, detail="OS nao encontrada")
+
+    frente = obter_frente_por_os(db, os_db, criar_se_nao_existir=True)
+    if not frente:
+        raise HTTPException(status_code=404, detail="APR nao encontrada para esta OS")
+
+    apr = frente.apr or db.query(APR).filter(APR.id_frente_servico == frente.id_frente_servico).first()
+    if not apr:
+        raise HTTPException(status_code=404, detail="APR nao encontrada para esta Frente de Servico")
+
+    pasta_temp = "temp"
+    os.makedirs(pasta_temp, exist_ok=True)
+    numero_apr_safe = nome_arquivo_apr_seguro(apr.numero_apr)
+    caminho_apr = os.path.join(pasta_temp, f"{numero_apr_safe}.xlsm")
+
+    gerar_apr_xlsm(db, frente, caminho_apr)
+    db.commit()
+
+    return FileResponse(
+        path=caminho_apr,
+        filename=f"{numero_apr_safe}.xlsm",
+        media_type="application/vnd.ms-excel.sheet.macroEnabled.12",
+    )
+
+
+@router.get("/{id_os}/download-pacote")
+def baixar_os_com_apr(id_os: int, db: Session = Depends(get_db)):
+    os_db = (
+        db.query(OS_models.OrdemServico)
+        .filter(OS_models.OrdemServico.id_os == id_os)
+        .first()
+    )
+
+    if not os_db:
+        raise HTTPException(status_code=404, detail="OS n?o encontrada")
+
+    ativo = None
+    if os_db.id_ativo:
+        ativo = db.query(Ativo).filter(Ativo.id_ativo == os_db.id_ativo).first()
+
+    frente = obter_frente_por_os(db, os_db, criar_se_nao_existir=True)
+    if not frente:
+        raise HTTPException(status_code=404, detail="APR n?o encontrada para esta OS")
+
+    apr = frente.apr or db.query(APR).filter(APR.id_frente_servico == frente.id_frente_servico).first()
+    if not apr:
+        raise HTTPException(status_code=404, detail="APR n?o encontrada para esta Frente de Servi?o")
+
+    pasta_temp = "temp"
+    os.makedirs(pasta_temp, exist_ok=True)
+
+    numero_os_safe = nome_arquivo_seguro(os_db.numero_os)
+    numero_apr_safe = nome_arquivo_apr_seguro(apr.numero_apr)
+    caminho_os = os.path.join(pasta_temp, f"{numero_os_safe}.xlsm")
+    caminho_apr = os.path.join(pasta_temp, f"{numero_apr_safe}.xlsm")
+    caminho_zip = os.path.join(pasta_temp, f"PACOTE_{numero_os_safe}.zip")
+
+    gerar_xlsm(
+        modelo="modelos/MODELO_OS.xlsx",
+        destino=caminho_os,
+        contexto=montar_contexto_os(os_db, ativo),
+        mapeamento=MAPEAMENTO_CELULAS,
+    )
+    gerar_apr_xlsm(db, frente, caminho_apr)
+    db.commit()
+
+    with zipfile.ZipFile(caminho_zip, "w", zipfile.ZIP_DEFLATED) as pacote:
+        pacote.write(caminho_os, arcname=f"{numero_os_safe}.xlsm")
+        pacote.write(caminho_apr, arcname=f"{numero_apr_safe}.xlsm")
+
+    return FileResponse(
+        path=caminho_zip,
+        filename=f"PACOTE_{numero_os_safe}.zip",
+        media_type="application/zip",
+    )
 
 
 @router.get("/{id_os}/download")
@@ -423,6 +549,7 @@ def listar_os(
     id_ativo: int | None = None,
     db: Session = Depends(get_db)
 ):
+    garantir_colunas_os(db)
     query = db.query(OS_models.OrdemServico).options(
         selectinload(OS_models.OrdemServico.ativo).selectinload(Ativo.tipo_ativo)
     )
@@ -439,6 +566,7 @@ def listar_os(
     id_ativo: int,
     db: Session = Depends(get_db)
 ):
+    garantir_colunas_os(db)
     return (
         db.query(OS_models.OrdemServico)
         .options(
@@ -453,8 +581,10 @@ def listar_os(
 def editar_ordem_servico(
     id_os: int,
     dados: dict,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
 ):
+    garantir_colunas_os(db)
     campos_somente_leitura = {
         "id_tipo_ativo",
         "tipo_ativo",
@@ -463,6 +593,7 @@ def editar_ordem_servico(
         "ativo",
         "subestacao",
         "criado_em",
+        "emissor",
     }
 
     os_db = (
@@ -505,6 +636,7 @@ def editar_ordem_servico(
             os_db.especie = especie_documento_por_ativo(ativo) or os_db.especie
 
     os_db.prioridade = normalizar_prioridade_operacao(os_db.prioridade)
+    os_db.editado_por = getattr(usuario, "nome", None) or getattr(usuario, "email", None)
 
     status_atualizado = str(os_db.status or "").strip().upper()
 
@@ -548,6 +680,7 @@ def buscar_os_por_id(
     id_os: int,
     db: Session = Depends(get_db)
 ):
+    garantir_colunas_os(db)
     os = (
         db.query(OS_models.OrdemServico)
         .filter(OS_models.OrdemServico.id_os == id_os)
@@ -821,6 +954,7 @@ def criar_os_lote_por_tipo_ativo(
     payload: OrdemServicoCreateLote,
     db: Session = Depends(get_db),
 ):
+    garantir_colunas_os(db)
     # ====================== 1. VALIDAÇÃO E BUSCA DA SUBESTAÇÃO ======================
     if not payload.id_subestacao:
         raise HTTPException(status_code=400, detail="id_subestacao é obrigatório")
@@ -945,7 +1079,7 @@ def criar_os_lote_por_tipo_ativo(
 
         numero_os_base = f"{prefixo}{numero_formatado}-{ano}"
         numero_os_final = numero_os_base
-        numero_apr_final = f"{prefixo2}{numero_formatado}-{ano}"
+        numero_apr_final = payload.numero_apr
 
         fase = normalizar_fase(ativo.fase)
         complemento = f"Fase: {fase}"
@@ -1016,6 +1150,13 @@ def criar_os_lote_por_tipo_ativo(
                 detail=f"Erro ao criar OS para {ativo.codigo_ativo} - Fase {fase}: {str(e)}"
             )
 
+    criar_frente_para_ordens(
+        db,
+        ordens_criadas,
+        origem="LOTE",
+        numero_apr=payload.numero_apr,
+        usuario=payload.emissor,
+    )
     db.commit()
     return ordens_criadas
 
@@ -1241,9 +1382,11 @@ def gerar_os_por_planos_manutencao(
     hoje: datetime | None = None,
     simular: bool = False,
 ):
+    garantir_colunas_os(db)
     hoje = hoje or datetime.now()
     os_criadas = []
     os_previstas = []
+    ordens_por_frente = {}
     status_pendente = ["ABERTA", "PROGRAMADA", "EM_EXECUCAO"]
     status_finalizado = {"ENCERRADA", "CONCLUIDA"}
 
@@ -1477,6 +1620,16 @@ def gerar_os_por_planos_manutencao(
                 db.add(nova_os)
                 db.flush()
 
+                chave_frente = (
+                    plano.id_plano_manutencao,
+                    tipo.id_tipo_ativo,
+                    ativo.id_subestacao,
+                    data_programada.date() if data_programada else None,
+                    esquema_servicos_plano,
+                    plano.descricao_geral,
+                )
+                ordens_por_frente.setdefault(chave_frente, []).append(nova_os)
+
                 for item, execucao in execucoes_pendentes:
                     execucao.id_os = nova_os.id_os
 
@@ -1497,6 +1650,15 @@ def gerar_os_por_planos_manutencao(
     if simular:
         db.rollback()
     else:
+        for ordens_frente in ordens_por_frente.values():
+            numero_apr_frente = ordens_frente[0].numero_apr if ordens_frente else None
+            criar_frente_para_ordens(
+                db,
+                ordens_frente,
+                origem="PLANO_MANUTENCAO",
+                numero_apr=numero_apr_frente,
+                usuario=ordens_frente[0].emissor if ordens_frente else None,
+            )
         db.commit()
 
     resposta = {

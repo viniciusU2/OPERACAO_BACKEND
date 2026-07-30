@@ -18,6 +18,7 @@ class OrdemServicoCreate(BaseModel):
     id_plano_manutencao: Optional[int] = None
     id_plano_item: Optional[int] = None
     id_plano_execucao: Optional[int] = None
+    id_frente_servico: Optional[int] = None
     origem: Optional[str] = None
 
     especie: Optional[str] = None
@@ -47,6 +48,7 @@ class OrdemServicoCreate(BaseModel):
     responsavel_operacao: Optional[str] = None
 
     emissor: Optional[str] = None
+    editado_por: Optional[str] = None
     substituto: Optional[str] = None
 
     centro_custos: Optional[str] = None
@@ -86,6 +88,7 @@ class OrdemServicoUpdate(BaseModel):
     id_plano_manutencao: Optional[int] = None
     id_plano_item: Optional[int] = None
     id_plano_execucao: Optional[int] = None
+    id_frente_servico: Optional[int] = None
     origem: Optional[str] = None
 
     especie: Optional[str]
@@ -105,6 +108,7 @@ class OrdemServicoUpdate(BaseModel):
     responsavel_operacao: Optional[str] = None
     substituto: Optional[str]
     emissor: Optional[str]
+    editado_por: Optional[str] = None
 
     data_inicio_programado: Optional[datetime]
     data_fim_programado: Optional[datetime]
@@ -138,6 +142,7 @@ class OrdemServicoCreateLote(BaseModel):
     localizacao: Optional[str] = None
     complemento: Optional[str] = None
     emissor: Optional[str] = None
+    editado_por: Optional[str] = None
 
     origens: Optional[str] = None
     defeito: Optional[str] = None

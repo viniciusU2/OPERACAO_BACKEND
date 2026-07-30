@@ -40,6 +40,8 @@ class SolicitacaoServicoBase(BaseModel):
     prioridade: Optional[str] = None
 
     status: Optional[str] = "ABERTA"
+    emissor: Optional[str] = None
+    editado_por: Optional[str] = None
 
 
 # CREATE
@@ -84,6 +86,8 @@ class SolicitacaoServicoUpdate(BaseModel):
     prioridade: Optional[str] = None
 
     status: Optional[str] = None
+    emissor: Optional[str] = None
+    editado_por: Optional[str] = None
 
 
 # RESPONSE
