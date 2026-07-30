@@ -23,6 +23,7 @@ from models.Ativo import Ativo
 from models.instalacao_models import Subestacao
 from models.SS_models import SolicitacaoServico
 from models import OS_models
+from models.livro_registro import LivroRegistro
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 import shutil
