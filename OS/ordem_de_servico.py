@@ -205,31 +205,27 @@ SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
 # =========================
 def gerar_numero_os(db: Session, sigla: str) -> tuple[str, str]:
     ano_atual = datetime.now().year
-
-    # 🔹 Buscar OS existentes da mesma subestação e ano
-    registros = (
-        db.query(OS_models.OrdemServico.numero_os)
-        .filter(OS_models.OrdemServico.numero_os.like(f"OS-{sigla}-%-{ano_atual}%"))
-        .all()
+    padroes = (
+        (OS_models.OrdemServico.numero_os, rf"OS-{sigla}-(\d+)-{ano_atual}", f"OS-{sigla}-%-{ano_atual}%"),
+        (OS_models.OrdemServico.numero_apr, rf"APR-{sigla}-(\d+)-{ano_atual}", f"APR-{sigla}-%-{ano_atual}%"),
+        (APR.numero_apr, rf"APR-{sigla}-(\d+)-{ano_atual}", f"APR-{sigla}-%-{ano_atual}%"),
     )
 
     numeros = []
-
-    for (numero_os,) in registros:
-        match = re.search(rf"OS-{sigla}-(\d+)-{ano_atual}", numero_os)
-        if match:
-            numeros.append(int(match.group(1)))
+    for coluna, regex, like_pattern in padroes:
+        registros = db.query(coluna).filter(coluna.like(like_pattern)).all()
+        for (numero,) in registros:
+            match = re.search(regex, numero or "")
+            if match:
+                numeros.append(int(match.group(1)))
 
     proximo = max(numeros) + 1 if numeros else 1
     numero_formatado = str(proximo).zfill(4)
 
-    # 🔹 Sanitizar código do ativo (opcional mas recomendado)
-    numero_os = f"OS-{sigla}-{numero_formatado}-{ano_atual}"
-    numero_apr = f"APR-{sigla}-{numero_formatado}-{ano_atual}"
-
-    return numero_os, numero_apr
-
-
+    return (
+        f"OS-{sigla}-{numero_formatado}-{ano_atual}",
+        f"APR-{sigla}-{numero_formatado}-{ano_atual}",
+    )
 
 
 # =========================
@@ -1704,16 +1700,30 @@ def gerar_os_por_planos_manutencao(
     return resposta
 
 
+def _erro_geracao_os(exc: Exception):
+    mensagem = str(exc) or exc.__class__.__name__
+    return HTTPException(
+        status_code=500,
+        detail=f"Erro ao gerar OS por plano: {mensagem}",
+    )
+
+
 @router.post("/gerar-os-planos")
 def gerar_os_planos(
     payload: GerarOsPlanosRequest | None = None,
     db: Session = Depends(get_db),
 ):
-    return gerar_os_por_planos_manutencao(
-        db,
-        hoje=payload.data_simulacao if payload else None,
-        simular=payload.simular if payload else False,
-    )
+    try:
+        return gerar_os_por_planos_manutencao(
+            db,
+            hoje=payload.data_simulacao if payload else None,
+            simular=payload.simular if payload else False,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise _erro_geracao_os(exc)
 
 
 @router.post("/gerar-os-semanal")
@@ -1721,9 +1731,15 @@ def gerar_os_semanal(
     payload: GerarOsPlanosRequest | None = None,
     db: Session = Depends(get_db),
 ):
-    return gerar_os_por_planos_manutencao(
-        db,
-        hoje=payload.data_simulacao if payload else None,
-        simular=payload.simular if payload else False,
-    )
+    try:
+        return gerar_os_por_planos_manutencao(
+            db,
+            hoje=payload.data_simulacao if payload else None,
+            simular=payload.simular if payload else False,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise _erro_geracao_os(exc)
 
