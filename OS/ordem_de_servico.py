@@ -709,10 +709,33 @@ def deletar_os(
     if not os:
         raise HTTPException(status_code=404, detail="OS não encontrada")
 
-    db.delete(os)
-    db.commit()
+    try:
+        db.execute(
+            text("DELETE FROM frente_servico_os WHERE id_os = :id_os"),
+            {"id_os": id_os},
+        )
+        db.execute(
+            text("UPDATE plano_execucao SET id_os = NULL WHERE id_os = :id_os"),
+            {"id_os": id_os},
+        )
+        db.execute(
+            text("UPDATE inspecao SET id_os = NULL WHERE id_os = :id_os"),
+            {"id_os": id_os},
+        )
+        db.execute(
+            text("UPDATE livro_registro SET id_os = NULL WHERE id_os = :id_os"),
+            {"id_os": id_os},
+        )
+        db.delete(os)
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao excluir OS: {str(exc)}",
+        )
 
-    return {"message": "OS excluída com sucesso"}
+    return {"message": "OS excluida com sucesso"}
 
 
 def normalizar_texto_filtro(valor: str | None):
