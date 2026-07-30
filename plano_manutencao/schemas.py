@@ -180,6 +180,20 @@ class PlanoExecucaoUpdate(BaseModel):
     proxima_execucao: datetime
 
 
+class PlanoExecucoesReagendarPlano(BaseModel):
+    proxima_execucao: datetime
+    id_subestacao: Optional[int] = None
+    ultima_execucao: Optional[datetime] = None
+    atualizar_ultima_execucao: bool = False
+
+
+class PlanoExecucoesReagendarPlanoResponse(BaseModel):
+    mensagem: str
+    id_plano_manutencao: int
+    total_atualizadas: int
+    execucoes: List["PlanoExecucaoPlanilhaRead"] = Field(default_factory=list)
+
+
 class PlanoExecucaoPlanilhaRead(BaseModel):
     id_execucao: int
     id_plano_item: int

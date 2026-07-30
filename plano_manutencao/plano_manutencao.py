@@ -13,6 +13,8 @@ from plano_manutencao.schemas import (
     PlanoItemRead,
     PlanoExecucaoPlanilhaRead,
     PlanoExecucaoUpdate,
+    PlanoExecucoesReagendarPlano,
+    PlanoExecucoesReagendarPlanoResponse,
  
 )
 
@@ -100,25 +102,19 @@ def data_inicial_execucao(item: PlanoItem):
     return datetime.now()
 
 
-@router.get("/execucoes", response_model=List[PlanoExecucaoPlanilhaRead])
-def listar_execucoes(db: Session = Depends(get_db)):
-    execucoes = (
-        db.query(PlanoExecucao)
-        .join(PlanoExecucao.plano_item)
-        .join(PlanoExecucao.ativo)
-        .order_by(PlanoExecucao.proxima_execucao, Ativo.codigo_ativo, PlanoItem.ordem)
-        .all()
-    )
-
-    return [montar_execucao_planilha(execucao) for execucao in execucoes]
-
-
-@router.post("/execucoes/sincronizar")
-def sincronizar_execucoes(db: Session = Depends(get_db)):
+def sincronizar_execucoes_pendentes(db: Session, plano_id: int | None = None) -> int:
     criadas = 0
-    itens = db.query(PlanoItem).all()
+    query_itens = db.query(PlanoItem).join(PlanoItem.plano)
+
+    if plano_id is not None:
+        query_itens = query_itens.filter(PlanoItem.id_plano_manutencao == plano_id)
+
+    itens = query_itens.all()
 
     for item in itens:
+        if not item.plano:
+            continue
+
         ativos = (
             db.query(Ativo)
             .filter(Ativo.id_tipo_ativo == item.plano.id_tipo_ativo)
@@ -148,11 +144,86 @@ def sincronizar_execucoes(db: Session = Depends(get_db)):
             )
             criadas += 1
 
+    if criadas:
+        db.flush()
+
+    return criadas
+
+
+@router.get("/execucoes", response_model=List[PlanoExecucaoPlanilhaRead])
+def listar_execucoes(db: Session = Depends(get_db)):
+    criadas = sincronizar_execucoes_pendentes(db)
+    if criadas:
+        db.commit()
+
+    execucoes = (
+        db.query(PlanoExecucao)
+        .join(PlanoExecucao.plano_item)
+        .join(PlanoExecucao.ativo)
+        .order_by(PlanoExecucao.proxima_execucao, Ativo.codigo_ativo, PlanoItem.ordem)
+        .all()
+    )
+
+    return [montar_execucao_planilha(execucao) for execucao in execucoes]
+
+
+@router.post("/execucoes/sincronizar")
+def sincronizar_execucoes(db: Session = Depends(get_db)):
+    criadas = sincronizar_execucoes_pendentes(db)
     db.commit()
 
     return {
         "mensagem": "Execucoes sincronizadas com sucesso",
         "total_criadas": criadas,
+    }
+
+
+@router.put("/execucoes/plano/{plano_id}/reagendar", response_model=PlanoExecucoesReagendarPlanoResponse)
+def reagendar_execucoes_plano(
+    plano_id: int,
+    payload: PlanoExecucoesReagendarPlano,
+    db: Session = Depends(get_db),
+):
+    plano = db.query(PlanoManutencao).filter(
+        PlanoManutencao.id_plano_manutencao == plano_id
+    ).first()
+
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano nao encontrado")
+
+    sincronizar_execucoes_pendentes(db, plano_id=plano_id)
+
+    query_execucoes = (
+        db.query(PlanoExecucao)
+        .join(PlanoExecucao.plano_item)
+        .join(PlanoExecucao.ativo)
+        .filter(PlanoItem.id_plano_manutencao == plano_id)
+    )
+
+    if payload.id_subestacao:
+        query_execucoes = query_execucoes.filter(Ativo.id_subestacao == payload.id_subestacao)
+
+    execucoes = (
+        query_execucoes
+        .order_by(Ativo.codigo_ativo, PlanoItem.ordem)
+        .all()
+    )
+
+    for execucao in execucoes:
+        execucao.proxima_execucao = payload.proxima_execucao
+        if payload.atualizar_ultima_execucao:
+            execucao.ultima_execucao = payload.ultima_execucao
+
+    db.commit()
+
+    for execucao in execucoes:
+        db.refresh(execucao)
+
+    return {
+        "mensagem": "Execucoes do plano reagendadas com sucesso",
+        "id_plano_manutencao": plano_id,
+        "total_atualizadas": len(execucoes),
+        "execucoes": [montar_execucao_planilha(execucao) for execucao in execucoes],
     }
 
 
