@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+﻿from pydantic import BaseModel, Field
 from datetime import datetime, date
 from typing import Optional, Literal, List
 from pydantic import ConfigDict
@@ -13,13 +13,14 @@ class AtivoBase(BaseModel):
     id_subestacao: int
     codigo_ativo: str
     id_tipo_ativo: int
+    id_funcao_operacao: Optional[int] = None
     fabricante: Optional[str] = None
     modelo: Optional[str] = None
     especie: Optional[str] = None
     numero_serie: Optional[str] = None
     tensao_nominal_kv: Optional[float] = None
     data_instalacao: Optional[date] = None
-    status: Optional[Literal["ATIVO", "INATIVO"]] = "ATIVO"
+    status: Optional[Literal["EM OPERAÃ‡ÃƒO", "SOBRESSALENTE", "SUCATA"]] = "EM OPERAÃ‡ÃƒO"
     bay: Optional[str] = None
     fase: Optional[str] = None
     codigo_linha: Optional[str] = None
@@ -30,6 +31,15 @@ class AtivoBase(BaseModel):
 
 
 
+
+
+class FuncaoOperacaoAtivoResponse(BaseModel):
+    id_funcao_operacao: int
+    codigo: str
+    descricao: Optional[str] = None
+
+    class Config:
+        orm_mode = True
 
 
 class AtivoCreate(AtivoBase):
@@ -58,6 +68,7 @@ class AtivoResponse(BaseModel):
     id_subestacao: int
     codigo_ativo: str
     id_tipo_ativo: int
+    id_funcao_operacao: Optional[int] = None
     numero_serie: Optional[str] = None
     fabricante: Optional[str] = None
     modelo: Optional[str] = None
@@ -74,7 +85,10 @@ class AtivoResponse(BaseModel):
     tipo_estrutura: Optional[str] = None
     subestacao: Optional[SubestacaoAtivoResponse] = None
     tipo_ativo: Optional[TipoAtivoAtivoResponse] = None
+    funcao_operacao: Optional[FuncaoOperacaoAtivoResponse] = None
 
     class Config:
         orm_mode = True
+
+
 

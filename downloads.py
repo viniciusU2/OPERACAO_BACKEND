@@ -85,6 +85,7 @@ def garantir_colunas_si(db: Session):
 
 def adicionar_aba(wb, titulo: str, colunas: list[tuple[str, str]], registros):
     ws = wb.create_sheet(titulo)
+    
     ws.append([label for label, _ in colunas])
 
     for registro in registros:
@@ -141,6 +142,7 @@ OS_COLUNAS = [
     ("Numero SI", "numero_si"),
     ("Subestacao", "id_subestacao"),
     ("Ativo", "id_ativo"),
+    ("Codigo Ativo", "ativo.codigo_ativo"),
     ("Especie", "especie"),
     ("APR", "numero_apr"),
     ("Instalacao", "instalacao"),

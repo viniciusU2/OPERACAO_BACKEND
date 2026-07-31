@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from pymysql import IntegrityError
 from sqlalchemy.orm import Session
 from database import get_db
@@ -16,6 +16,7 @@ from sqlalchemy import text
 import pandas as pd
 from models.instalacao_models import Subestacao
 from models.familias_models import TipoAtivo
+from funcao_operacao.service import validar_funcao_operacao_do_ativo
 from collections import Counter
 
 
@@ -126,10 +127,11 @@ def criar_ativo(
     ativo: schemas.AtivoCreate,
     db: Session = Depends(get_db)
 ):
+    validar_funcao_operacao_do_ativo(db, ativo.id_subestacao, ativo.id_funcao_operacao)
     novo = Ativo(**ativo.dict())
     db.add(novo)
     db.commit()
-    db.refresh(novo)  # 👈 MUITO IMPORTANTE
+    db.refresh(novo)  # ðŸ‘ˆ MUITO IMPORTANTE
     return novo
 @router.get("/ativo", response_model=List[schemas.AtivoResponse])
 def listar_subestacoes(db: Session = Depends(get_db)):
@@ -164,7 +166,7 @@ def buscar_ativo_por_id(
     )
 
     if not ativo:
-        raise HTTPException(status_code=404, detail="Ativo não encontrado")
+        raise HTTPException(status_code=404, detail="Ativo nÃ£o encontrado")
 
     return ativo
 
@@ -186,8 +188,12 @@ def editar_ativo(
     if not ativo_db:
         raise HTTPException(
             status_code=404,
-            detail="Ordem de Serviço não encontrada"
+            detail="Ordem de ServiÃ§o nÃ£o encontrada"
         )
+
+    id_subestacao_final = dados.get("id_subestacao", ativo_db.id_subestacao)
+    id_funcao_operacao_final = dados.get("id_funcao_operacao", ativo_db.id_funcao_operacao)
+    validar_funcao_operacao_do_ativo(db, id_subestacao_final, id_funcao_operacao_final)
 
     # Atualiza apenas os campos enviados
     for campo, valor in dados.items():
@@ -201,7 +207,7 @@ def editar_ativo(
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="Número da OS já existe"
+            detail="NÃºmero da OS jÃ¡ existe"
         )
 
     return ativo_db
@@ -296,7 +302,7 @@ async def importar_ativos(file: UploadFile = File(...), db: Session = Depends(ge
     try:
         df = pd.read_excel(file.file)
 
-        # 🔴 Validar colunas obrigatórias
+        # ðŸ”´ Validar colunas obrigatÃ³rias
         colunas_obrigatorias = [
             "id_subestacao",
             "id_tipo_ativo",
@@ -309,13 +315,13 @@ async def importar_ativos(file: UploadFile = File(...), db: Session = Depends(ge
             if col not in df.columns:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Coluna obrigatória ausente: {col}"
+                    detail=f"Coluna obrigatÃ³ria ausente: {col}"
                 )
 
         ativos = []
 
         for i, row in df.iterrows():
-            # ⚠️ ignorar linhas vazias
+            # âš ï¸ ignorar linhas vazias
             if pd.isna(row["codigo_ativo"]):
                 continue
 
@@ -334,7 +340,7 @@ async def importar_ativos(file: UploadFile = File(...), db: Session = Depends(ge
 
             ativos.append(ativo)
 
-        # 🚀 inserção em lote (mais rápido)
+        # ðŸš€ inserÃ§Ã£o em lote (mais rÃ¡pido)
         db.bulk_save_objects(ativos)
         db.commit()
 
@@ -359,7 +365,7 @@ async def importar_torres(file: UploadFile = File(...), db: Session = Depends(ge
             "estrutura operacional",
             "vao vante (m)",
             "codigo_ativo",
-            "id_linha de transmissão",
+            "id_linha de transmissÃ£o",
             "id_tipo_ativo",
             "tipo",
             "sentido",
@@ -446,3 +452,4 @@ async def importar_torres(file: UploadFile = File(...), db: Session = Depends(ge
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+

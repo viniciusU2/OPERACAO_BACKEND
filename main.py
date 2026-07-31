@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal, engine
 from dotenv import load_dotenv
@@ -14,6 +14,7 @@ from plano_manutencao import plano_manutencao
 from plano_manutencao import inspecoes
 from RDO import rdo
 from Sobreaviso import sobreaviso
+from funcao_operacao import funcao_operacao
 from auth import auth
 import downloads
 from database import Base, engine
@@ -21,18 +22,20 @@ from ATIVO import ativos
 from sqlalchemy import text
 from models import rdo_models
 from models import APR_models
+from models import fo
 
 
 
 load_dotenv()
 
-app = FastAPI(title="Manutenção de Subestações")
+app = FastAPI(title="ManutenÃ§Ã£o de SubestaÃ§Ãµes")
 
 Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 try:
     ativos.garantir_colunas_torre(db)
+    funcao_operacao.service.garantir_estrutura_funcao_operacao(db)
     inspecoes.garantir_colunas_inspecao(db)
     coluna_numero_ss_os = db.execute(
         text("SHOW COLUMNS FROM ordem_servico LIKE 'numero_ss'")
@@ -121,7 +124,7 @@ finally:
 
 
 
-# CORS — TEM QUE VIR ANTES DAS ROTAS
+# CORS â€” TEM QUE VIR ANTES DAS ROTAS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -133,6 +136,7 @@ app.include_router(solicitacao_servico.router)
 app.include_router(auth.router)
 app.include_router(ordem_de_servico.router)
 app.include_router(familias.router)
+app.include_router(funcao_operacao.router)
 app.include_router(instalacao.router)
 app.include_router(plano_manutencao.router)
 app.include_router(inspecoes.router)
@@ -150,5 +154,6 @@ app.include_router(downloads.router)
 
 
 GOOGLE_CLIENT_ID =  os.getenv("CLIENT_ID")
+
 
 

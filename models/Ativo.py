@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, DECIMAL, ForeignKey
+﻿from sqlalchemy import Column, Integer, String, Date, DECIMAL, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -19,6 +19,16 @@ class Ativo(Base):
         ForeignKey("tipo_ativo.id_tipo_ativo"),
         nullable=False
     )
+
+    id_funcao_operacao = Column(
+        Integer,
+        ForeignKey(
+            "funcao_operacao.id_funcao_operacao",
+        ),
+        nullable=True,
+        index=True,
+    )
+    
 
     codigo_ativo = Column(String(50), nullable=False)
     fabricante = Column(String(100))
@@ -60,3 +70,11 @@ class Ativo(Base):
         back_populates="ativo",
         cascade="all, delete-orphan"
     )
+
+    
+    funcao_operacao = relationship(
+        "FuncaoOperacao",
+        back_populates="ativos",
+    )
+
+

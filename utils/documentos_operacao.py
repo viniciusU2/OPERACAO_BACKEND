@@ -56,9 +56,9 @@ def formatar_classe_tensao(valor):
 
     numero = float(valor)
     if numero.is_integer():
-        return f"{int(numero)}K"
+        return f"{int(numero)}kV"
 
-    return f"{numero:.2f}".rstrip("0").rstrip(".") + "K"
+    return f"{numero:.2f}".rstrip("0").rstrip(".") + "kV"
 
 
 def especie_documento_por_ativo(ativo):

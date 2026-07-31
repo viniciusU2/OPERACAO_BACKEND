@@ -1,4 +1,4 @@
-import enum
+﻿import enum
 from datetime import datetime
 
 from sqlalchemy import (
@@ -19,7 +19,7 @@ from sqlalchemy.types import Enum
 from database import Base
 
 # =========================================================
-# SUBESTAÇÃO
+# SUBESTAÃ‡ÃƒO
 # =========================================================
 
 class Subestacao(Base):
@@ -49,6 +49,12 @@ class Subestacao(Base):
     ativos = relationship("Ativo", back_populates="subestacao")
     ordens = relationship("OrdemServico", back_populates="subestacao")
     solicitacao_intervencao = relationship("solicitacao_intervencao", back_populates="subestacao")
+    funcoes_operacao = relationship(
+    "FuncaoOperacao",
+    back_populates="subestacao",
+    cascade="all, delete-orphan",
+)
+
 
 
 
