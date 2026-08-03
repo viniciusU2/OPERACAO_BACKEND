@@ -74,7 +74,7 @@ def validar_codigo_unico(db: Session, id_subestacao: int, codigo: str, id_funcao
         query = query.filter(FuncaoOperacao.id_funcao_operacao != id_funcao_operacao)
 
     if query.first():
-        raise HTTPException(status_code=409, detail="Ja existe funcao de operacao com este codigo nesta subestacao")
+        raise HTTPException(status_code=409, detail="Já existe função de transmissão com este código nesta subestação")
 
 
 def montar_saida(db: Session, funcao_operacao: FuncaoOperacao) -> schemas.FuncaoOperacaoOut:
@@ -111,7 +111,7 @@ def criar_funcao_operacao(db: Session, dados: schemas.FuncaoOperacaoCreate):
         db.refresh(funcao_operacao)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Ja existe funcao de operacao com este codigo nesta subestacao")
+        raise HTTPException(status_code=409, detail="Já existe função de transmissão com este código nesta subestação")
 
     return montar_saida(db, funcao_operacao)
 
@@ -128,7 +128,7 @@ def listar_funcoes_operacao(db: Session, id_subestacao: int | None = None):
 def buscar_funcao_operacao(db: Session, id_funcao_operacao: int) -> FuncaoOperacao:
     funcao_operacao = db.query(FuncaoOperacao).filter(FuncaoOperacao.id_funcao_operacao == id_funcao_operacao).first()
     if not funcao_operacao:
-        raise HTTPException(status_code=404, detail="Funcao de operacao nao encontrada")
+        raise HTTPException(status_code=404, detail="Função de transmissão não encontrada")
     return funcao_operacao
 
 
@@ -158,7 +158,7 @@ def atualizar_funcao_operacao(db: Session, id_funcao_operacao: int, dados: schem
         db.refresh(funcao_operacao)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Ja existe funcao de operacao com este codigo nesta subestacao")
+        raise HTTPException(status_code=409, detail="Já existe função de transmissão com este código nesta subestação")
 
     return montar_saida(db, funcao_operacao)
 
@@ -172,11 +172,11 @@ def excluir_funcao_operacao(db: Session, id_funcao_operacao: int):
         or 0
     )
     if ativos_vinculados:
-        raise HTTPException(status_code=409, detail="Nao e possivel excluir uma funcao de operacao vinculada a ativos")
+        raise HTTPException(status_code=409, detail="Não é possível excluir uma função de transmissão vinculada a ativos")
 
     db.delete(funcao_operacao)
     db.commit()
-    return {"mensagem": "Funcao de operacao excluida com sucesso"}
+    return {"mensagem": "Função de transmissão excluída com sucesso"}
 
 
 def listar_ativos_associados(db: Session, id_funcao_operacao: int):
@@ -190,5 +190,5 @@ def validar_funcao_operacao_do_ativo(db: Session, id_subestacao: int, id_funcao_
 
     funcao_operacao = buscar_funcao_operacao(db, id_funcao_operacao)
     if funcao_operacao.id_subestacao != id_subestacao:
-        raise HTTPException(status_code=400, detail="A funcao de operacao selecionada nao pertence a subestacao do ativo")
+        raise HTTPException(status_code=400, detail="A função de transmissão selecionada não pertence à subestação do ativo")
 

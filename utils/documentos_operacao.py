@@ -70,7 +70,7 @@ def especie_documento_por_ativo(ativo):
     if abreviacao and classe_tensao and fabricante:
         return "_".join([abreviacao, classe_tensao, fabricante])
 
-    return ""
+    return (getattr(ativo, "especie", None) or "").strip()
 
 
 def normalizar_prioridade_operacao(prioridade):

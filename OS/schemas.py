@@ -15,6 +15,9 @@ class OrdemServicoCreate(BaseModel):
 
     id_subestacao: Optional[int] = None
     id_ativo: Optional[int] = None
+    id_grupo_ativo: Optional[int] = None
+    id_funcao_operacao: Optional[int] = None
+    escopo_ativo: Optional[Literal["GRUPO", "FASE"]] = None
     id_plano_manutencao: Optional[int] = None
     id_plano_item: Optional[int] = None
     id_plano_execucao: Optional[int] = None
@@ -85,6 +88,9 @@ class OrdemServicoUpdate(BaseModel):
 
     id_subestacao: Optional[int]
     id_ativo: Optional[int]
+    id_grupo_ativo: Optional[int] = None
+    id_funcao_operacao: Optional[int] = None
+    escopo_ativo: Optional[Literal["GRUPO", "FASE"]] = None
     id_plano_manutencao: Optional[int] = None
     id_plano_item: Optional[int] = None
     id_plano_execucao: Optional[int] = None

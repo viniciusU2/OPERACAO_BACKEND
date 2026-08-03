@@ -13,6 +13,9 @@ class OrdemServico(Base):
 
     id_subestacao = Column(Integer, ForeignKey("subestacao.id_subestacao"))
     id_ativo = Column(Integer, ForeignKey("ativo.id_ativo"))
+    id_grupo_ativo = Column(Integer, ForeignKey("grupo_ativo.id_grupo_ativo"), nullable=True, index=True)
+    id_funcao_operacao = Column(Integer, ForeignKey("funcao_operacao.id_funcao_operacao"), nullable=True, index=True)
+    escopo_ativo = Column(String(10), nullable=True)
     id_plano_manutencao = Column(Integer, ForeignKey("plano_manutencao.id_plano_manutencao"))
     id_plano_item = Column(Integer, ForeignKey("plano_item.id_plano_item"))
     id_plano_execucao = Column(Integer, ForeignKey("plano_execucao.id_execucao"))
@@ -58,27 +61,37 @@ class OrdemServico(Base):
 
     subestacao = relationship("Subestacao", back_populates="ordens")
     ativo = relationship("Ativo", back_populates="ordens")
+    grupo_ativo = relationship("GrupoAtivo")
     livro_registro = relationship("LivroRegistro", back_populates="os")
     inspecao = relationship("Inspecao", back_populates="ordem_servico", uselist=False)
 
     @property
     def id_tipo_ativo(self):
-        return self.ativo.id_tipo_ativo if self.ativo else None
+        if self.ativo:
+            return self.ativo.id_tipo_ativo
+        return self.grupo_ativo.id_tipo_ativo if self.grupo_ativo else None
 
     @property
     def tipo_ativo(self):
         if self.ativo and self.ativo.tipo_ativo:
             return self.ativo.tipo_ativo.nome
+        if self.grupo_ativo and self.grupo_ativo.tipo_ativo:
+            return self.grupo_ativo.tipo_ativo.nome
 
         return None
 
     @property
     def codigo_ativo(self):
-        return self.ativo.codigo_ativo if self.ativo else None
+        if self.ativo:
+            return self.ativo.codigo_ativo
+        return self.grupo_ativo.codigo_ativo if self.grupo_ativo else None
 
     @property
     def fase(self):
         if self.ativo and self.ativo.fase:
             return self.ativo.fase
+
+        if self.escopo_ativo == "GRUPO" and self.grupo_ativo:
+            return "Todas as fases"
 
         return self.complemento

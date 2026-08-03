@@ -18,9 +18,34 @@ from models.instalacao_models import Subestacao
 from models.familias_models import TipoAtivo
 from funcao_operacao.service import validar_funcao_operacao_do_ativo
 from collections import Counter
+from ATIVO.grupos_ativos import grupos_por_funcao, sincronizar_grupos_ativos
+from funcao_operacao.service import listar_funcoes_operacao
 
 
 router = APIRouter(prefix="", tags=["ATIVO"])
+
+
+@router.get("/subestacoes/{id_subestacao}/funcoes-operacao")
+def listar_funcoes_da_subestacao(id_subestacao: int, db: Session = Depends(get_db)):
+    return listar_funcoes_operacao(db, id_subestacao=id_subestacao)
+
+
+@router.get("/funcoes-operacao/{id_funcao_operacao}/grupos-ativos")
+def listar_grupos_ativos(id_funcao_operacao: int, db: Session = Depends(get_db)):
+    resultado = grupos_por_funcao(db, id_funcao_operacao)
+    db.commit()
+    return resultado
+
+
+@router.get("/grupos-ativos/{id_grupo_ativo}/componentes")
+def listar_componentes_grupo(id_grupo_ativo: int, db: Session = Depends(get_db)):
+    sincronizar_grupos_ativos(db)
+    grupo = next((item for grupos in [grupos_por_funcao(db, fo.id_funcao_operacao) for fo in []] for item in grupos if item["id_grupo_ativo"] == id_grupo_ativo), None)
+    from models.Ativo import Ativo
+    componentes = db.query(Ativo).filter(Ativo.id_grupo_ativo == id_grupo_ativo).order_by(Ativo.fase, Ativo.id_ativo).all()
+    if not componentes:
+        raise HTTPException(404, "Grupo de ativo nao encontrado")
+    return [{"id_ativo": a.id_ativo, "fase": a.fase, "codigo_ativo": a.codigo_ativo, "bay": a.bay} for a in componentes]
 
 
 def valor_texto(valor):

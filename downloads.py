@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import text
 
 from database import get_db
@@ -255,9 +255,10 @@ SS_COLUNAS = [
 
 
 ATIVO_COLUNAS = [
-    ("ID", "id_ativo"),
-    ("Subestacao", "id_subestacao"),
-    ("Tipo Ativo", "id_tipo_ativo"),
+    ("Subestação", "subestacao.nome"),
+    ("Tipo de ativo", "tipo_ativo.nome"),
+    ("Código Função de Transmissão", "funcao_operacao.codigo"),
+    ("Descrição Função de Transmissão", "funcao_operacao.descricao"),
     ("Codigo Ativo", "codigo_ativo"),
     ("Fabricante", "fabricante"),
     ("Modelo", "modelo"),
@@ -359,7 +360,11 @@ def baixar_ativos(
     ws = wb.active
     ws.title = "Ativos"
 
-    query = db.query(Ativo)
+    query = db.query(Ativo).options(
+        joinedload(Ativo.subestacao),
+        joinedload(Ativo.tipo_ativo),
+        joinedload(Ativo.funcao_operacao),
+    )
     if status and status != "all":
         query = query.filter(Ativo.status == status)
     if id_subestacao:
@@ -371,7 +376,7 @@ def baixar_ativos(
     ws.append([label for label, _ in ATIVO_COLUNAS])
     for ativo in query.all():
         ws.append([
-            limpar(getattr(ativo, campo, ""))
+              limpar(valor_campo(ativo, campo))
             for _, campo in ATIVO_COLUNAS
         ])
 

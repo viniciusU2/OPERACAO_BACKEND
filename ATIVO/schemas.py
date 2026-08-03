@@ -20,7 +20,7 @@ class AtivoBase(BaseModel):
     numero_serie: Optional[str] = None
     tensao_nominal_kv: Optional[float] = None
     data_instalacao: Optional[date] = None
-    status: Optional[Literal["EM OPERAÃ‡ÃƒO", "SOBRESSALENTE", "SUCATA"]] = "EM OPERAÃ‡ÃƒO"
+    status: Optional[Literal["EM_OPERACAO", "SOBRESSALENTE", "SUCATA", "DESATIVADO"]] = "EM_OPERACAO"
     bay: Optional[str] = None
     fase: Optional[str] = None
     codigo_linha: Optional[str] = None

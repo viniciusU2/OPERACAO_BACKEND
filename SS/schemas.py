@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 
 
 # BASE
@@ -26,6 +26,9 @@ class SolicitacaoServicoBase(BaseModel):
     complemento: Optional[str] = None
 
     id_ativo: Optional[int] = None
+    id_grupo_ativo: Optional[int] = None
+    id_funcao_operacao: Optional[int] = None
+    escopo_ativo: Optional[Literal["GRUPO", "FASE"]] = None
 
     esquema_servico: Optional[str] = None
     centro_custo: Optional[str] = None
@@ -72,6 +75,9 @@ class SolicitacaoServicoUpdate(BaseModel):
     complemento: Optional[str] = None
 
     id_ativo: Optional[int] = None
+    id_grupo_ativo: Optional[int] = None
+    id_funcao_operacao: Optional[int] = None
+    escopo_ativo: Optional[Literal["GRUPO", "FASE"]] = None
 
     esquema_servico: Optional[str] = None
     centro_custo: Optional[str] = None

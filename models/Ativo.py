@@ -30,6 +30,7 @@ class Ativo(Base):
     )
     
 
+    id_grupo_ativo = Column(Integer, ForeignKey("grupo_ativo.id_grupo_ativo"), nullable=True, index=True)
     codigo_ativo = Column(String(50), nullable=False)
     fabricante = Column(String(100))
     modelo = Column(String(100))
@@ -72,9 +73,27 @@ class Ativo(Base):
     )
 
     
+    grupo_ativo = relationship("GrupoAtivo", back_populates="ativos")
+
     funcao_operacao = relationship(
         "FuncaoOperacao",
         back_populates="ativos",
     )
+
+
+class GrupoAtivo(Base):
+    __tablename__ = "grupo_ativo"
+
+    id_grupo_ativo = Column(Integer, primary_key=True, index=True)
+    id_subestacao = Column(Integer, ForeignKey("subestacao.id_subestacao"), nullable=False, index=True)
+    id_funcao_operacao = Column(Integer, ForeignKey("funcao_operacao.id_funcao_operacao"), nullable=True, index=True)
+    id_tipo_ativo = Column(Integer, ForeignKey("tipo_ativo.id_tipo_ativo"), nullable=False, index=True)
+    codigo_ativo = Column(String(50), nullable=False)
+    bay = Column(String(50), nullable=True)
+    descricao = Column(String(300), nullable=True)
+    status = Column(String(30), nullable=False, default="ATIVO")
+
+    ativos = relationship("Ativo", back_populates="grupo_ativo")
+    tipo_ativo = relationship("TipoAtivo")
 
 

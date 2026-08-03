@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database import get_db
 from models.Ativo import Ativo
+from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
 from models.instalacao_models import Subestacao
 from models.SS_models import SolicitacaoServico
 from models import OS_models
@@ -141,14 +142,20 @@ def gerar_xlsm(modelo, destino, contexto, mapeamento):
 
     wb.save(destino)
 
-def montar_contexto_os(os, ativo=None):
+def montar_contexto_os(os, ativo=None, grupo=None):
 
     codigo_ativo = None
+    local = getattr(os, "localizacao", None)
+    fase = getattr(os, "complemento", None)
 
     if ativo:
         codigo_ativo = ativo.codigo_ativo
         local =  ativo.bay
         fase = ativo.fase
+    elif grupo:
+        codigo_ativo = grupo.codigo_ativo
+        local = grupo.bay
+        fase = "Todas as fases" if getattr(os, "escopo_ativo", None) == "GRUPO" else fase
     return {
         # ================= IDENTIFICAÇÃO =================
         "NUM_OS": limpar(os.numero_os),
@@ -237,6 +244,8 @@ def criar_ordem_servico(
     db: Session = Depends(get_db)
 ):
     garantir_colunas_os(db)
+    garantir_estrutura_grupo_ativo(db)
+    sincronizar_grupos_ativos(db)
     print(os_data)
 
     # 🔹 Validação de datas
@@ -271,6 +280,7 @@ def criar_ordem_servico(
         raise HTTPException(400, "Subestação sem sigla configurada")
 
     # 🔹 Validar Ativo
+    grupo = validar_selecao_ativo(db, os_data.id_subestacao, os_data.id_funcao_operacao, os_data.id_grupo_ativo, os_data.escopo_ativo, os_data.id_ativo)
     ativo = None
     codigo_ativo = None
 
@@ -287,6 +297,12 @@ def criar_ordem_servico(
     # 🔥 GERAR NUMERO OS
     if ativo:
         os_data.especie = especie_documento_por_ativo(ativo) or os_data.especie
+    elif grupo:
+        especie_do_grupo = next(
+            (item.especie for item in grupo.ativos if getattr(item, "especie", None)),
+            None,
+        )
+        os_data.especie = especie_do_grupo or (grupo.tipo_ativo.nome if grupo.tipo_ativo else None) or os_data.especie
 
     os_data.prioridade = normalizar_prioridade_operacao(os_data.prioridade)
     os_data.numero_os, os_data.numero_apr = gerar_numero_os(db, sigla)
@@ -329,7 +345,7 @@ def criar_ordem_servico(
     pasta_saida = "saida"
     os.makedirs(pasta_saida, exist_ok=True)
 
-    contexto = montar_contexto_os(os_data, ativo)
+    contexto = montar_contexto_os(os_data, ativo, grupo)
 
     numero_os_safe = nome_arquivo_seguro(nova_os.numero_os)
     nome_arquivo = f"{numero_os_safe}.xlsm"

@@ -19,6 +19,7 @@ from auth import auth
 import downloads
 from database import Base, engine
 from ATIVO import ativos
+from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos
 from sqlalchemy import text
 from models import rdo_models
 from models import APR_models
@@ -34,6 +35,8 @@ Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 try:
+    garantir_estrutura_grupo_ativo(db)
+    sincronizar_grupos_ativos(db)
     ativos.garantir_colunas_torre(db)
     funcao_operacao.service.garantir_estrutura_funcao_operacao(db)
     inspecoes.garantir_colunas_inspecao(db)

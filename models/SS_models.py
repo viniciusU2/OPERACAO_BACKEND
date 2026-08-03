@@ -28,6 +28,9 @@ class SolicitacaoServico(Base):
     complemento = Column(String(100))
 
     id_ativo = Column(Integer, ForeignKey("ativo.id_ativo"))
+    id_grupo_ativo = Column(Integer, ForeignKey("grupo_ativo.id_grupo_ativo"), nullable=True, index=True)
+    id_funcao_operacao = Column(Integer, ForeignKey("funcao_operacao.id_funcao_operacao"), nullable=True, index=True)
+    escopo_ativo = Column(String(10), nullable=True)
 
     esquema_servico = Column(String(100))
     centro_custo = Column(String(50))

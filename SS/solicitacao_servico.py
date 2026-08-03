@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, selectinload
 from database import get_db
 from auth.dependencies import get_current_user, require_roles
 from models.Ativo import Ativo
+from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
 from models.OS_models import OrdemServico
 from models.SS_models import SolicitacaoServico
 from models.instalacao_models import Subestacao
@@ -212,7 +213,10 @@ def montar_contexto_ss(ss, ativo=None):
 @router.post("", response_model=SolicitacaoServicoResponse)
 def criar_ss(ss: SolicitacaoServicoCreate, db: Session = Depends(get_db)):
     garantir_colunas_ss(db)
+    garantir_estrutura_grupo_ativo(db)
+    sincronizar_grupos_ativos(db)
     data = ss.model_dump()
+    validar_selecao_ativo(db, data.get("id_subestacao"), data.get("id_funcao_operacao"), data.get("id_grupo_ativo"), data.get("escopo_ativo"), data.get("id_ativo"))
     id_subestacao = data.pop("id_subestacao", None)
     if not data.get("numero_ss"):
         sigla = sigla_por_subestacao(id_subestacao)

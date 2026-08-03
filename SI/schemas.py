@@ -1,5 +1,5 @@
 ﻿from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Literal
 from datetime import date, datetime
 
 
@@ -8,6 +8,9 @@ class SIBase(BaseModel):
     numero_sgi: Optional[str] = None
     id_subestacao: Optional[int] = None
     id_ativo: Optional[int] = None
+    id_grupo_ativo: Optional[int] = None
+    id_funcao_operacao: Optional[int] = None
+    escopo_ativo: Optional[Literal["GRUPO", "FASE"]] = None
     especie: Optional[str] = None
     numero_os: Optional[str] = None
     numero_apr: Optional[str] = None
@@ -89,6 +92,9 @@ class SIUpdate(SIBase):
     numero_sgi: Optional[str] = None
     id_subestacao: Optional[int] = None
     id_ativo: Optional[int] = None
+    id_grupo_ativo: Optional[int] = None
+    id_funcao_operacao: Optional[int] = None
+    escopo_ativo: Optional[Literal["GRUPO", "FASE"]] = None
     especie: Optional[str] = None
     numero_os: Optional[str] = None
     numero_apr: Optional[str] = None

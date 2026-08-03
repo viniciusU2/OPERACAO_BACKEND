@@ -6,6 +6,7 @@ from database import get_db
 from models.SI_models import SILiberacao, solicitacao_intervencao
 from models.instalacao_models import Subestacao
 from models.Ativo import Ativo
+from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
 from SI.schemas import (
     SICreate,
     SILiberacaoCancelarUpdate,
@@ -442,9 +443,9 @@ def montar_contexto_si(si, ativo=None, sub=None):
     tempo_retorno = limpar(getattr(si, "tempo_retorno", ""))
     disponivel = limpar(getattr(si, "disponivel", ""))
     if tempo_retorno and disponivel:
-        tempo_retorno = f"{tempo_retorno} | Dispon?vel: {disponivel}"
+        tempo_retorno = f"{tempo_retorno} | Disponível: {disponivel}"
     elif disponivel:
-        tempo_retorno = f"Dispon?vel: {disponivel}"
+        tempo_retorno = f"Disponível: {disponivel}"
 
     return {
         "NUM_SI": limpar(si.numero_si),
@@ -501,8 +502,11 @@ def montar_contexto_si(si, ativo=None, sub=None):
 @router.post("", response_model=SIResponse)
 def criar_si(dados: SICreate, db: Session = Depends(get_db)):
     garantir_colunas_si(db)
+    garantir_estrutura_grupo_ativo(db)
+    sincronizar_grupos_ativos(db)
 
     data = dados.dict()
+    validar_selecao_ativo(db, data.get("id_subestacao"), data.get("id_funcao_operacao"), data.get("id_grupo_ativo"), data.get("escopo_ativo"), data.get("id_ativo"))
     if data.get("id_ativo"):
         ativo = db.query(Ativo).filter(Ativo.id_ativo == data["id_ativo"]).first()
         if ativo:
