@@ -5,7 +5,7 @@ from auth.dependencies import get_current_user, require_roles
 from database import get_db
 from models.SI_models import SILiberacao, solicitacao_intervencao
 from models.instalacao_models import Subestacao
-from models.Ativo import Ativo
+from models.Ativo import Ativo, GrupoAtivo
 from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
 from SI.schemas import (
     SICreate,
@@ -420,7 +420,7 @@ def gerar_xlsm(modelo, destino, contexto, mapeamento, liberacoes=None):
     wb.save(destino)
 
 
-def montar_contexto_si(si, ativo=None, sub=None):
+def montar_contexto_si(si, ativo=None, sub=None, grupo=None):
     def primeiro(*valores):
         for valor in valores:
             if valor not in (None, ""):
@@ -432,11 +432,15 @@ def montar_contexto_si(si, ativo=None, sub=None):
             return ""
         return str(valor).replace("NAO", "NÃO")
 
+    codigo_ativo = ativo.codigo_ativo if ativo else (grupo.codigo_ativo if grupo else "")
+    fase = ativo.fase if ativo else ("Todas as fases" if grupo else "")
+    bay = ativo.bay if ativo else (grupo.bay if grupo else "")
+
     localizacao = ""
-    if ativo:
+    if codigo_ativo:
         localizacao = " - ".join(
             str(valor)
-            for valor in (ativo.codigo_ativo, ativo.fase, ativo.bay)
+            for valor in (codigo_ativo, fase, bay)
             if valor not in (None, "")
         )
 
@@ -455,7 +459,7 @@ def montar_contexto_si(si, ativo=None, sub=None):
         "ESPECIE": limpar(si.especie),
         "INSTALACAO": limpar(sub.nome if sub else ""),
         "LOCALIZACAO": limpar(localizacao),
-        "CODIGO_ATIVO": limpar(ativo.codigo_ativo if ativo else ""),
+        "CODIGO_ATIVO": limpar(codigo_ativo),
         "NATUREZA": limpar(getattr(si, "natureza", "")),
         "CARACTERISTICA_INTERVENCAO": limpar(getattr(si, "caracteristica_intervencao", "")),
         "TIPO": limpar(getattr(si, "tipo", "")),
@@ -703,6 +707,11 @@ def download_si(id_si: int, db: Session = Depends(get_db)):
     si = obter_si_ou_404(db, id_si)
 
     ativo = db.query(Ativo).filter(Ativo.id_ativo == si.id_ativo).first() if si.id_ativo else None
+    grupo = (
+        db.query(GrupoAtivo).filter(GrupoAtivo.id_grupo_ativo == si.id_grupo_ativo).first()
+        if si.id_grupo_ativo
+        else None
+    )
     sub = db.query(Subestacao).filter(Subestacao.id_subestacao == si.id_subestacao).first() if si.id_subestacao else None
     liberacoes = (
         db.query(SILiberacao)
@@ -711,7 +720,7 @@ def download_si(id_si: int, db: Session = Depends(get_db)):
         .all()
     )
 
-    contexto = montar_contexto_si(si, ativo, sub)
+    contexto = montar_contexto_si(si, ativo, sub, grupo)
     pasta_saida = "saida"
     os.makedirs(pasta_saida, exist_ok=True)
 

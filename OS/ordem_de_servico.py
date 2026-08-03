@@ -155,7 +155,7 @@ def montar_contexto_os(os, ativo=None, grupo=None):
     elif grupo:
         codigo_ativo = grupo.codigo_ativo
         local = grupo.bay
-        fase = "Todas as fases" if getattr(os, "escopo_ativo", None) == "GRUPO" else fase
+        fase = "AZ-BR-VM" if getattr(os, "escopo_ativo", None) == "GRUPO" else fase
     return {
         # ================= IDENTIFICAÇÃO =================
         "NUM_OS": limpar(os.numero_os),
@@ -431,7 +431,7 @@ def baixar_os_com_apr(id_os: int, db: Session = Depends(get_db)):
     gerar_xlsm(
         modelo="modelos/MODELO_OS.xlsx",
         destino=caminho_os,
-        contexto=montar_contexto_os(os_db, ativo),
+        contexto=montar_contexto_os(os_db, ativo, os_db.grupo_ativo),
         mapeamento=MAPEAMENTO_CELULAS,
     )
     gerar_apr_xlsm(db, frente, caminho_apr)
@@ -472,7 +472,7 @@ def baixar_os(id_os: int, db: Session = Depends(get_db)):
         ).first()
 
     # 🔹 Montar contexto
-    contexto = montar_contexto_os(os_db, ativo)
+    contexto = montar_contexto_os(os_db, ativo, os_db.grupo_ativo)
 
     # 🔹 Nome seguro
     numero_os_safe = nome_arquivo_seguro(os_db.numero_os)
@@ -532,7 +532,7 @@ def gerar_os_subestacao(db: Session = Depends(get_db)):
             ).first()
 
         # 🔹 Montar contexto
-        contexto = montar_contexto_os(os_db, ativo)
+        contexto = montar_contexto_os(os_db, ativo, os_db.grupo_ativo)
 
         # 🔹 Nome seguro
         numero_os_safe = nome_arquivo_seguro(os_db.numero_os)
@@ -971,7 +971,7 @@ def baixar_os_lote_por_tipo_ativo(
             {
                 "id_os": ordem.id_os,
                 "numero_os": ordem.numero_os,
-                "codigo_ativo": ordem.ativo.codigo_ativo if ordem.ativo else None,
+                "codigo_ativo": ordem.codigo_ativo,
                 "bay": ordem.ativo.bay if ordem.ativo else ordem.localizacao,
                 "fase": ordem.ativo.fase if ordem.ativo else ordem.complemento,
                 "status": ordem.status,
@@ -1163,7 +1163,7 @@ def criar_os_lote_por_tipo_ativo(
 
             # Gerar XLSM
             ativo_obj = db.query(Ativo).get(ativo.id_ativo)
-            contexto = montar_contexto_os(nova_os, ativo_obj)
+            contexto = montar_contexto_os(nova_os, ativo_obj, nova_os.grupo_ativo)
 
             pasta_saida = "saida"
             os.makedirs(pasta_saida, exist_ok=True)

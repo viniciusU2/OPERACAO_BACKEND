@@ -142,7 +142,9 @@ OS_COLUNAS = [
     ("Numero SI", "numero_si"),
     ("Subestacao", "id_subestacao"),
     ("Ativo", "id_ativo"),
-    ("Codigo Ativo", "ativo.codigo_ativo"),
+    # A OS de todas as fases referencia o grupo, sem um ativo individual.
+    # A propriedade da OS resolve o codigo tanto do ativo quanto do grupo.
+    ("Codigo Ativo", "codigo_ativo"),
     ("Especie", "especie"),
     ("APR", "numero_apr"),
     ("Instalacao", "instalacao"),
