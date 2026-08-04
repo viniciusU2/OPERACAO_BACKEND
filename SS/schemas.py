@@ -104,3 +104,11 @@ class SolicitacaoServicoResponse(SolicitacaoServicoBase):
     codigo_ativo: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SolicitacaoServicoPaginadaResponse(BaseModel):
+    items: list[SolicitacaoServicoResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

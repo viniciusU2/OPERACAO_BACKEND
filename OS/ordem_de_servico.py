@@ -1,8 +1,8 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pymysql import IntegrityError
-from sqlalchemy import text
+from sqlalchemy import or_, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 from database import get_db
@@ -13,13 +13,14 @@ from OS.schemas import (
     GerarOsPlanosRequest,
     OrdemServicoCreate,
     OrdemServicoCreateLote,
+    OrdemServicoPaginadaResponse,
     OrdemServicoResponse,
     OrdemServicoUpdate,
 )
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database import get_db
-from models.Ativo import Ativo
+from models.Ativo import Ativo, GrupoAtivo
 from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
 from models.instalacao_models import Subestacao
 from models.SS_models import SolicitacaoServico
@@ -53,7 +54,14 @@ from models.APR_models import APR
 router = APIRouter(prefix="/os", tags=["Ordem de Serviço"])
 
 
+_ESTRUTURA_OS_GARANTIDA = False
+
+
 def garantir_colunas_os(db: Session):
+    global _ESTRUTURA_OS_GARANTIDA
+    if _ESTRUTURA_OS_GARANTIDA:
+        return
+
     colunas = {
         "editado_por": "TEXT NULL",
         "id_frente_servico": "INT NULL",
@@ -67,7 +75,20 @@ def garantir_colunas_os(db: Session):
         if not existe:
             db.execute(text(f"ALTER TABLE ordem_servico ADD COLUMN {coluna} {definicao}"))
 
+    indices = {
+        "idx_os_subestacao_id_os": "(id_subestacao, id_os)",
+        "idx_os_status_id_os": "(status, id_os)",
+    }
+    indices_existentes = {
+        linha[0]
+        for linha in db.execute(text("SHOW INDEX FROM ordem_servico")).fetchall()
+    }
+    for nome, colunas_indice in indices.items():
+        if nome not in indices_existentes:
+            db.execute(text(f"CREATE INDEX {nome} ON ordem_servico {colunas_indice}"))
+
     db.commit()
+    _ESTRUTURA_OS_GARANTIDA = True
 
 def remover_arquivo(path: str):
     if os.path.exists(path):
@@ -573,6 +594,58 @@ def listar_os(
         )
 
     return query.order_by(OS_models.OrdemServico.id_os.desc()).all()
+
+
+@router.get("/paginado", response_model=OrdemServicoPaginadaResponse)
+def listar_os_paginado(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    search: str | None = None,
+    status: str | None = None,
+    id_subestacao: int | None = None,
+    esquema_servicos: str | None = None,
+    db: Session = Depends(get_db),
+):
+    garantir_colunas_os(db)
+    query = db.query(OS_models.OrdemServico)
+
+    if search and search.strip():
+        termo = f"%{search.strip()}%"
+        query = query.outerjoin(
+            Ativo, OS_models.OrdemServico.id_ativo == Ativo.id_ativo
+        ).outerjoin(
+            GrupoAtivo, OS_models.OrdemServico.id_grupo_ativo == GrupoAtivo.id_grupo_ativo
+        ).filter(or_(
+            OS_models.OrdemServico.numero_os.ilike(termo),
+            OS_models.OrdemServico.descricao_servicos.ilike(termo),
+            Ativo.codigo_ativo.ilike(termo),
+            GrupoAtivo.codigo_ativo.ilike(termo),
+        ))
+    if status and status != "all":
+        query = query.filter(OS_models.OrdemServico.status == status)
+    if id_subestacao:
+        query = query.filter(OS_models.OrdemServico.id_subestacao == id_subestacao)
+    if esquema_servicos and esquema_servicos != "all":
+        query = query.filter(OS_models.OrdemServico.esquema_servicos.ilike(f"%{esquema_servicos.strip()}%"))
+
+    total = query.count()
+    items = (
+        query.options(
+            selectinload(OS_models.OrdemServico.ativo).selectinload(Ativo.tipo_ativo),
+            selectinload(OS_models.OrdemServico.grupo_ativo).selectinload(GrupoAtivo.tipo_ativo),
+        )
+        .order_by(OS_models.OrdemServico.id_os.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size),
+    }
 
 @router.get("/ativo/{id_ativo}", response_model=List[OrdemServicoResponse])
 def listar_os(

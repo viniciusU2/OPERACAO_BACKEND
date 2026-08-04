@@ -35,6 +35,7 @@ Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 try:
+    ordem_de_servico.garantir_colunas_os(db)
     garantir_estrutura_grupo_ativo(db)
     sincronizar_grupos_ativos(db)
     ativos.garantir_colunas_torre(db)

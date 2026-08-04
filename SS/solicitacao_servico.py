@@ -3,12 +3,12 @@ import re
 import shutil
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from openpyxl.utils import range_boundaries
-from sqlalchemy import text
+from sqlalchemy import or_, text
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
@@ -20,6 +20,7 @@ from models.SS_models import SolicitacaoServico
 from models.instalacao_models import Subestacao
 from SS.schemas import (
     SolicitacaoServicoCreate,
+    SolicitacaoServicoPaginadaResponse,
     SolicitacaoServicoResponse,
     SolicitacaoServicoUpdate,
 )
@@ -245,6 +246,47 @@ def listar_ss(db: Session = Depends(get_db)):
         .options(selectinload(SolicitacaoServico.ativo))
         .all()
     )
+
+
+@router.get("/paginado", response_model=SolicitacaoServicoPaginadaResponse)
+def listar_ss_paginado(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    search: str | None = None,
+    status: str | None = None,
+    id_subestacao: int | None = None,
+    db: Session = Depends(get_db),
+):
+    garantir_colunas_ss(db)
+    query = db.query(SolicitacaoServico).outerjoin(Ativo, SolicitacaoServico.id_ativo == Ativo.id_ativo)
+
+    if search and search.strip():
+        termo = f"%{search.strip()}%"
+        query = query.filter(or_(
+            SolicitacaoServico.numero_ss.ilike(termo),
+            SolicitacaoServico.descricao_problema.ilike(termo),
+            Ativo.codigo_ativo.ilike(termo),
+        ))
+    if status and status != "all":
+        query = query.filter(SolicitacaoServico.status == status)
+    if id_subestacao:
+        query = query.filter(Ativo.id_subestacao == id_subestacao)
+
+    total = query.count()
+    items = (
+        query.options(selectinload(SolicitacaoServico.ativo))
+        .order_by(SolicitacaoServico.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size),
+    }
 
 
 @router.get("/{id_ss}", response_model=SolicitacaoServicoResponse)

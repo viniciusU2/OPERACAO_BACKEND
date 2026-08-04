@@ -80,6 +80,14 @@ class OrdemServicoResponse(OrdemServicoCreate):
 
     class Config:
         from_attributes = True
+
+
+class OrdemServicoPaginadaResponse(BaseModel):
+    items: list[OrdemServicoResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
         
 class OrdemServicoUpdate(BaseModel):
     numero_os: Optional[str]

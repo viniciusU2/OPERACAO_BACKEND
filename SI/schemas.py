@@ -117,6 +117,14 @@ class SIResponse(SIBase):
         from_attributes = True
 
 
+class SIPaginadaResponse(BaseModel):
+    items: list[SIResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class SILiberacaoManutencaoCreate(BaseModel):
     data_utilizacao: Optional[date] = None
     data_hora_liberacao: Optional[datetime] = None
