@@ -80,8 +80,8 @@ def garantir_colunas_os(db: Session):
         "idx_os_status_id_os": "(status, id_os)",
     }
     indices_existentes = {
-        linha[0]
-        for linha in db.execute(text("SHOW INDEX FROM ordem_servico")).fetchall()
+        linha["Key_name"]
+        for linha in db.execute(text("SHOW INDEX FROM ordem_servico")).mappings()
     }
     for nome, colunas_indice in indices.items():
         if nome not in indices_existentes:
@@ -678,6 +678,11 @@ def editar_ordem_servico(
         "fase",
         "ativo",
         "subestacao",
+        "id_subestacao",
+        "id_ativo",
+        "id_grupo_ativo",
+        "id_funcao_operacao",
+        "escopo_ativo",
         "criado_em",
         "emissor",
     }
