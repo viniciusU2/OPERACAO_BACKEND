@@ -14,8 +14,10 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import pandas as pd
+import unicodedata
 from models.instalacao_models import Subestacao
 from models.familias_models import TipoAtivo
+from models.fo import FuncaoOperacao
 from funcao_operacao.service import validar_funcao_operacao_do_ativo
 from collections import Counter
 from ATIVO.grupos_ativos import grupos_por_funcao, sincronizar_grupos_ativos
@@ -327,51 +329,121 @@ async def importar_ativos(file: UploadFile = File(...), db: Session = Depends(ge
     try:
         df = pd.read_excel(file.file)
 
-        # ðŸ”´ Validar colunas obrigatÃ³rias
-        colunas_obrigatorias = [
-            "id_subestacao",
-            "id_tipo_ativo",
-            "codigo_ativo",
-            "bay",
-            "fase"
-        ]
+        def normalizar_cabecalho(valor):
+            texto = unicodedata.normalize("NFKD", str(valor or ""))
+            texto = "".join(caractere for caractere in texto if not unicodedata.combining(caractere))
+            return "_".join(texto.strip().lower().replace("-", " ").split())
 
-        for col in colunas_obrigatorias:
-            if col not in df.columns:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Coluna obrigatÃ³ria ausente: {col}"
-                )
+        aliases = {
+            "id_subestacao": "id_subestacao",
+            "tipo_de_ativo": "id_tipo_ativo",
+            "id_tipo_ativo": "id_tipo_ativo",
+            "id_funcao_operacao": "id_funcao_operacao",
+            "codigo_ativo": "codigo_ativo",
+            "fabricante": "fabricante",
+            "modelo": "modelo",
+            "especie": "especie",
+            "numero_serie": "numero_serie",
+            "vao_vante_m": "vao_vante_m",
+            "tensao_nominal_kv": "tensao_nominal_kv",
+            "data_instalacao": "data_instalacao",
+            "status": "status",
+            "bay": "bay",
+            "fase": "fase",
+        }
+        df = df.rename(columns={coluna: aliases.get(normalizar_cabecalho(coluna), normalizar_cabecalho(coluna)) for coluna in df.columns})
+
+        colunas_obrigatorias = ["id_subestacao", "id_tipo_ativo", "codigo_ativo"]
+        ausentes = [coluna for coluna in colunas_obrigatorias if coluna not in df.columns]
+        if ausentes:
+            raise HTTPException(status_code=400, detail=f"Colunas obrigatórias ausentes: {', '.join(ausentes)}")
+
+        def opcional(valor):
+            return None if pd.isna(valor) or str(valor).strip() == "" else valor
+
+        def inteiro(valor, campo, linha):
+            valor = opcional(valor)
+            if valor is None:
+                raise HTTPException(status_code=400, detail=f"Linha {linha}: informe {campo}.")
+            try:
+                return int(float(valor))
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail=f"Linha {linha}: {campo} inválido ({valor}).")
+
+        def status_padrao(valor):
+            valor = opcional(valor)
+            if valor is None:
+                return "EM_OPERACAO"
+            chave = normalizar_cabecalho(valor).upper()
+            return {
+                "EM_OPERACAO": "EM_OPERACAO",
+                "ATIVO": "EM_OPERACAO",
+                "OPERANTE": "EM_OPERACAO",
+                "SOBRESSALENTE": "SOBRESSALENTE",
+                "SUCATA": "SUCATA",
+                "DESATIVADO": "DESATIVADO",
+            }.get(chave, str(valor).strip())
+
+        ids_subestacao = set(db.query(Subestacao.id_subestacao).all())
+        ids_subestacao = {item[0] for item in ids_subestacao}
+        ids_tipo = {item[0] for item in db.query(TipoAtivo.id_tipo_ativo).all()}
+        funcoes = {
+            item.id_funcao_operacao: item.id_subestacao
+            for item in db.query(FuncaoOperacao).all()
+        }
 
         ativos = []
-
-        for i, row in df.iterrows():
-            # âš ï¸ ignorar linhas vazias
-            if pd.isna(row["codigo_ativo"]):
+        for indice, row in df.iterrows():
+            linha = indice + 2
+            codigo_ativo = opcional(row["codigo_ativo"])
+            if codigo_ativo is None:
                 continue
 
+            id_subestacao = inteiro(row["id_subestacao"], "id_subestacao", linha)
+            id_tipo_ativo = inteiro(row["id_tipo_ativo"], "id_tipo_ativo", linha)
+            if id_subestacao not in ids_subestacao:
+                raise HTTPException(status_code=400, detail=f"Linha {linha}: subestação {id_subestacao} não existe.")
+            if id_tipo_ativo not in ids_tipo:
+                raise HTTPException(status_code=400, detail=f"Linha {linha}: tipo de ativo {id_tipo_ativo} não existe.")
+
+            id_funcao = opcional(row.get("id_funcao_operacao"))
+            id_funcao = inteiro(id_funcao, "id_funcao_operacao", linha) if id_funcao is not None else None
+            if id_funcao is not None and funcoes.get(id_funcao) != id_subestacao:
+                raise HTTPException(status_code=400, detail=f"Linha {linha}: a Função de Transmissão {id_funcao} não pertence à subestação {id_subestacao}.")
+
             ativo = Ativo(
-                id_subestacao=int(row["id_subestacao"]),
-                id_tipo_ativo=int(row["id_tipo_ativo"]),
-                codigo_ativo=str(row["codigo_ativo"]),
-                bay=str(row["bay"]) if pd.notna(row["bay"]) else None,
-                numero_serie=str(row["numero_serie"]) if pd.notna(row["numero_serie"]) else None,
-                fabricante=str(row["fabricante"]) if pd.notna(row["fabricante"]) else None,
-
-
-                fase=str(row["fase"]) if pd.notna(row["fase"]) else None,
-                status="ATIVO"
+                id_subestacao=id_subestacao,
+                id_tipo_ativo=id_tipo_ativo,
+                id_funcao_operacao=id_funcao,
+                codigo_ativo=str(codigo_ativo).strip(),
+                bay=str(opcional(row.get("bay"))).strip() if opcional(row.get("bay")) is not None else None,
+                numero_serie=str(opcional(row.get("numero_serie"))).strip() if opcional(row.get("numero_serie")) is not None else None,
+                fabricante=str(opcional(row.get("fabricante"))).strip() if opcional(row.get("fabricante")) is not None else None,
+                modelo=str(opcional(row.get("modelo"))).strip() if opcional(row.get("modelo")) is not None else None,
+                especie=str(opcional(row.get("especie"))).strip() if opcional(row.get("especie")) is not None else None,
+                vao_vante_m=opcional(row.get("vao_vante_m")),
+                tensao_nominal_kv=opcional(row.get("tensao_nominal_kv")),
+                data_instalacao=opcional(row.get("data_instalacao")),
+                fase=str(opcional(row.get("fase"))).strip() if opcional(row.get("fase")) is not None else None,
+                status=status_padrao(row.get("status")),
             )
 
             ativos.append(ativo)
 
-        # ðŸš€ inserÃ§Ã£o em lote (mais rÃ¡pido)
+        if not ativos:
+            raise HTTPException(status_code=400, detail="Nenhum ativo válido foi encontrado na planilha.")
+
         db.bulk_save_objects(ativos)
         db.commit()
+        sincronizar_grupos_ativos(db)
 
         return {
-            "msg": f"{len(ativos)} ativos importados com sucesso"
+            "msg": f"{len(ativos)} ativos importados com sucesso",
+            "total": len(ativos),
         }
+    except HTTPException:
+        db.rollback()
+        raise
 
     except Exception as e:
         db.rollback()
