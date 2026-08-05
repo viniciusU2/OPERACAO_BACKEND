@@ -40,21 +40,39 @@ def garantir_estrutura_grupo_ativo(db: Session):
 def sincronizar_grupos_ativos(db: Session):
     garantir_estrutura_grupo_ativo(db)
     ativos = db.query(Ativo).order_by(Ativo.id_ativo).all()
-    grupos = {}
+    grupos = {
+        (
+            grupo.id_subestacao,
+            grupo.id_funcao_operacao,
+            grupo.id_tipo_ativo,
+            (grupo.codigo_ativo or "").strip().upper(),
+            (grupo.bay or "").strip().upper() or None,
+        ): grupo
+        for grupo in db.query(GrupoAtivo).all()
+    }
+    novos_grupos = []
     for ativo in ativos:
         # Bay participa da chave quando preenchido; evita unir equipamentos homônimos instalados em bays distintos.
         chave = (ativo.id_subestacao, ativo.id_funcao_operacao, ativo.id_tipo_ativo, (ativo.codigo_ativo or "").strip().upper(), (ativo.bay or "").strip().upper() or None)
         grupo = grupos.get(chave)
         if not grupo:
-            grupo = db.query(GrupoAtivo).filter_by(
-                id_subestacao=chave[0], id_funcao_operacao=chave[1], id_tipo_ativo=chave[2], codigo_ativo=chave[3], bay=chave[4]
-            ).first()
-            if not grupo:
-                grupo = GrupoAtivo(id_subestacao=chave[0], id_funcao_operacao=chave[1], id_tipo_ativo=chave[2], codigo_ativo=chave[3], bay=chave[4])
-                db.add(grupo)
-                db.flush()
+            grupo = GrupoAtivo(
+                id_subestacao=chave[0],
+                id_funcao_operacao=chave[1],
+                id_tipo_ativo=chave[2],
+                codigo_ativo=chave[3],
+                bay=chave[4],
+            )
             grupos[chave] = grupo
-        ativo.id_grupo_ativo = grupo.id_grupo_ativo
+            novos_grupos.append(grupo)
+
+    if novos_grupos:
+        db.add_all(novos_grupos)
+        db.flush()
+
+    for ativo in ativos:
+        chave = (ativo.id_subestacao, ativo.id_funcao_operacao, ativo.id_tipo_ativo, (ativo.codigo_ativo or "").strip().upper(), (ativo.bay or "").strip().upper() or None)
+        ativo.id_grupo_ativo = grupos[chave].id_grupo_ativo
     db.flush()
 
 

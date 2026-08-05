@@ -676,6 +676,22 @@ def sincronizar_colaboradores_usuarios(db: Session):
     garantir_colunas_sobreaviso(db)
     id_equipe = equipe_padrao_id(db)
     usuarios_ativos = db.query(Usuario).filter(Usuario.ativo == True).all()
+    colaboradores = db.query(SobreavisoColaborador).all()
+    colaboradores_por_usuario = {
+        colaborador.id_usuario: colaborador
+        for colaborador in colaboradores
+        if colaborador.id_usuario is not None
+    }
+    colaboradores_por_matricula = {
+        colaborador.matricula: colaborador
+        for colaborador in colaboradores
+        if colaborador.matricula
+    }
+    colaboradores_por_email = {
+        colaborador.email.strip().lower(): colaborador
+        for colaborador in colaboradores
+        if colaborador.email
+    }
     resumo = {
         "usuarios_ativos": len(usuarios_ativos),
         "ignorados_admin": 0,
@@ -689,12 +705,9 @@ def sincronizar_colaboradores_usuarios(db: Session):
             resumo["ignorados_admin"] += 1
             continue
 
-        colaborador = (
-            db.query(SobreavisoColaborador)
-            .filter(SobreavisoColaborador.id_usuario == usuario.id)
-            .first()
-        )
         matricula_usuario = f"USR-{usuario.id}"
+        email_usuario = (usuario.email or "").strip().lower()
+        colaborador = colaboradores_por_usuario.get(usuario.id)
 
         if colaborador:
             colaborador.nome = usuario.nome
@@ -708,17 +721,9 @@ def sincronizar_colaboradores_usuarios(db: Session):
             continue
 
         colaborador = (
-            db.query(SobreavisoColaborador)
-            .filter(SobreavisoColaborador.matricula == matricula_usuario)
-            .first()
+            colaboradores_por_matricula.get(matricula_usuario)
+            or colaboradores_por_email.get(email_usuario)
         )
-
-        if not colaborador:
-            colaborador = (
-                db.query(SobreavisoColaborador)
-                .filter(func.lower(SobreavisoColaborador.email) == usuario.email.lower())
-                .first()
-            )
 
         if colaborador:
             colaborador.id_usuario = usuario.id
@@ -729,21 +734,25 @@ def sincronizar_colaboradores_usuarios(db: Session):
             colaborador.email = usuario.email
             colaborador.cargo = colaborador.cargo or usuario.role
             colaborador.ativo = 1
+            colaboradores_por_usuario[usuario.id] = colaborador
             resumo["atualizados"] += 1
             continue
 
-        db.add(
-            SobreavisoColaborador(
-                id_usuario=usuario.id,
-                id_equipe=id_equipe,
-                id_subestacao=usuario.id_subestacao_padrao,
-                nome=usuario.nome,
-                matricula=matricula_usuario,
-                email=usuario.email,
-                cargo=usuario.role,
-                ativo=1,
-            )
+        colaborador = SobreavisoColaborador(
+            id_usuario=usuario.id,
+            id_equipe=id_equipe,
+            id_subestacao=usuario.id_subestacao_padrao,
+            nome=usuario.nome,
+            matricula=matricula_usuario,
+            email=usuario.email,
+            cargo=usuario.role,
+            ativo=1,
         )
+        db.add(colaborador)
+        colaboradores_por_usuario[usuario.id] = colaborador
+        colaboradores_por_matricula[matricula_usuario] = colaborador
+        if email_usuario:
+            colaboradores_por_email[email_usuario] = colaborador
         resumo["criados"] += 1
 
     db.commit()
