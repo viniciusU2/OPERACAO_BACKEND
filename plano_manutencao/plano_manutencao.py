@@ -1,6 +1,6 @@
 # routers/inspecoes.py
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from datetime import datetime
 from database import get_db
@@ -103,63 +103,72 @@ def data_inicial_execucao(item: PlanoItem):
 
 
 def sincronizar_execucoes_pendentes(db: Session, plano_id: int | None = None) -> int:
-    criadas = 0
-    query_itens = db.query(PlanoItem).join(PlanoItem.plano)
+    query_itens = (
+        db.query(PlanoItem)
+        .join(PlanoItem.plano)
+        .options(joinedload(PlanoItem.plano))
+    )
 
     if plano_id is not None:
         query_itens = query_itens.filter(PlanoItem.id_plano_manutencao == plano_id)
 
-    itens = query_itens.all()
+    itens = [item for item in query_itens.all() if item.plano]
+    if not itens:
+        return 0
 
+    tipos_ativo = {item.plano.id_tipo_ativo for item in itens}
+    ativos_por_tipo: dict[int, list[int]] = {}
+    for id_ativo, id_tipo_ativo in (
+        db.query(Ativo.id_ativo, Ativo.id_tipo_ativo)
+        .filter(Ativo.id_tipo_ativo.in_(tipos_ativo))
+        .all()
+    ):
+        ativos_por_tipo.setdefault(id_tipo_ativo, []).append(id_ativo)
+
+    ids_itens = [item.id_plano_item for item in itens]
+    existentes = set(
+        db.query(PlanoExecucao.id_plano_item, PlanoExecucao.id_ativo)
+        .filter(PlanoExecucao.id_plano_item.in_(ids_itens))
+        .all()
+    )
+
+    novas_execucoes = []
     for item in itens:
-        if not item.plano:
-            continue
-
-        ativos = (
-            db.query(Ativo)
-            .filter(Ativo.id_tipo_ativo == item.plano.id_tipo_ativo)
-            .all()
-        )
-
-        for ativo in ativos:
-            existente = (
-                db.query(PlanoExecucao)
-                .filter(
-                    PlanoExecucao.id_plano_item == item.id_plano_item,
-                    PlanoExecucao.id_ativo == ativo.id_ativo,
-                )
-                .first()
-            )
-
-            if existente:
+        for id_ativo in ativos_por_tipo.get(item.plano.id_tipo_ativo, []):
+            chave = (item.id_plano_item, id_ativo)
+            if chave in existentes:
                 continue
 
-            db.add(
+            novas_execucoes.append(
                 PlanoExecucao(
                     id_plano_item=item.id_plano_item,
-                    id_ativo=ativo.id_ativo,
+                    id_ativo=id_ativo,
                     ultima_execucao=None,
                     proxima_execucao=data_inicial_execucao(item),
                 )
             )
-            criadas += 1
+            existentes.add(chave)
 
-    if criadas:
+    if novas_execucoes:
+        db.add_all(novas_execucoes)
         db.flush()
 
-    return criadas
+    return len(novas_execucoes)
 
 
 @router.get("/execucoes", response_model=List[PlanoExecucaoPlanilhaRead])
 def listar_execucoes(db: Session = Depends(get_db)):
-    criadas = sincronizar_execucoes_pendentes(db)
-    if criadas:
-        db.commit()
-
     execucoes = (
         db.query(PlanoExecucao)
         .join(PlanoExecucao.plano_item)
         .join(PlanoExecucao.ativo)
+        .options(
+            joinedload(PlanoExecucao.plano_item)
+            .joinedload(PlanoItem.plano)
+            .joinedload(PlanoManutencao.tipo_ativo),
+            joinedload(PlanoExecucao.ativo).joinedload(Ativo.tipo_ativo),
+            joinedload(PlanoExecucao.ativo).joinedload(Ativo.subestacao),
+        )
         .order_by(PlanoExecucao.proxima_execucao, Ativo.codigo_ativo, PlanoItem.ordem)
         .all()
     )

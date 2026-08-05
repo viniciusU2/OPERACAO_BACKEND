@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models.plano_manutencao_models import (
+    PeriodicidadeEnum,
     PlanoManutencao,
     Inspecao,
     PlanoExecucao,
@@ -27,9 +28,8 @@ router = APIRouter(prefix="/inspecoes", tags=["inspecoes"])
 
 
 def garantir_colunas_inspecao(db: Session):
-    valores_periodicidade = (
-        "'SEMANAL','MENSAL','BIMESTRAL','TRIMESTRAL','SEMESTRAL',"
-        "'ANUAL','3_ANOS','5_ANOS','6_ANOS'"
+    valores_periodicidade = ",".join(
+        f"'{periodicidade.name}'" for periodicidade in PeriodicidadeEnum
     )
     for tabela in ("plano_item", "inspecao"):
         coluna_periodicidade = db.execute(

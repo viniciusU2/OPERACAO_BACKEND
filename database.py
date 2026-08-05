@@ -6,10 +6,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+SQLALCHEMY_ECHO = os.getenv("SQLALCHEMY_ECHO", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
-print("DATABASE_URL:", os.getenv("DATABASE_URL"))  # TESTE
-
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=SQLALCHEMY_ECHO)
 
 SessionLocal = sessionmaker(
     autocommit=False,
