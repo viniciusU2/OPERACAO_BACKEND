@@ -27,6 +27,35 @@ router = APIRouter(prefix="/inspecoes", tags=["inspecoes"])
 
 
 def garantir_colunas_inspecao(db: Session):
+    valores_periodicidade = (
+        "'SEMANAL','MENSAL','BIMESTRAL','TRIMESTRAL','SEMESTRAL',"
+        "'ANUAL','3_ANOS','5_ANOS','6_ANOS'"
+    )
+    for tabela in ("plano_item", "inspecao"):
+        coluna_periodicidade = db.execute(
+            QueryText(
+                """
+                SELECT DATA_TYPE, COLUMN_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = :tabela
+                  AND COLUMN_NAME = 'periodicidade'
+                """
+            ),
+            {"tabela": tabela},
+        ).first()
+        if (
+            coluna_periodicidade
+            and coluna_periodicidade[0] == "enum"
+            and "'ANUAL'" not in coluna_periodicidade[1]
+        ):
+            db.execute(
+                QueryText(
+                    f"ALTER TABLE {tabela} MODIFY COLUMN periodicidade "
+                    f"ENUM({valores_periodicidade}) NOT NULL"
+                )
+            )
+
     colunas_inspecao = {
         row[0]
         for row in db.execute(
@@ -84,6 +113,13 @@ def calcular_proxima_execucao(data_base, periodicidade, intervalo):
         return data_base + timedelta(days=90 * intervalo)
     if periodicidade == "SEMESTRAL":
         return data_base + timedelta(days=180 * intervalo)
+    if periodicidade == "ANUAL":
+        ano_destino = data_base.year + intervalo
+        try:
+            return data_base.replace(year=ano_destino)
+        except ValueError:
+            # 29/02 passa para 28/02 quando o ano de destino nao for bissexto.
+            return data_base.replace(year=ano_destino, month=2, day=28)
     if periodicidade == "3_ANOS":
         return data_base + timedelta(days=365 * 3 * intervalo)
     if periodicidade == "5_ANOS":

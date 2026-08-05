@@ -25,6 +25,7 @@ class PeriodicidadeEnum(str, enum.Enum):
     BIMESTRAL = "BIMESTRAL"
     TRIMESTRAL = "TRIMESTRAL"
     SEMESTRAL = "SEMESTRAL"
+    ANUAL = "ANUAL"
     TRES_ANOS = "3_ANOS"
     CINCO_ANOS = "5_ANOS"
     SEIS_ANOS = "6_ANOS"
