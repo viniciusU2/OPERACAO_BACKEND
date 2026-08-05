@@ -50,6 +50,7 @@ class SolicitacaoServico(Base):
     editado_por = Column(Text)
 
     ativo = relationship("Ativo")
+    grupo_ativo = relationship("GrupoAtivo")
 
     @property
     def id_ss(self):
@@ -57,4 +58,12 @@ class SolicitacaoServico(Base):
 
     @property
     def codigo_ativo(self):
-        return self.ativo.codigo_ativo if self.ativo else None
+        if self.ativo:
+            return self.ativo.codigo_ativo
+        return self.grupo_ativo.codigo_ativo if self.grupo_ativo else None
+
+    @property
+    def id_subestacao(self):
+        if self.ativo:
+            return self.ativo.id_subestacao
+        return self.grupo_ativo.id_subestacao if self.grupo_ativo else None

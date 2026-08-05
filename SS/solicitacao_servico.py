@@ -3,23 +3,24 @@ import re
 import shutil
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from openpyxl.utils import range_boundaries
-from sqlalchemy import text
+from sqlalchemy import or_, text
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from auth.dependencies import get_current_user, require_roles
-from models.Ativo import Ativo
+from models.Ativo import Ativo, GrupoAtivo
 from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
 from models.OS_models import OrdemServico
 from models.SS_models import SolicitacaoServico
 from models.instalacao_models import Subestacao
 from SS.schemas import (
     SolicitacaoServicoCreate,
+    SolicitacaoServicoPaginadaResponse,
     SolicitacaoServicoResponse,
     SolicitacaoServicoUpdate,
 )
@@ -245,9 +246,79 @@ def listar_ss(db: Session = Depends(get_db)):
     garantir_colunas_ss(db)
     return (
         db.query(SolicitacaoServico)
-        .options(selectinload(SolicitacaoServico.ativo))
+        .options(
+            selectinload(SolicitacaoServico.ativo),
+            selectinload(SolicitacaoServico.grupo_ativo),
+        )
         .all()
     )
+
+
+@router.get("/paginado", response_model=SolicitacaoServicoPaginadaResponse)
+def listar_ss_paginado(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    search: str | None = None,
+    status: str | None = None,
+    id_subestacao: int | None = None,
+    db: Session = Depends(get_db),
+):
+    garantir_colunas_ss(db)
+    query = db.query(SolicitacaoServico)
+
+    if search and search.strip():
+        termo = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                SolicitacaoServico.numero_ss.ilike(termo),
+                SolicitacaoServico.numero_os.ilike(termo),
+                SolicitacaoServico.solicitante.ilike(termo),
+                SolicitacaoServico.instalacao.ilike(termo),
+                SolicitacaoServico.descricao_problema.ilike(termo),
+            )
+        )
+
+    if status:
+        query = query.filter(SolicitacaoServico.status == status)
+
+    if id_subestacao:
+        subestacao = db.query(Subestacao).filter(
+            Subestacao.id_subestacao == id_subestacao
+        ).first()
+        query = (
+            query
+            .outerjoin(Ativo, SolicitacaoServico.id_ativo == Ativo.id_ativo)
+            .outerjoin(GrupoAtivo, SolicitacaoServico.id_grupo_ativo == GrupoAtivo.id_grupo_ativo)
+            .filter(
+                or_(
+                    Ativo.id_subestacao == id_subestacao,
+                    GrupoAtivo.id_subestacao == id_subestacao,
+                    SolicitacaoServico.instalacao == (subestacao.nome if subestacao else ""),
+                )
+            )
+        )
+
+    total = query.count()
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    items = (
+        query
+        .options(
+            selectinload(SolicitacaoServico.ativo),
+            selectinload(SolicitacaoServico.grupo_ativo),
+        )
+        .order_by(SolicitacaoServico.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+    }
 
 
 @router.get("/{id_ss}", response_model=SolicitacaoServicoResponse)

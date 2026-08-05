@@ -1,5 +1,5 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import text
+from sqlalchemy import or_, text
 from sqlalchemy.orm import Session, selectinload
 from auth.dependencies import get_current_user, require_roles
 from database import get_db
@@ -13,6 +13,7 @@ from SI.schemas import (
     SILiberacaoManutencaoCreate,
     SILiberacaoOperacaoUpdate,
     SILiberacaoResponse,
+    SIPaginadaResponse,
     SIResponse,
     SIUpdate,
 )
@@ -545,6 +546,63 @@ def listar_si(db: Session = Depends(get_db)):
         .order_by(solicitacao_intervencao.id_si.desc())
         .all()
     )
+
+
+@router.get("/paginado", response_model=SIPaginadaResponse)
+def listar_si_paginado(
+    page: int = 1,
+    page_size: int = 25,
+    search: str | None = None,
+    status: str | None = None,
+    id_subestacao: int | None = None,
+    db: Session = Depends(get_db),
+):
+    page = max(1, page)
+    page_size = min(100, max(1, page_size))
+    garantir_colunas_si(db)
+    query = db.query(solicitacao_intervencao)
+
+    if search and search.strip():
+        termo = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                solicitacao_intervencao.numero_si.ilike(termo),
+                solicitacao_intervencao.numero_sgi.ilike(termo),
+                solicitacao_intervencao.numero_os.ilike(termo),
+                solicitacao_intervencao.responsavel.ilike(termo),
+                solicitacao_intervencao.descricao_servicos.ilike(termo),
+            )
+        )
+
+    if status:
+        query = query.filter(
+            or_(
+                solicitacao_intervencao.status_operacao == status,
+                solicitacao_intervencao.status_manutencao == status,
+            )
+        )
+
+    if id_subestacao:
+        query = query.filter(solicitacao_intervencao.id_subestacao == id_subestacao)
+
+    total = query.count()
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    items = (
+        query
+        .options(selectinload(solicitacao_intervencao.ativo))
+        .order_by(solicitacao_intervencao.id_si.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+    }
 
 
 @router.get("/{id_si}", response_model=SIResponse)

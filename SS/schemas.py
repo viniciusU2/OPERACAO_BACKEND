@@ -101,6 +101,7 @@ class SolicitacaoServicoResponse(SolicitacaoServicoBase):
 
     id: int
     id_ss: int
+    id_subestacao: Optional[int] = None
     codigo_ativo: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
