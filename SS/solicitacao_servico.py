@@ -3,12 +3,12 @@ import re
 import shutil
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from openpyxl.utils import range_boundaries
-from sqlalchemy import or_, text
+from sqlalchemy import text
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
@@ -20,7 +20,6 @@ from models.SS_models import SolicitacaoServico
 from models.instalacao_models import Subestacao
 from SS.schemas import (
     SolicitacaoServicoCreate,
-    SolicitacaoServicoPaginadaResponse,
     SolicitacaoServicoResponse,
     SolicitacaoServicoUpdate,
 )
@@ -28,9 +27,13 @@ from utils.documentos_operacao import especie_documento_por_ativo
 
 
 router = APIRouter(prefix="/ss", tags=["Solicita??o de Servi?o"])
+_ESTRUTURA_SS_GARANTIDA = False
 
 
 def garantir_colunas_ss(db: Session):
+    global _ESTRUTURA_SS_GARANTIDA
+    if _ESTRUTURA_SS_GARANTIDA:
+        return
     colunas = {
         "emissor": "TEXT NULL",
         "editado_por": "TEXT NULL",
@@ -45,6 +48,7 @@ def garantir_colunas_ss(db: Session):
             db.execute(text(f"ALTER TABLE solicitacao_servico ADD COLUMN {coluna} {definicao}"))
 
     db.commit()
+    _ESTRUTURA_SS_GARANTIDA = True
 
 SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
 
@@ -214,8 +218,6 @@ def montar_contexto_ss(ss, ativo=None):
 @router.post("", response_model=SolicitacaoServicoResponse)
 def criar_ss(ss: SolicitacaoServicoCreate, db: Session = Depends(get_db)):
     garantir_colunas_ss(db)
-    garantir_estrutura_grupo_ativo(db)
-    sincronizar_grupos_ativos(db)
     data = ss.model_dump()
     validar_selecao_ativo(db, data.get("id_subestacao"), data.get("id_funcao_operacao"), data.get("id_grupo_ativo"), data.get("escopo_ativo"), data.get("id_ativo"))
     id_subestacao = data.pop("id_subestacao", None)
@@ -246,47 +248,6 @@ def listar_ss(db: Session = Depends(get_db)):
         .options(selectinload(SolicitacaoServico.ativo))
         .all()
     )
-
-
-@router.get("/paginado", response_model=SolicitacaoServicoPaginadaResponse)
-def listar_ss_paginado(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(25, ge=1, le=100),
-    search: str | None = None,
-    status: str | None = None,
-    id_subestacao: int | None = None,
-    db: Session = Depends(get_db),
-):
-    garantir_colunas_ss(db)
-    query = db.query(SolicitacaoServico).outerjoin(Ativo, SolicitacaoServico.id_ativo == Ativo.id_ativo)
-
-    if search and search.strip():
-        termo = f"%{search.strip()}%"
-        query = query.filter(or_(
-            SolicitacaoServico.numero_ss.ilike(termo),
-            SolicitacaoServico.descricao_problema.ilike(termo),
-            Ativo.codigo_ativo.ilike(termo),
-        ))
-    if status and status != "all":
-        query = query.filter(SolicitacaoServico.status == status)
-    if id_subestacao:
-        query = query.filter(Ativo.id_subestacao == id_subestacao)
-
-    total = query.count()
-    items = (
-        query.options(selectinload(SolicitacaoServico.ativo))
-        .order_by(SolicitacaoServico.id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
-    )
-    return {
-        "items": items,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": max(1, (total + page_size - 1) // page_size),
-    }
 
 
 @router.get("/{id_ss}", response_model=SolicitacaoServicoResponse)

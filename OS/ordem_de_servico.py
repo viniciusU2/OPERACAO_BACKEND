@@ -224,8 +224,17 @@ def montar_contexto_os(os, ativo=None, grupo=None):
         "STATUS": limpar(os.status),  # ✅ AQUI
     }
 
-# 🔹 Lista fixa de subestações
-SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
+def obter_sigla_subestacao(subestacao: Subestacao) -> str:
+    """Obtém a sigla derivada do cadastro da instalação.
+
+    A tabela `subestacao` não possui uma coluna de sigla; o model a calcula
+    a partir do nome (e preserva as siglas conhecidas). Isso evita depender da
+    posição do ID em uma lista fixa.
+    """
+    sigla = str(getattr(subestacao, "sigla", "") or "").strip().upper()
+    if not sigla:
+        raise HTTPException(400, "Não foi possível definir a sigla da subestação")
+    return sigla
 
 
 # =========================
@@ -264,9 +273,6 @@ def criar_ordem_servico(
     os_data: OrdemServicoCreate,
     db: Session = Depends(get_db)
 ):
-    garantir_colunas_os(db)
-    garantir_estrutura_grupo_ativo(db)
-    sincronizar_grupos_ativos(db)
     print(os_data)
 
     # 🔹 Validação de datas
@@ -294,11 +300,7 @@ def criar_ordem_servico(
     # 🔹 Define nome da instalação
     os_data.instalacao = sub.nome
 
-    # 🔹 Definir sigla (baseado na lista)
-    try:
-        sigla = SUBESTACOES_SIGLAS[os_data.id_subestacao - 1]
-    except IndexError:
-        raise HTTPException(400, "Subestação sem sigla configurada")
+    sigla = obter_sigla_subestacao(sub)
 
     # 🔹 Validar Ativo
     grupo = validar_selecao_ativo(db, os_data.id_subestacao, os_data.id_funcao_operacao, os_data.id_grupo_ativo, os_data.escopo_ativo, os_data.id_ativo)
@@ -1123,11 +1125,7 @@ def criar_os_lote_por_tipo_ativo(
 
 
  
-    # 🔹 Definir sigla (baseado na lista)
-    try:
-        sigla = SUBESTACOES_SIGLAS[payload.id_subestacao - 1]
-    except IndexError:
-        raise HTTPException(400, "Subestação sem sigla configurada")
+    sigla = obter_sigla_subestacao(subestacao)
     
 
 
@@ -1650,10 +1648,7 @@ def gerar_os_por_planos_manutencao(
                 if not subestacao:
                     continue
 
-                try:
-                    sigla = SUBESTACOES_SIGLAS[ativo.id_subestacao - 1]
-                except IndexError:
-                    continue
+                sigla = obter_sigla_subestacao(subestacao)
 
                 ultima_os_com_equipe = (
                     db.query(OrdemServico)

@@ -1,8 +1,6 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session, selectinload
-from fastapi import Query
-from sqlalchemy import or_
 from auth.dependencies import get_current_user, require_roles
 from database import get_db
 from models.SI_models import SILiberacao, solicitacao_intervencao
@@ -16,7 +14,6 @@ from SI.schemas import (
     SILiberacaoOperacaoUpdate,
     SILiberacaoResponse,
     SIResponse,
-    SIPaginadaResponse,
     SIUpdate,
 )
 from utils.documentos_operacao import (
@@ -36,11 +33,16 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import range_boundaries
 
 router = APIRouter(prefix="/si", tags=["Servi?o Interven??o"])
+_ESTRUTURA_SI_GARANTIDA = False
+_TABELA_LIBERACOES_SI_GARANTIDA = False
 
 SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
 
 
 def garantir_colunas_si(db: Session):
+    global _ESTRUTURA_SI_GARANTIDA
+    if _ESTRUTURA_SI_GARANTIDA:
+        return
     colunas = {
         "numero_os": "VARCHAR(30) NULL",
         "natureza": "VARCHAR(255) NULL",
@@ -66,9 +68,13 @@ def garantir_colunas_si(db: Session):
             db.execute(text(f"ALTER TABLE solicitacao_intervencao ADD COLUMN {coluna} {definicao}"))
 
     db.commit()
+    _ESTRUTURA_SI_GARANTIDA = True
 
 
 def garantir_tabela_liberacoes_si(db: Session):
+    global _TABELA_LIBERACOES_SI_GARANTIDA
+    if _TABELA_LIBERACOES_SI_GARANTIDA:
+        return
     db.execute(text("""
         CREATE TABLE IF NOT EXISTS si_liberacao (
             id_liberacao INT AUTO_INCREMENT PRIMARY KEY,
@@ -98,6 +104,7 @@ def garantir_tabela_liberacoes_si(db: Session):
         )
     """))
     db.commit()
+    _TABELA_LIBERACOES_SI_GARANTIDA = True
 
 
 def nome_arquivo_seguro(texto: str):
@@ -509,8 +516,6 @@ def montar_contexto_si(si, ativo=None, sub=None, grupo=None):
 @router.post("", response_model=SIResponse)
 def criar_si(dados: SICreate, db: Session = Depends(get_db)):
     garantir_colunas_si(db)
-    garantir_estrutura_grupo_ativo(db)
-    sincronizar_grupos_ativos(db)
 
     data = dados.dict()
     validar_selecao_ativo(db, data.get("id_subestacao"), data.get("id_funcao_operacao"), data.get("id_grupo_ativo"), data.get("escopo_ativo"), data.get("id_ativo"))
@@ -540,49 +545,6 @@ def listar_si(db: Session = Depends(get_db)):
         .order_by(solicitacao_intervencao.id_si.desc())
         .all()
     )
-
-
-@router.get("/paginado", response_model=SIPaginadaResponse)
-def listar_si_paginado(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(25, ge=1, le=100),
-    search: str | None = None,
-    status: str | None = None,
-    id_subestacao: int | None = None,
-    db: Session = Depends(get_db),
-):
-    garantir_colunas_si(db)
-    query = db.query(solicitacao_intervencao).outerjoin(
-        Ativo, solicitacao_intervencao.id_ativo == Ativo.id_ativo
-    )
-
-    if search and search.strip():
-        termo = f"%{search.strip()}%"
-        query = query.filter(or_(
-            solicitacao_intervencao.numero_si.ilike(termo),
-            solicitacao_intervencao.descricao_servicos.ilike(termo),
-            Ativo.codigo_ativo.ilike(termo),
-        ))
-    if status and status != "all":
-        query = query.filter(solicitacao_intervencao.status_manutencao == status)
-    if id_subestacao:
-        query = query.filter(solicitacao_intervencao.id_subestacao == id_subestacao)
-
-    total = query.count()
-    items = (
-        query.options(selectinload(solicitacao_intervencao.ativo))
-        .order_by(solicitacao_intervencao.id_si.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
-    )
-    return {
-        "items": items,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": max(1, (total + page_size - 1) // page_size),
-    }
 
 
 @router.get("/{id_si}", response_model=SIResponse)

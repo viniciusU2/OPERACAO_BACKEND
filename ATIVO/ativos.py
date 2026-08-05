@@ -20,7 +20,7 @@ from models.familias_models import TipoAtivo
 from models.fo import FuncaoOperacao
 from funcao_operacao.service import validar_funcao_operacao_do_ativo
 from collections import Counter
-from ATIVO.grupos_ativos import grupos_por_funcao, sincronizar_grupos_ativos
+from ATIVO.grupos_ativos import grupos_por_funcao, sincronizar_grupos_ativos, vincular_ativo_ao_grupo
 from funcao_operacao.service import listar_funcoes_operacao
 
 
@@ -34,15 +34,11 @@ def listar_funcoes_da_subestacao(id_subestacao: int, db: Session = Depends(get_d
 
 @router.get("/funcoes-operacao/{id_funcao_operacao}/grupos-ativos")
 def listar_grupos_ativos(id_funcao_operacao: int, db: Session = Depends(get_db)):
-    resultado = grupos_por_funcao(db, id_funcao_operacao)
-    db.commit()
-    return resultado
+    return grupos_por_funcao(db, id_funcao_operacao)
 
 
 @router.get("/grupos-ativos/{id_grupo_ativo}/componentes")
 def listar_componentes_grupo(id_grupo_ativo: int, db: Session = Depends(get_db)):
-    sincronizar_grupos_ativos(db)
-    grupo = next((item for grupos in [grupos_por_funcao(db, fo.id_funcao_operacao) for fo in []] for item in grupos if item["id_grupo_ativo"] == id_grupo_ativo), None)
     from models.Ativo import Ativo
     componentes = db.query(Ativo).filter(Ativo.id_grupo_ativo == id_grupo_ativo).order_by(Ativo.fase, Ativo.id_ativo).all()
     if not componentes:
@@ -157,6 +153,8 @@ def criar_ativo(
     validar_funcao_operacao_do_ativo(db, ativo.id_subestacao, ativo.id_funcao_operacao)
     novo = Ativo(**ativo.dict())
     db.add(novo)
+    db.flush()
+    vincular_ativo_ao_grupo(db, novo)
     db.commit()
     db.refresh(novo)  # ðŸ‘ˆ MUITO IMPORTANTE
     return novo
@@ -228,6 +226,8 @@ def editar_ativo(
             setattr(ativo_db, campo, valor)
 
     try:
+        db.flush()
+        vincular_ativo_ao_grupo(db, ativo_db)
         db.commit()
         db.refresh(ativo_db)
     except IntegrityError:

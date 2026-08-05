@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from fastapi import HTTPException
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from models.Ativo import Ativo, GrupoAtivo
 from models.fo import FuncaoOperacao
@@ -58,15 +58,40 @@ def sincronizar_grupos_ativos(db: Session):
     db.flush()
 
 
+def vincular_ativo_ao_grupo(db: Session, ativo: Ativo):
+    """Vincula somente o ativo alterado, sem reprocessar toda a base."""
+    chave = {
+        "id_subestacao": ativo.id_subestacao,
+        "id_funcao_operacao": ativo.id_funcao_operacao,
+        "id_tipo_ativo": ativo.id_tipo_ativo,
+        "codigo_ativo": (ativo.codigo_ativo or "").strip().upper(),
+        "bay": (ativo.bay or "").strip().upper() or None,
+    }
+    grupo = db.query(GrupoAtivo).filter_by(**chave).first()
+    if not grupo:
+        grupo = GrupoAtivo(**chave)
+        db.add(grupo)
+        db.flush()
+    ativo.id_grupo_ativo = grupo.id_grupo_ativo
+    return grupo
+
+
 def grupos_por_funcao(db: Session, id_funcao_operacao: int):
     fo = db.query(FuncaoOperacao).filter(FuncaoOperacao.id_funcao_operacao == id_funcao_operacao).first()
     if not fo:
         raise HTTPException(404, "Função de transmissão não encontrada")
-    sincronizar_grupos_ativos(db)
-    grupos = db.query(GrupoAtivo).filter(GrupoAtivo.id_funcao_operacao == id_funcao_operacao, GrupoAtivo.status != "INATIVO").all()
+    grupos = (
+        db.query(GrupoAtivo)
+        .options(selectinload(GrupoAtivo.ativos).selectinload(Ativo.tipo_ativo))
+        .filter(
+            GrupoAtivo.id_funcao_operacao == id_funcao_operacao,
+            GrupoAtivo.status != "INATIVO",
+        )
+        .all()
+    )
     resultado = []
     for grupo in grupos:
-        itens = db.query(Ativo).filter(Ativo.id_grupo_ativo == grupo.id_grupo_ativo).order_by(Ativo.fase, Ativo.id_ativo).all()
+        itens = sorted(grupo.ativos, key=lambda item: ((item.fase or ""), item.id_ativo))
         tipo = itens[0].tipo_ativo.nome if itens and itens[0].tipo_ativo else None
         sem_fase = [item for item in itens if not (item.fase or "").strip()]
         resultado.append({
