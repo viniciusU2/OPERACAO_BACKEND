@@ -102,6 +102,36 @@ def nome_arquivo_seguro(texto: str):
     # substitui tudo que não for letra/número por _
     return re.sub(r'[^A-Za-z0-9_-]', '_', texto)
 
+
+ORDEM_FASE_ATIVO = {"AZ": 1, "BR": 2, "VM": 3}
+
+
+def normalizar_fase_ordenacao(fase: str | None) -> str:
+    return str(fase).strip().upper() if fase else ""
+
+
+def ordenar_codigo_ativo(codigo: str | None) -> tuple:
+    if not codigo:
+        return (999, "")
+
+    codigo_normalizado = str(codigo).strip().upper()
+    match = re.match(r"(\d+)(.*)", codigo_normalizado)
+    if match:
+        return (int(match.group(1)), match.group(2))
+
+    return (999, codigo_normalizado)
+
+
+def chave_ordenacao_ativo(ativo: Ativo) -> tuple:
+    fase = normalizar_fase_ordenacao(ativo.fase)
+    return (
+        ordenar_codigo_ativo(ativo.codigo_ativo),
+        ORDEM_FASE_ATIVO.get(fase, 99),
+        fase,
+        ativo.id_ativo,
+    )
+
+
 MAPEAMENTO_CELULAS = {
     "NUM_OS": "H1",
     "NUM_SI": "H2",
@@ -1130,28 +1160,7 @@ def criar_os_lote_por_tipo_ativo(
 
 
     # ====================== 3. ORDENAÇÃO CORRETA ======================
-    ordem_fase = {"AZ": 1, "BR": 2, "VM": 3}
-
-    def normalizar_fase(fase: str | None) -> str:
-        return str(fase).strip().upper() if fase else ""
-
-    def ordenar_codigo_ativo(codigo: str | None) -> tuple:
-        if not codigo:
-            return (999, "")
-        codigo_str = str(codigo).strip().upper()
-        match = re.match(r"(\d+)(.*)", codigo_str)
-        if match:
-            num = int(match.group(1))
-            resto = match.group(2)
-            return (num, resto)
-        return (999, codigo_str)
-
-    ativos.sort(
-        key=lambda a: (
-            ordenar_codigo_ativo(a.codigo_ativo),
-            ordem_fase.get(normalizar_fase(a.fase), 99)
-        )
-    )
+    ativos.sort(key=chave_ordenacao_ativo)
 
     # ====================== 4. GERAÇÃO DO NÚMERO OS ======================
  
@@ -1526,6 +1535,7 @@ def gerar_os_por_planos_manutencao(
                 .filter(Ativo.id_tipo_ativo == tipo.id_tipo_ativo)
                 .all()
             )
+            ativos.sort(key=chave_ordenacao_ativo)
 
             for ativo in ativos:
                 execucoes_pendentes = []
