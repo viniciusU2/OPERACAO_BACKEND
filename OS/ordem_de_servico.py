@@ -272,26 +272,41 @@ def obter_sigla_subestacao(subestacao: Subestacao) -> str:
 # =========================
 def gerar_numero_os(db: Session, sigla: str) -> tuple[str, str]:
     ano_atual = datetime.now().year
-    padroes = (
-        (OS_models.OrdemServico.numero_os, rf"OS-{sigla}-(\d+)-{ano_atual}", f"OS-{sigla}-%-{ano_atual}%"),
-        (OS_models.OrdemServico.numero_apr, rf"APR-{sigla}-(\d+)-{ano_atual}", f"APR-{sigla}-%-{ano_atual}%"),
-        (APR.numero_apr, rf"APR-{sigla}-(\d+)-{ano_atual}", f"APR-{sigla}-%-{ano_atual}%"),
-    )
 
-    numeros = []
-    for coluna, regex, like_pattern in padroes:
-        registros = db.query(coluna).filter(coluna.like(like_pattern)).all()
-        for (numero,) in registros:
-            match = re.search(regex, numero or "")
-            if match:
-                numeros.append(int(match.group(1)))
+    def proxima_sequencia(padroes: tuple) -> int:
+        numeros = []
+        for coluna, regex, like_pattern in padroes:
+            registros = db.query(coluna).filter(coluna.like(like_pattern)).all()
+            for (numero,) in registros:
+                match = re.search(regex, numero or "")
+                if match:
+                    numeros.append(int(match.group(1)))
 
-    proximo = max(numeros) + 1 if numeros else 1
-    numero_formatado = str(proximo).zfill(4)
+        return max(numeros) + 1 if numeros else 1
+
+    proxima_os = proxima_sequencia((
+        (
+            OS_models.OrdemServico.numero_os,
+            rf"OS-{sigla}-(\d+)-{ano_atual}",
+            f"OS-{sigla}-%-{ano_atual}%",
+        ),
+    ))
+    proxima_apr = proxima_sequencia((
+        (
+            OS_models.OrdemServico.numero_apr,
+            rf"APR-{sigla}-(\d+)-{ano_atual}",
+            f"APR-{sigla}-%-{ano_atual}%",
+        ),
+        (
+            APR.numero_apr,
+            rf"APR-{sigla}-(\d+)-{ano_atual}",
+            f"APR-{sigla}-%-{ano_atual}%",
+        ),
+    ))
 
     return (
-        f"OS-{sigla}-{numero_formatado}-{ano_atual}",
-        f"APR-{sigla}-{numero_formatado}-{ano_atual}",
+        f"OS-{sigla}-{str(proxima_os).zfill(4)}-{ano_atual}",
+        f"APR-{sigla}-{str(proxima_apr).zfill(4)}-{ano_atual}",
     )
 
 
