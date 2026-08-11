@@ -1,0 +1,5 @@
+INFO:     127.0.0.1:57631 - "GET /docs HTTP/1.1" 200 OK
+INFO:     192.168.1.85:57632 - "GET /docs HTTP/1.1" 200 OK
+INFO:     192.168.1.85:51584 - "GET /docs HTTP/1.1" 200 OK
+INFO:     192.168.1.85:51584 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     192.168.1.85:56226 - "POST /os/lote-por-tipo-ativo HTTP/1.1" 400 Bad Request

@@ -1,0 +1,13 @@
+[Unit]
+Description=Agenda diariamente a geracao das OS dos planos de manutencao
+
+[Timer]
+# 03:10 UTC corresponde a 00:10 em America/Bahia (UTC-3).
+OnCalendar=*-*-* 03:10:00 UTC
+Persistent=true
+AccuracySec=1min
+RandomizedDelaySec=30
+Unit=operacao-gerar-os-diario.service
+
+[Install]
+WantedBy=timers.target

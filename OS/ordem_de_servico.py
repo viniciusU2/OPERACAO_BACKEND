@@ -291,7 +291,7 @@ def gerar_numero_os(db: Session, sigla: str) -> tuple[str, str]:
             f"OS-{sigla}-%-{ano_atual}%",
         ),
     ))
-    proxima_apr = proxima_sequencia((
+    proxima_apr_disponivel = proxima_sequencia((
         (
             OS_models.OrdemServico.numero_apr,
             rf"APR-{sigla}-(\d+)-{ano_atual}",
@@ -303,6 +303,8 @@ def gerar_numero_os(db: Session, sigla: str) -> tuple[str, str]:
             f"APR-{sigla}-%-{ano_atual}%",
         ),
     ))
+
+    proxima_apr = max(proxima_os, proxima_apr_disponivel)
 
     return (
         f"OS-{sigla}-{str(proxima_os).zfill(4)}-{ano_atual}",
