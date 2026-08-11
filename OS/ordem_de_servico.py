@@ -1219,7 +1219,7 @@ def criar_os_lote_por_tipo_ativo(
         numero_os_final = numero_os_base
         numero_apr_final = payload.numero_apr
 
-        fase = normalizar_fase(ativo.fase)
+        fase = normalizar_fase_ordenacao(ativo.fase)
         complemento = f"Fase: {fase}"
         local =  f"{ativo.bay}"
 
