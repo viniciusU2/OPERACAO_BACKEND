@@ -555,6 +555,7 @@ def listar_si_paginado(
     search: str | None = None,
     status: str | None = None,
     id_subestacao: int | None = None,
+    id_tipo_ativo: int | None = None,
     db: Session = Depends(get_db),
 ):
     page = max(1, page)
@@ -563,16 +564,19 @@ def listar_si_paginado(
     query = db.query(solicitacao_intervencao)
 
     if search and search.strip():
-        termo = f"%{search.strip()}%"
-        query = query.filter(
-            or_(
+        for palavra in search.split():
+            termo = f"%{palavra}%"
+            query = query.filter(or_(
                 solicitacao_intervencao.numero_si.ilike(termo),
                 solicitacao_intervencao.numero_sgi.ilike(termo),
                 solicitacao_intervencao.numero_os.ilike(termo),
                 solicitacao_intervencao.responsavel.ilike(termo),
                 solicitacao_intervencao.descricao_servicos.ilike(termo),
-            )
-        )
+                solicitacao_intervencao.especie.ilike(termo),
+                solicitacao_intervencao.status_operacao.ilike(termo),
+                solicitacao_intervencao.status_manutencao.ilike(termo),
+                solicitacao_intervencao.prioridade.ilike(termo),
+            ))
 
     if status:
         query = query.filter(
@@ -584,6 +588,16 @@ def listar_si_paginado(
 
     if id_subestacao:
         query = query.filter(solicitacao_intervencao.id_subestacao == id_subestacao)
+
+    if id_tipo_ativo:
+        query = query.filter(or_(
+            solicitacao_intervencao.id_ativo.in_(
+                db.query(Ativo.id_ativo).filter(Ativo.id_tipo_ativo == id_tipo_ativo)
+            ),
+            solicitacao_intervencao.id_grupo_ativo.in_(
+                db.query(GrupoAtivo.id_grupo_ativo).filter(GrupoAtivo.id_tipo_ativo == id_tipo_ativo)
+            ),
+        ))
 
     total = query.count()
     total_pages = max(1, (total + page_size - 1) // page_size)

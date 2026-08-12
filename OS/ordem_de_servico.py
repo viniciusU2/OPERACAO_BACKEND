@@ -664,29 +664,44 @@ def listar_os_paginado(
     status: str | None = None,
     id_subestacao: int | None = None,
     esquema_servicos: str | None = None,
+    id_tipo_ativo: int | None = None,
     db: Session = Depends(get_db),
 ):
     garantir_colunas_os(db)
     query = db.query(OS_models.OrdemServico)
 
     if search and search.strip():
-        termo = f"%{search.strip()}%"
         query = query.outerjoin(
             Ativo, OS_models.OrdemServico.id_ativo == Ativo.id_ativo
         ).outerjoin(
             GrupoAtivo, OS_models.OrdemServico.id_grupo_ativo == GrupoAtivo.id_grupo_ativo
-        ).filter(or_(
-            OS_models.OrdemServico.numero_os.ilike(termo),
-            OS_models.OrdemServico.descricao_servicos.ilike(termo),
-            Ativo.codigo_ativo.ilike(termo),
-            GrupoAtivo.codigo_ativo.ilike(termo),
-        ))
+        )
+        for palavra in search.split():
+            termo = f"%{palavra}%"
+            query = query.filter(or_(
+                OS_models.OrdemServico.numero_os.ilike(termo),
+                OS_models.OrdemServico.descricao_servicos.ilike(termo),
+                OS_models.OrdemServico.esquema_servicos.ilike(termo),
+                OS_models.OrdemServico.status.ilike(termo),
+                OS_models.OrdemServico.especie.ilike(termo),
+                Ativo.codigo_ativo.ilike(termo),
+                GrupoAtivo.codigo_ativo.ilike(termo),
+            ))
     if status and status != "all":
         query = query.filter(OS_models.OrdemServico.status == status)
     if id_subestacao:
         query = query.filter(OS_models.OrdemServico.id_subestacao == id_subestacao)
     if esquema_servicos and esquema_servicos != "all":
         query = query.filter(OS_models.OrdemServico.esquema_servicos.ilike(f"%{esquema_servicos.strip()}%"))
+    if id_tipo_ativo:
+        query = query.filter(or_(
+            OS_models.OrdemServico.id_ativo.in_(
+                db.query(Ativo.id_ativo).filter(Ativo.id_tipo_ativo == id_tipo_ativo)
+            ),
+            OS_models.OrdemServico.id_grupo_ativo.in_(
+                db.query(GrupoAtivo.id_grupo_ativo).filter(GrupoAtivo.id_tipo_ativo == id_tipo_ativo)
+            ),
+        ))
 
     total = query.count()
     items = (

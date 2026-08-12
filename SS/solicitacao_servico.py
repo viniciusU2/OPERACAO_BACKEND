@@ -283,6 +283,7 @@ def listar_ss_paginado(
     status: str | None = None,
     id_subestacao: int | None = None,
     prazo: str | None = None,
+    id_tipo_ativo: int | None = None,
     data_limite_inicio: date | None = None,
     data_limite_fim: date | None = None,
     ordenar_por: str = Query("data_limite", pattern="^(data_limite|mais_recentes)$"),
@@ -292,19 +293,31 @@ def listar_ss_paginado(
     query = db.query(SolicitacaoServico)
 
     if search and search.strip():
-        termo = f"%{search.strip()}%"
-        query = query.filter(
-            or_(
+        for palavra in search.split():
+            termo = f"%{palavra}%"
+            query = query.filter(or_(
                 SolicitacaoServico.numero_ss.ilike(termo),
                 SolicitacaoServico.numero_os.ilike(termo),
                 SolicitacaoServico.solicitante.ilike(termo),
                 SolicitacaoServico.instalacao.ilike(termo),
                 SolicitacaoServico.descricao_problema.ilike(termo),
-            )
-        )
+                SolicitacaoServico.esquema_servico.ilike(termo),
+                SolicitacaoServico.status.ilike(termo),
+                SolicitacaoServico.prioridade.ilike(termo),
+            ))
 
     if status:
         query = query.filter(SolicitacaoServico.status == status)
+
+    if id_tipo_ativo:
+        query = query.filter(or_(
+            SolicitacaoServico.id_ativo.in_(
+                db.query(Ativo.id_ativo).filter(Ativo.id_tipo_ativo == id_tipo_ativo)
+            ),
+            SolicitacaoServico.id_grupo_ativo.in_(
+                db.query(GrupoAtivo.id_grupo_ativo).filter(GrupoAtivo.id_tipo_ativo == id_tipo_ativo)
+            ),
+        ))
 
     hoje = datetime.combine(date.today(), time.min)
     amanha = hoje + timedelta(days=1)
