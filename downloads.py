@@ -1,12 +1,14 @@
 import os
 import re
 import tempfile
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
+from enum import Enum
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse
 from openpyxl import Workbook
+from openpyxl.chart import BarChart, Reference
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 from sqlalchemy.orm import Session, joinedload
@@ -17,6 +19,7 @@ from models.Ativo import Ativo
 from models.OS_models import OrdemServico
 from models.SI_models import solicitacao_intervencao
 from models.SS_models import SolicitacaoServico
+from models.plano_manutencao_models import Inspecao, ResultadoItemInspecao
 
 
 router = APIRouter(prefix="/downloads", tags=["Downloads"])
@@ -31,8 +34,12 @@ def limpar(valor):
         return ""
     if isinstance(valor, datetime):
         return valor.strftime("%d/%m/%Y %H:%M")
+    if isinstance(valor, date):
+        return valor.strftime("%d/%m/%Y")
     if isinstance(valor, Decimal):
         return float(valor)
+    if isinstance(valor, Enum):
+        return valor.value
     return valor
 
 
@@ -274,6 +281,141 @@ ATIVO_COLUNAS = [
 ]
 
 
+INSPECAO_COLUNAS = [
+    ("ID", "id_inspecao"),
+    ("Instalacao", "ativo.subestacao.nome"),
+    ("ID Ativo", "id_ativo"),
+    ("Codigo Ativo", "ativo.codigo_ativo"),
+    ("Tipo de Ativo", "ativo.tipo_ativo.nome"),
+    ("Fase", "ativo.fase"),
+    ("Bay", "ativo.bay"),
+    ("Numero OS", "ordem_servico.numero_os"),
+    ("Data Inspecao", "data_inspecao"),
+    ("Proxima Inspecao", "data_proxima_inspecao"),
+    ("Periodicidade", "periodicidade"),
+    ("Responsavel", "responsavel"),
+    ("Resultado Geral", "status_geral"),
+    ("Observacao Geral", "observacao_geral"),
+    ("Ficha de Inspecao", "ficha_inspecao_url"),
+]
+
+
+RESULTADO_INSPECAO_COLUNAS = [
+    "ID Inspecao",
+    "Instalacao",
+    "ID Ativo",
+    "Codigo Ativo",
+    "Tipo de Ativo",
+    "Fase",
+    "Bay",
+    "Numero OS",
+    "Data Inspecao",
+    "Periodicidade",
+    "Responsavel",
+    "Resultado Geral",
+    "Item Inspecionado",
+    "Unidade",
+    "Valor de Referencia",
+    "Tolerancia",
+    "Valor Medido",
+    "Resultado do Item",
+    "Observacao do Item",
+    "Foto",
+]
+
+
+def adicionar_aba_resultados_inspecao(wb, inspecoes):
+    ws = wb.create_sheet("Resultados detalhados")
+    ws.append(RESULTADO_INSPECAO_COLUNAS)
+
+    for inspecao in inspecoes:
+        for resultado in inspecao.resultados:
+            ws.append([
+                limpar(inspecao.id_inspecao),
+                limpar(valor_campo(inspecao, "ativo.subestacao.nome")),
+                limpar(inspecao.id_ativo),
+                limpar(valor_campo(inspecao, "ativo.codigo_ativo")),
+                limpar(valor_campo(inspecao, "ativo.tipo_ativo.nome")),
+                limpar(valor_campo(inspecao, "ativo.fase")),
+                limpar(valor_campo(inspecao, "ativo.bay")),
+                limpar(valor_campo(inspecao, "ordem_servico.numero_os")),
+                limpar(inspecao.data_inspecao),
+                limpar(inspecao.periodicidade),
+                limpar(inspecao.responsavel),
+                limpar(inspecao.status_geral),
+                limpar(resultado.nome_item),
+                limpar(resultado.unidade),
+                limpar(resultado.valor_referencia),
+                limpar(resultado.tolerancia),
+                limpar(resultado.valor_medido),
+                limpar(resultado.status_item),
+                limpar(resultado.observacao_item),
+                limpar(resultado.foto),
+            ])
+
+    aplicar_estilo(ws)
+
+
+def adicionar_aba_indicadores_inspecao(wb, inspecoes):
+    ws = wb.create_sheet("Indicadores", 0)
+    ws["A1"] = "INDICADORES DAS INSPECOES"
+    ws["A1"].font = Font(size=16, bold=True, color="1F2937")
+
+    contagem_itens = {"OK": 0, "NOK": 0, "NA": 0}
+    contagem_geral = {"OK": 0, "NOK": 0, "NA": 0}
+
+    for inspecao in inspecoes:
+        status_geral = limpar(inspecao.status_geral)
+        contagem_geral[status_geral] = contagem_geral.get(status_geral, 0) + 1
+        for resultado in inspecao.resultados:
+            status_item = limpar(resultado.status_item)
+            contagem_itens[status_item] = contagem_itens.get(status_item, 0) + 1
+
+    ws.append([])
+    ws.append(["Resultado dos itens", "Quantidade"])
+    for status in ("OK", "NOK", "NA"):
+        ws.append([status, contagem_itens.get(status, 0)])
+
+    ws["D3"] = "Resultado geral"
+    ws["E3"] = "Quantidade"
+    for linha, status in enumerate(("OK", "NOK", "NA"), start=4):
+        ws.cell(linha, 4, status)
+        ws.cell(linha, 5, contagem_geral.get(status, 0))
+
+    for cell in list(ws[3])[0:2] + list(ws[3])[3:5]:
+        cell.fill = PatternFill("solid", fgColor="1F2937")
+        cell.font = Font(color="FFFFFF", bold=True)
+
+    grafico_itens = BarChart()
+    grafico_itens.type = "col"
+    grafico_itens.style = 10
+    grafico_itens.title = "Resultados por item inspecionado"
+    grafico_itens.y_axis.title = "Quantidade"
+    grafico_itens.x_axis.title = "Resultado"
+    grafico_itens.height = 8
+    grafico_itens.width = 13
+    grafico_itens.add_data(Reference(ws, min_col=2, min_row=3, max_row=6), titles_from_data=True)
+    grafico_itens.set_categories(Reference(ws, min_col=1, min_row=4, max_row=6))
+    ws.add_chart(grafico_itens, "A9")
+
+    grafico_geral = BarChart()
+    grafico_geral.type = "col"
+    grafico_geral.style = 11
+    grafico_geral.title = "Resultado geral das inspecoes"
+    grafico_geral.y_axis.title = "Quantidade"
+    grafico_geral.x_axis.title = "Resultado"
+    grafico_geral.height = 8
+    grafico_geral.width = 13
+    grafico_geral.add_data(Reference(ws, min_col=5, min_row=3, max_row=6), titles_from_data=True)
+    grafico_geral.set_categories(Reference(ws, min_col=4, min_row=4, max_row=6))
+    ws.add_chart(grafico_geral, "H9")
+
+    ws.column_dimensions["A"].width = 24
+    ws.column_dimensions["B"].width = 14
+    ws.column_dimensions["D"].width = 24
+    ws.column_dimensions["E"].width = 14
+
+
 def salvar_workbook(wb, nome_base: str):
     pasta_saida = tempfile.mkdtemp(prefix="downloads_")
 
@@ -384,6 +526,59 @@ def baixar_ativos(
 
     aplicar_estilo(ws)
     caminho, nome_arquivo = salvar_workbook(wb, "ativos")
+
+    return FileResponse(
+        path=caminho,
+        filename=nome_arquivo,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@router.get("/inspecoes")
+def baixar_inspecoes(
+    status: str | None = Query(default=None),
+    id_subestacao: int | None = Query(default=None),
+    id_tipo_ativo: int | None = Query(default=None),
+    data_inicio: datetime | None = Query(default=None),
+    data_fim: datetime | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    query = db.query(Inspecao).join(Ativo, Inspecao.id_ativo == Ativo.id_ativo).options(
+        joinedload(Inspecao.ativo).joinedload(Ativo.subestacao),
+        joinedload(Inspecao.ativo).joinedload(Ativo.tipo_ativo),
+        joinedload(Inspecao.ordem_servico),
+        joinedload(Inspecao.resultados).joinedload(ResultadoItemInspecao.plano_item),
+    )
+
+    if status and status != "all":
+        query = query.filter(Inspecao.status_geral == status)
+    if id_subestacao:
+        query = query.filter(Ativo.id_subestacao == id_subestacao)
+    if id_tipo_ativo:
+        query = query.filter(Ativo.id_tipo_ativo == id_tipo_ativo)
+
+    query = filtrar_por_intervalo(
+        query,
+        Inspecao,
+        "data_inspecao",
+        data_inicio,
+        data_fim,
+    )
+
+    inspecoes = query.order_by(Inspecao.data_inspecao.desc()).all()
+
+    adicionar_aba(
+        wb,
+        "Inspecoes",
+        INSPECAO_COLUNAS,
+        inspecoes,
+    )
+    adicionar_aba_resultados_inspecao(wb, inspecoes)
+    adicionar_aba_indicadores_inspecao(wb, inspecoes)
+    caminho, nome_arquivo = salvar_workbook(wb, "inspecoes")
 
     return FileResponse(
         path=caminho,

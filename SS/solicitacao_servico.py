@@ -24,7 +24,7 @@ from SS.schemas import (
     SolicitacaoServicoResponse,
     SolicitacaoServicoUpdate,
 )
-from SS.importacao_massa import importar_planilha_ss
+from SS.importacao_massa import importar_planilha_ss, sigla_ss_subestacao
 from utils.documentos_operacao import especie_documento_por_ativo
 
 
@@ -501,7 +501,7 @@ def atender_ss(
     if not subestacao:
         raise HTTPException(400, "Subestacao do ativo nao encontrada")
 
-    sigla = sigla_por_subestacao(ativo.id_subestacao)
+    sigla = sigla_ss_subestacao(subestacao)
     numero_os, numero_apr = gerar_numero_os_atendimento_ss(
         db,
         sigla,

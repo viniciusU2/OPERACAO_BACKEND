@@ -264,6 +264,17 @@ def obter_sigla_subestacao(subestacao: Subestacao) -> str:
     sigla = str(getattr(subestacao, "sigla", "") or "").strip().upper()
     if not sigla:
         raise HTTPException(400, "Não foi possível definir a sigla da subestação")
+
+    # Linhas de transmissão com mais de um circuito precisam manter
+    # sequências independentes, seguindo o padrão já usado pelas SS.
+    circuito = re.search(
+        r"\bC\s*[-_]?\s*(\d+)\b",
+        str(getattr(subestacao, "nome", "") or ""),
+        re.IGNORECASE,
+    )
+    if circuito:
+        sigla = f"{sigla}-C{circuito.group(1)}"
+
     return sigla
 
 
