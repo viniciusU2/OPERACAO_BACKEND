@@ -3,7 +3,7 @@ import re
 import shutil
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
@@ -24,6 +24,7 @@ from SS.schemas import (
     SolicitacaoServicoResponse,
     SolicitacaoServicoUpdate,
 )
+from SS.importacao_massa import importar_planilha_ss
 from utils.documentos_operacao import especie_documento_por_ativo
 
 
@@ -239,6 +240,26 @@ def criar_ss(ss: SolicitacaoServicoCreate, db: Session = Depends(get_db)):
     db.refresh(nova_ss)
 
     return nova_ss
+
+
+@router.post("/importar-massa")
+async def importar_ss_em_massa(
+    arquivo: UploadFile = File(...),
+    emissor: str | None = None,
+    db: Session = Depends(get_db),
+):
+    garantir_colunas_ss(db)
+    nome_arquivo = arquivo.filename or ""
+    if not nome_arquivo.lower().endswith((".xlsx", ".xlsm")):
+        raise HTTPException(status_code=400, detail="Envie uma planilha .xlsx ou .xlsm.")
+
+    conteudo = await arquivo.read()
+    if not conteudo:
+        raise HTTPException(status_code=400, detail="A planilha esta vazia.")
+    if len(conteudo) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="A planilha excede o limite de 10 MB.")
+
+    return importar_planilha_ss(conteudo, emissor, db, gerar_numero_ss)
 
 
 @router.get("", response_model=list[SolicitacaoServicoResponse])
