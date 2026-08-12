@@ -1,14 +1,14 @@
 ﻿import os
 import re
 import shutil
-from datetime import datetime
+from datetime import date, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from openpyxl.utils import range_boundaries
-from sqlalchemy import or_, text
+from sqlalchemy import case, or_, text
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
@@ -282,6 +282,10 @@ def listar_ss_paginado(
     search: str | None = None,
     status: str | None = None,
     id_subestacao: int | None = None,
+    prazo: str | None = None,
+    data_limite_inicio: date | None = None,
+    data_limite_fim: date | None = None,
+    ordenar_por: str = Query("data_limite", pattern="^(data_limite|mais_recentes)$"),
     db: Session = Depends(get_db),
 ):
     garantir_colunas_ss(db)
@@ -302,6 +306,48 @@ def listar_ss_paginado(
     if status:
         query = query.filter(SolicitacaoServico.status == status)
 
+    hoje = datetime.combine(date.today(), time.min)
+    amanha = hoje + timedelta(days=1)
+
+    if prazo == "vencidas":
+        query = query.filter(SolicitacaoServico.data_hora_limite < hoje)
+    elif prazo == "hoje":
+        query = query.filter(
+            SolicitacaoServico.data_hora_limite >= hoje,
+            SolicitacaoServico.data_hora_limite < amanha,
+        )
+    elif prazo == "proximos_7_dias":
+        query = query.filter(
+            SolicitacaoServico.data_hora_limite >= hoje,
+            SolicitacaoServico.data_hora_limite < hoje + timedelta(days=8),
+        )
+    elif prazo == "proximos_30_dias":
+        query = query.filter(
+            SolicitacaoServico.data_hora_limite >= hoje,
+            SolicitacaoServico.data_hora_limite < hoje + timedelta(days=31),
+        )
+    elif prazo == "proximos_60_dias":
+        query = query.filter(
+            SolicitacaoServico.data_hora_limite >= hoje,
+            SolicitacaoServico.data_hora_limite < hoje + timedelta(days=61),
+        )
+    elif prazo == "proximos_180_dias":
+        query = query.filter(
+            SolicitacaoServico.data_hora_limite >= hoje,
+            SolicitacaoServico.data_hora_limite < hoje + timedelta(days=181),
+        )
+    elif prazo == "sem_prazo":
+        query = query.filter(SolicitacaoServico.data_hora_limite.is_(None))
+
+    if data_limite_inicio:
+        query = query.filter(
+            SolicitacaoServico.data_hora_limite >= datetime.combine(data_limite_inicio, time.min)
+        )
+    if data_limite_fim:
+        query = query.filter(
+            SolicitacaoServico.data_hora_limite < datetime.combine(data_limite_fim + timedelta(days=1), time.min)
+        )
+
     if id_subestacao:
         subestacao = db.query(Subestacao).filter(
             Subestacao.id_subestacao == id_subestacao
@@ -321,13 +367,22 @@ def listar_ss_paginado(
 
     total = query.count()
     total_pages = max(1, (total + page_size - 1) // page_size)
+    if ordenar_por == "data_limite":
+        ordenacao = (
+            case((SolicitacaoServico.data_hora_limite.is_(None), 1), else_=0).asc(),
+            SolicitacaoServico.data_hora_limite.asc(),
+            SolicitacaoServico.id.desc(),
+        )
+    else:
+        ordenacao = (SolicitacaoServico.id.desc(),)
+
     items = (
         query
         .options(
             selectinload(SolicitacaoServico.ativo),
             selectinload(SolicitacaoServico.grupo_ativo),
         )
-        .order_by(SolicitacaoServico.id.desc())
+        .order_by(*ordenacao)
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
