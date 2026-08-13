@@ -1,5 +1,6 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_, text
+from sqlalchemy import String, cast, or_, text
+from fastapi import Query
 from sqlalchemy.orm import Session, selectinload
 from auth.dependencies import get_current_user, require_roles
 from database import get_db
@@ -556,6 +557,8 @@ def listar_si_paginado(
     status: str | None = None,
     id_subestacao: int | None = None,
     id_tipo_ativo: int | None = None,
+    filter_field: list[str] = Query(default=[]),
+    filter_value: list[str] = Query(default=[]),
     db: Session = Depends(get_db),
 ):
     page = max(1, page)
@@ -598,6 +601,11 @@ def listar_si_paginado(
                 db.query(GrupoAtivo.id_grupo_ativo).filter(GrupoAtivo.id_tipo_ativo == id_tipo_ativo)
             ),
         ))
+
+    colunas = {coluna.name for coluna in solicitacao_intervencao.__table__.columns}
+    for campo, valor in zip(filter_field, filter_value):
+        if campo in colunas and valor.strip():
+            query = query.filter(cast(getattr(solicitacao_intervencao, campo), String).ilike(f"%{valor.strip()}%"))
 
     total = query.count()
     total_pages = max(1, (total + page_size - 1) // page_size)

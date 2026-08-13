@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pymysql import IntegrityError
-from sqlalchemy import or_, text
+from sqlalchemy import String, cast, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 from database import get_db
@@ -665,6 +665,8 @@ def listar_os_paginado(
     id_subestacao: int | None = None,
     esquema_servicos: str | None = None,
     id_tipo_ativo: int | None = None,
+    filter_field: list[str] = Query(default=[]),
+    filter_value: list[str] = Query(default=[]),
     db: Session = Depends(get_db),
 ):
     garantir_colunas_os(db)
@@ -702,6 +704,10 @@ def listar_os_paginado(
                 db.query(GrupoAtivo.id_grupo_ativo).filter(GrupoAtivo.id_tipo_ativo == id_tipo_ativo)
             ),
         ))
+    colunas = {coluna.name for coluna in OS_models.OrdemServico.__table__.columns}
+    for campo, valor in zip(filter_field, filter_value):
+        if campo in colunas and valor.strip():
+            query = query.filter(cast(getattr(OS_models.OrdemServico, campo), String).ilike(f"%{valor.strip()}%"))
 
     total = query.count()
     items = (

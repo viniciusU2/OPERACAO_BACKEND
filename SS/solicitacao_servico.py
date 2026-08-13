@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from openpyxl.utils import range_boundaries
-from sqlalchemy import case, or_, text
+from sqlalchemy import String, case, cast, or_, text
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
@@ -284,6 +284,8 @@ def listar_ss_paginado(
     id_subestacao: int | None = None,
     prazo: str | None = None,
     id_tipo_ativo: int | None = None,
+    filter_field: list[str] = Query(default=[]),
+    filter_value: list[str] = Query(default=[]),
     data_limite_inicio: date | None = None,
     data_limite_fim: date | None = None,
     ordenar_por: str = Query("data_limite", pattern="^(data_limite|mais_recentes)$"),
@@ -318,6 +320,10 @@ def listar_ss_paginado(
                 db.query(GrupoAtivo.id_grupo_ativo).filter(GrupoAtivo.id_tipo_ativo == id_tipo_ativo)
             ),
         ))
+    colunas = {coluna.name for coluna in SolicitacaoServico.__table__.columns}
+    for campo, valor in zip(filter_field, filter_value):
+        if campo in colunas and valor.strip():
+            query = query.filter(cast(getattr(SolicitacaoServico, campo), String).ilike(f"%{valor.strip()}%"))
 
     hoje = datetime.combine(date.today(), time.min)
     amanha = hoje + timedelta(days=1)
