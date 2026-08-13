@@ -10,7 +10,7 @@ class SIBase(BaseModel):
     id_ativo: Optional[int] = None
     id_grupo_ativo: Optional[int] = None
     id_funcao_operacao: Optional[int] = None
-    escopo_ativo: Optional[Literal["GRUPO", "FASE"]] = None
+    escopo_ativo: Optional[Literal["FUNCAO", "GRUPO", "FASE"]] = None
     especie: Optional[str] = None
     numero_os: Optional[str] = None
     numero_apr: Optional[str] = None
@@ -94,7 +94,7 @@ class SIUpdate(SIBase):
     id_ativo: Optional[int] = None
     id_grupo_ativo: Optional[int] = None
     id_funcao_operacao: Optional[int] = None
-    escopo_ativo: Optional[Literal["GRUPO", "FASE"]] = None
+    escopo_ativo: Optional[Literal["FUNCAO", "GRUPO", "FASE"]] = None
     especie: Optional[str] = None
     numero_os: Optional[str] = None
     numero_apr: Optional[str] = None

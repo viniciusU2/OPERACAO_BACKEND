@@ -8,6 +8,7 @@ from utils.busca_inteligente import condicoes_textuais, termos_busca_inteligente
 from models.SI_models import SILiberacao, solicitacao_intervencao
 from models.instalacao_models import Subestacao
 from models.Ativo import Ativo, GrupoAtivo
+from models.fo import FuncaoOperacao
 from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
 from SI.schemas import (
     SICreate,
@@ -146,21 +147,35 @@ def set_valor_seguro(ws, celula, valor):
     ws[celula] = valor
 
 
-def sigla_por_subestacao(id_subestacao: int | None):
+def sigla_por_subestacao(db: Session, id_subestacao: int | None):
     if not id_subestacao:
         return "GERAL"
 
-    try:
-        return SUBESTACOES_SIGLAS[id_subestacao - 1]
-    except IndexError:
+    subestacao = db.query(Subestacao).filter(
+        Subestacao.id_subestacao == id_subestacao
+    ).first()
+    if not subestacao:
         return "GERAL"
 
+    sigla = str(getattr(subestacao, "sigla", "") or "").strip().upper()
+    if not sigla:
+        return "GERAL"
+
+    circuito = re.search(
+        r"\bC\s*[-_]?\s*(\d+)\b",
+        str(subestacao.nome or ""),
+        re.IGNORECASE,
+    )
+    if circuito:
+        sigla = f"{sigla}-C{circuito.group(1)}"
+
+    return sigla
 
 def gerar_numero_si(db: Session, sigla: str):
     ano_atual = datetime.now().year
     registros = (
         db.query(solicitacao_intervencao.numero_si)
-        .filter(solicitacao_intervencao.numero_si.like(f"%{sigla}%{ano_atual}%"))
+        .filter(solicitacao_intervencao.numero_si.like(f"SI-{sigla}-%-{ano_atual}"))
         .all()
     )
 
@@ -169,7 +184,7 @@ def gerar_numero_si(db: Session, sigla: str):
         numero_si = numero_si or ""
         if sigla not in numero_si:
             continue
-        match = re.search(rf"(\d+)-{ano_atual}", numero_si)
+        match = re.fullmatch(rf"SI-{re.escape(sigla)}-(\d+)-{ano_atual}", numero_si)
         if match:
             numeros.append(int(match.group(1)))
 
@@ -521,7 +536,34 @@ def criar_si(dados: SICreate, db: Session = Depends(get_db)):
     garantir_colunas_si(db)
 
     data = dados.dict()
-    validar_selecao_ativo(db, data.get("id_subestacao"), data.get("id_funcao_operacao"), data.get("id_grupo_ativo"), data.get("escopo_ativo"), data.get("id_ativo"))
+    sem_ativo = not data.get("id_ativo") and not data.get("id_grupo_ativo")
+    if sem_ativo:
+        subestacao = db.query(Subestacao).filter(
+            Subestacao.id_subestacao == data.get("id_subestacao")
+        ).first()
+        if not subestacao or subestacao.tipo_instalacao != "LINHA_TRANSMISSAO":
+            raise HTTPException(400, "Selecione um ativo para esta instalacao")
+        if not data.get("id_funcao_operacao"):
+            raise HTTPException(400, "Selecione a funcao de transmissao da linha")
+        funcao = db.query(FuncaoOperacao).filter(
+            FuncaoOperacao.id_funcao_operacao == data["id_funcao_operacao"],
+            FuncaoOperacao.id_subestacao == data["id_subestacao"],
+        ).first()
+        if not funcao:
+            raise HTTPException(400, "Funcao de transmissao invalida para esta linha")
+        data["escopo_ativo"] = "FUNCAO"
+        data["id_ativo"] = None
+        data["id_grupo_ativo"] = None
+        data["especie"] = "LINHA DE TRANSMISSAO"
+    else:
+        validar_selecao_ativo(
+            db,
+            data.get("id_subestacao"),
+            data.get("id_funcao_operacao"),
+            data.get("id_grupo_ativo"),
+            data.get("escopo_ativo"),
+            data.get("id_ativo"),
+        )
     if data.get("id_ativo"):
         ativo = db.query(Ativo).filter(Ativo.id_ativo == data["id_ativo"]).first()
         if ativo:
@@ -530,7 +572,7 @@ def criar_si(dados: SICreate, db: Session = Depends(get_db)):
     data["prioridade"] = normalizar_prioridade_operacao(data.get("prioridade"))
 
     if not data.get("numero_si"):
-        data["numero_si"] = gerar_numero_si(db, sigla_por_subestacao(data.get("id_subestacao")))
+        data["numero_si"] = gerar_numero_si(db, sigla_por_subestacao(db, data.get("id_subestacao")))
 
     nova_si = solicitacao_intervencao(**data)
     db.add(nova_si)
