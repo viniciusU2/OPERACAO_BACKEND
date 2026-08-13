@@ -62,6 +62,7 @@ class OrdemServico(Base):
     subestacao = relationship("Subestacao", back_populates="ordens")
     ativo = relationship("Ativo", back_populates="ordens")
     grupo_ativo = relationship("GrupoAtivo")
+    funcao_operacao = relationship("FuncaoOperacao")
     livro_registro = relationship("LivroRegistro", back_populates="os")
     inspecao = relationship("Inspecao", back_populates="ordem_servico", uselist=False)
 
@@ -77,14 +78,19 @@ class OrdemServico(Base):
             return self.ativo.tipo_ativo.nome
         if self.grupo_ativo and self.grupo_ativo.tipo_ativo:
             return self.grupo_ativo.tipo_ativo.nome
-
+        if self.funcao_operacao and self.escopo_ativo == "FUNCAO":
+            return "Linha de transmissão"
         return None
 
     @property
     def codigo_ativo(self):
         if self.ativo:
             return self.ativo.codigo_ativo
-        return self.grupo_ativo.codigo_ativo if self.grupo_ativo else None
+        if self.grupo_ativo:
+            return self.grupo_ativo.codigo_ativo
+        if self.funcao_operacao and self.escopo_ativo == "FUNCAO":
+            return self.funcao_operacao.codigo
+        return None
 
     @property
     def fase(self):

@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pymysql import IntegrityError
-from sqlalchemy import String, cast, or_, text
+from sqlalchemy import String, cast, func, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 from database import get_db
@@ -24,6 +24,7 @@ from database import get_db
 from models.Ativo import Ativo, GrupoAtivo
 from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
 from models.instalacao_models import Subestacao
+from models.fo import FuncaoOperacao
 from models.SS_models import SolicitacaoServico
 from models import OS_models
 from models.livro_registro import LivroRegistro
@@ -361,8 +362,31 @@ def criar_ordem_servico(
 
     sigla = obter_sigla_subestacao(sub)
 
-    # 🔹 Validar Ativo
-    grupo = validar_selecao_ativo(db, os_data.id_subestacao, os_data.id_funcao_operacao, os_data.id_grupo_ativo, os_data.escopo_ativo, os_data.id_ativo)
+    # 🔹 Validar escopo da instalação / ativo
+    sem_ativo = not os_data.id_ativo and not os_data.id_grupo_ativo
+    if sem_ativo:
+        if sub.tipo_instalacao != "LINHA_TRANSMISSAO":
+            raise HTTPException(400, "Selecione um ativo para esta instalação")
+        if not os_data.id_funcao_operacao:
+            raise HTTPException(400, "Selecione a função de transmissão da linha")
+        funcao = db.query(FuncaoOperacao).filter(
+            FuncaoOperacao.id_funcao_operacao == os_data.id_funcao_operacao,
+            FuncaoOperacao.id_subestacao == os_data.id_subestacao,
+        ).first()
+        if not funcao:
+            raise HTTPException(400, "Função de transmissão inválida para esta linha")
+        os_data.escopo_ativo = "FUNCAO"
+        os_data.especie = "LINHA DE TRANSMISSÃO"
+        grupo = None
+    else:
+        grupo = validar_selecao_ativo(
+            db,
+            os_data.id_subestacao,
+            os_data.id_funcao_operacao,
+            os_data.id_grupo_ativo,
+            os_data.escopo_ativo,
+            os_data.id_ativo,
+        )
     ativo = None
     codigo_ativo = None
 
@@ -1585,6 +1609,23 @@ def gerar_os_por_planos_manutencao(
             ativos.sort(key=chave_ordenacao_ativo)
 
             for ativo in ativos:
+                os_pendente_do_plano = (
+                    db.query(OrdemServico.id_os)
+                    .filter(
+                        OrdemServico.id_plano_manutencao == plano.id_plano_manutencao,
+                        OrdemServico.id_ativo == ativo.id_ativo,
+                        ~func.upper(func.trim(func.coalesce(OrdemServico.status, ""))).in_(
+                            status_finalizado
+                        ),
+                    )
+                    .first()
+                )
+
+                # Uma mesma rotina do plano nao deve gerar OS duplicada para o
+                # ativo enquanto a ordem anterior ainda estiver pendente.
+                if os_pendente_do_plano:
+                    continue
+
                 execucoes_pendentes = []
 
                 for item in itens_plano:
@@ -1759,16 +1800,10 @@ def gerar_os_por_planos_manutencao(
                 )
                 ordens_por_frente.setdefault(chave_frente, []).append(nova_os)
 
-                # O ciclo avança na geração, não no encerramento. Assim uma OS antiga
-                # aberta não bloqueia a próxima preventiva e o agendador não duplica
-                # a mesma periodicidade em execuções diárias.
-                for item, execucao in execucoes_pendentes:
-                    data_ciclo = execucao.proxima_execucao or data_programada or hoje
-                    execucao.ultima_execucao = data_ciclo
-                    execucao.proxima_execucao = proxima_data_execucao(
-                        item, data_ciclo, hoje
-                    )
-                    execucao.id_os = None
+                # A execução permanece vinculada à OS enquanto ela estiver pendente.
+                # O ciclo e a próxima data avançam somente no encerramento da ordem.
+                for _, execucao in execucoes_pendentes:
+                    execucao.id_os = nova_os.id_os
 
                 os_criadas.append({
                     "numero_os": numero_os,
@@ -1859,4 +1894,3 @@ def gerar_os_semanal(
     except Exception as exc:
         db.rollback()
         raise _erro_geracao_os(exc)
-

@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from models import instalacao_models
 from pymysql import IntegrityError
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from database import get_db
 from models.OS_models import OrdemServico
@@ -15,6 +16,27 @@ from auth.dependencies import require_roles
 
 
 router = APIRouter(prefix="", tags=["Instalação"])
+
+def garantir_coluna_tipo_instalacao(db: Session):
+    coluna = db.execute(
+        text("SHOW COLUMNS FROM subestacao LIKE 'tipo_instalacao'")
+    ).first()
+    if coluna:
+        return
+
+    db.execute(
+        text(
+            "ALTER TABLE subestacao ADD COLUMN tipo_instalacao "
+            "VARCHAR(30) NOT NULL DEFAULT 'SUBESTACAO' AFTER nome"
+        )
+    )
+    db.execute(
+        text(
+            "UPDATE subestacao SET tipo_instalacao = 'LINHA_TRANSMISSAO' "
+            "WHERE UPPER(TRIM(nome)) REGEXP '^LT([[:space:]-]|$)'"
+        )
+    )
+    db.commit()
 
 # ---------------- SUBESTAÇÃO ----------------
 @router.post("/subestacao")

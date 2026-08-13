@@ -48,6 +48,7 @@ def get_current_user(
             algorithms=[ALGORITHM],
         )
         email = payload.get("sub")
+        token_version = int(payload.get("ver", 0))
     except JWTError:
         raise HTTPException(status_code=401, detail="Token invalido")
 
@@ -58,6 +59,9 @@ def get_current_user(
     usuario = db.query(Usuario).filter(Usuario.email == email).first()
     if not usuario or not usuario.ativo:
         raise HTTPException(status_code=401, detail="Usuario inativo ou nao encontrado")
+
+    if token_version != (usuario.auth_version or 0):
+        raise HTTPException(status_code=401, detail="Sessao expirada. Entre novamente.")
 
     return usuario
 

@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal, engine
 from dotenv import load_dotenv
@@ -15,6 +15,7 @@ from RDO import rdo
 from Sobreaviso import sobreaviso
 from funcao_operacao import funcao_operacao
 from auth import auth
+from analytics import analytics
 import downloads
 from database import Base, engine
 from ATIVO import ativos
@@ -23,6 +24,7 @@ from sqlalchemy import text
 from models import rdo_models
 from models import APR_models
 from models import fo
+from models import planning_resource_models
 
 
 
@@ -34,6 +36,8 @@ Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 try:
+    auth.garantir_colunas_usuarios(db)
+    instalacao.garantir_coluna_tipo_instalacao(db)
     ordem_de_servico.garantir_colunas_os(db)
     garantir_estrutura_grupo_ativo(db)
     sincronizar_grupos_ativos(db)
@@ -107,6 +111,8 @@ app.include_router(livro_registro.router)
 app.include_router(rdo.router)
 app.include_router(sobreaviso.router)
 app.include_router(downloads.router)
+app.include_router(analytics.router)
+app.include_router(analytics.recursos_router)
 
 
 
@@ -115,6 +121,3 @@ app.include_router(downloads.router)
 
 
 GOOGLE_CLIENT_ID =  os.getenv("CLIENT_ID")
-
-
-

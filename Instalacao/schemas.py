@@ -11,6 +11,7 @@ from decimal import Decimal
 
 class SubestacaoBase(BaseModel):
     nome: str
+    tipo_instalacao: Literal["SUBESTACAO", "LINHA_TRANSMISSAO"] = "SUBESTACAO"
     tensao_kv: Optional[float] = None
     localizacao: Optional[str] = None
     concessionaria: Optional[str] = None

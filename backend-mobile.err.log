@@ -1,190 +1,27 @@
 C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
 * 'orm_mode' has been renamed to 'from_attributes'
   warnings.warn(message, UserWarning)
-INFO:     Started server process [5216]
+INFO:     Started server process [8220]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
-C:\Users\vinig\OneDrive\Área de Trabalho\vs\atv002\OPERACAO_BACKEND\op\Lib\site-packages\pydantic\_internal\_config.py:383: UserWarning: Valid config keys have changed in V2:
-* 'orm_mode' has been renamed to 'from_attributes'
-  warnings.warn(message, UserWarning)
+Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Program Files\Python313\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python313\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Foi forçado o cancelamento de uma conexão existente pelo host remoto
+Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Program Files\Python313\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python313\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Foi forçado o cancelamento de uma conexão existente pelo host remoto

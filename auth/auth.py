@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
 from fastapi import HTTPException
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from jose import jwt
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from database import get_db
 from models.auth_models import Usuario
 from utils.autenticacao import verificar_senha, gerar_hash
 from auth.dependencies import get_secret_key, require_roles
+from auth.password_reset_service import GENERIC_MESSAGE, redefinir_senha, solicitar_redefinicao, verificar_limite
 
 load_dotenv()
 
@@ -27,7 +28,10 @@ def garantir_colunas_usuarios(db: Session):
     ).first()
     if not existe:
         db.execute(text("ALTER TABLE usuarios ADD COLUMN id_subestacao_padrao INT NULL"))
-        db.commit()
+    auth_version_existe = db.execute(text("SHOW COLUMNS FROM usuarios LIKE 'auth_version'")).first()
+    if not auth_version_existe:
+        db.execute(text("ALTER TABLE usuarios ADD COLUMN auth_version INT NOT NULL DEFAULT 0"))
+    db.commit()
 
 def criar_token(data: dict):
     to_encode = data.copy()
@@ -50,12 +54,29 @@ def login(data: schemas.UsuarioLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Senha inválida")
     
     usuario.role = (usuario.role or "usuario").strip().lower()
-    token = criar_token({"sub": usuario.email, "role": usuario.role})
+    token = criar_token({"sub": usuario.email, "role": usuario.role, "ver": usuario.auth_version or 0})
 
     return {
         "usuario": usuario,
         "access_token": token
     }
+
+
+@router.post("/forgot-password")
+def forgot_password(data: schemas.ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    verificar_limite(f"ip:{request.client.host if request.client else 'unknown'}")
+    verificar_limite(f"email:{data.email.lower()}", limite=3)
+    try:
+        solicitar_redefinicao(db, data.email)
+    except Exception:
+        db.rollback()
+    return {"message": GENERIC_MESSAGE}
+
+
+@router.post("/reset-password")
+def reset_password(data: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    redefinir_senha(db, data.token, data.nova_senha)
+    return {"message": "Senha alterada com sucesso."}
 
 
 @router.post("/register")

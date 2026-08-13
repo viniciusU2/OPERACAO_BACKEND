@@ -1,4 +1,4 @@
-﻿import enum
+import enum
 from datetime import datetime
 
 from sqlalchemy import (
@@ -27,6 +27,7 @@ class Subestacao(Base):
 
     id_subestacao = Column(Integer, primary_key=True, index=True)
     nome = Column(String(100), nullable=False)
+    tipo_instalacao = Column(String(30), nullable=False, default="SUBESTACAO")
     tensao_kv = Column(DECIMAL(6, 2))
     localizacao = Column(String(150))
     concessionaria = Column(String(100))
