@@ -4,6 +4,7 @@ from fastapi import Query
 from sqlalchemy.orm import Session, selectinload
 from auth.dependencies import get_current_user, require_roles
 from database import get_db
+from utils.busca_inteligente import condicoes_textuais, termos_busca_inteligente
 from models.SI_models import SILiberacao, solicitacao_intervencao
 from models.instalacao_models import Subestacao
 from models.Ativo import Ativo, GrupoAtivo
@@ -567,18 +568,19 @@ def listar_si_paginado(
     query = db.query(solicitacao_intervencao)
 
     if search and search.strip():
-        for palavra in search.split():
+        query = query.outerjoin(
+            Ativo, solicitacao_intervencao.id_ativo == Ativo.id_ativo
+        ).outerjoin(
+            GrupoAtivo, solicitacao_intervencao.id_grupo_ativo == GrupoAtivo.id_grupo_ativo
+        )
+        for palavra in termos_busca_inteligente(search):
             termo = f"%{palavra}%"
             query = query.filter(or_(
-                solicitacao_intervencao.numero_si.ilike(termo),
-                solicitacao_intervencao.numero_sgi.ilike(termo),
-                solicitacao_intervencao.numero_os.ilike(termo),
-                solicitacao_intervencao.responsavel.ilike(termo),
-                solicitacao_intervencao.descricao_servicos.ilike(termo),
-                solicitacao_intervencao.especie.ilike(termo),
-                solicitacao_intervencao.status_operacao.ilike(termo),
-                solicitacao_intervencao.status_manutencao.ilike(termo),
-                solicitacao_intervencao.prioridade.ilike(termo),
+                *condicoes_textuais(solicitacao_intervencao, palavra),
+                Ativo.codigo_ativo.ilike(termo),
+                Ativo.bay.ilike(termo),
+                Ativo.fase.ilike(termo),
+                GrupoAtivo.codigo_ativo.ilike(termo),
             ))
 
     if status:

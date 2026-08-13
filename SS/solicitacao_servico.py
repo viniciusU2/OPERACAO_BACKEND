@@ -12,6 +12,7 @@ from sqlalchemy import String, case, cast, or_, text
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
+from utils.busca_inteligente import condicoes_textuais, termos_busca_inteligente
 from auth.dependencies import get_current_user, require_roles
 from models.Ativo import Ativo, GrupoAtivo
 from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
@@ -295,17 +296,19 @@ def listar_ss_paginado(
     query = db.query(SolicitacaoServico)
 
     if search and search.strip():
-        for palavra in search.split():
+        query = query.outerjoin(
+            Ativo, SolicitacaoServico.id_ativo == Ativo.id_ativo
+        ).outerjoin(
+            GrupoAtivo, SolicitacaoServico.id_grupo_ativo == GrupoAtivo.id_grupo_ativo
+        )
+        for palavra in termos_busca_inteligente(search):
             termo = f"%{palavra}%"
             query = query.filter(or_(
-                SolicitacaoServico.numero_ss.ilike(termo),
-                SolicitacaoServico.numero_os.ilike(termo),
-                SolicitacaoServico.solicitante.ilike(termo),
-                SolicitacaoServico.instalacao.ilike(termo),
-                SolicitacaoServico.descricao_problema.ilike(termo),
-                SolicitacaoServico.esquema_servico.ilike(termo),
-                SolicitacaoServico.status.ilike(termo),
-                SolicitacaoServico.prioridade.ilike(termo),
+                *condicoes_textuais(SolicitacaoServico, palavra),
+                Ativo.codigo_ativo.ilike(termo),
+                Ativo.bay.ilike(termo),
+                Ativo.fase.ilike(termo),
+                GrupoAtivo.codigo_ativo.ilike(termo),
             ))
 
     if status:

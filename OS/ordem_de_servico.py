@@ -6,6 +6,7 @@ from sqlalchemy import String, cast, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 from database import get_db
+from utils.busca_inteligente import condicoes_textuais, termos_busca_inteligente
 from models.OS_models import OrdemServico
 from OS.schemas import (
     BaixaOSLoteResponse,
@@ -678,15 +679,13 @@ def listar_os_paginado(
         ).outerjoin(
             GrupoAtivo, OS_models.OrdemServico.id_grupo_ativo == GrupoAtivo.id_grupo_ativo
         )
-        for palavra in search.split():
+        for palavra in termos_busca_inteligente(search):
             termo = f"%{palavra}%"
             query = query.filter(or_(
-                OS_models.OrdemServico.numero_os.ilike(termo),
-                OS_models.OrdemServico.descricao_servicos.ilike(termo),
-                OS_models.OrdemServico.esquema_servicos.ilike(termo),
-                OS_models.OrdemServico.status.ilike(termo),
-                OS_models.OrdemServico.especie.ilike(termo),
+                *condicoes_textuais(OS_models.OrdemServico, palavra),
                 Ativo.codigo_ativo.ilike(termo),
+                Ativo.bay.ilike(termo),
+                Ativo.fase.ilike(termo),
                 GrupoAtivo.codigo_ativo.ilike(termo),
             ))
     if status and status != "all":
