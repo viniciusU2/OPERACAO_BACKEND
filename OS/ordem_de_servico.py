@@ -1557,7 +1557,6 @@ def gerar_os_por_planos_manutencao(
     os_criadas = []
     os_previstas = []
     ordens_por_frente = {}
-    status_pendente = ["ABERTA", "PROGRAMADA", "EM_EXECUCAO"]
     status_finalizado = {"ENCERRADA", "CONCLUIDA"}
 
     tipos_ativo = db.query(TipoAtivo).all()
@@ -1622,9 +1621,6 @@ def gerar_os_por_planos_manutencao(
                             os_vinculada.status if os_vinculada else ""
                         ).strip().upper()
 
-                        if os_vinculada and status_vinculada in status_pendente:
-                            continue
-
                         if os_vinculada and status_vinculada in status_finalizado:
                             if simular:
                                 data_base = os_vinculada.data_fim_execucao or hoje
@@ -1663,40 +1659,6 @@ def gerar_os_por_planos_manutencao(
                 esquema_servicos_plano = esquema_servico_por_periodicidade(
                     execucoes_pendentes[0][0]
                 )
-
-                os_existente = (
-                    db.query(OrdemServico)
-                    .filter(
-                        OrdemServico.id_ativo == ativo.id_ativo,
-                        OrdemServico.descricao_servicos == plano.descricao_geral,
-                        OrdemServico.status.in_(status_pendente),
-                    )
-                    .first()
-                )
-
-                if os_existente:
-                    if simular:
-                        continue
-
-                    for item, execucao in execucoes_pendentes:
-                        execucao.id_os = os_existente.id_os
-
-                    os_existente.origem = os_existente.origem or "PLANO_MANUTENCAO"
-                    os_existente.id_plano_manutencao = (
-                        os_existente.id_plano_manutencao or plano.id_plano_manutencao
-                    )
-                    os_existente.id_plano_item = (
-                        os_existente.id_plano_item or execucoes_pendentes[0][0].id_plano_item
-                    )
-                    os_existente.id_plano_execucao = (
-                        os_existente.id_plano_execucao or execucoes_pendentes[0][1].id_execucao
-                    )
-                    if not os_existente.esquema_servicos or os_existente.esquema_servicos in {
-                        "MANUTENCAO PREVENTIVA",
-                        "MANUTENÇÃO PREVENTIVA",
-                    }:
-                        os_existente.esquema_servicos = esquema_servicos_plano
-                    continue
 
                 subestacao = (
                     db.query(Subestacao)
@@ -1798,8 +1760,16 @@ def gerar_os_por_planos_manutencao(
                 )
                 ordens_por_frente.setdefault(chave_frente, []).append(nova_os)
 
+                # O ciclo avança na geração, não no encerramento. Assim uma OS antiga
+                # aberta não bloqueia a próxima preventiva e o agendador não duplica
+                # a mesma periodicidade em execuções diárias.
                 for item, execucao in execucoes_pendentes:
-                    execucao.id_os = nova_os.id_os
+                    data_ciclo = execucao.proxima_execucao or data_programada or hoje
+                    execucao.ultima_execucao = data_ciclo
+                    execucao.proxima_execucao = proxima_data_execucao(
+                        item, data_ciclo, hoje
+                    )
+                    execucao.id_os = None
 
                 os_criadas.append({
                     "numero_os": numero_os,
