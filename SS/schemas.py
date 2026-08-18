@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, Literal
+from problemas_tipicos.schemas import SSProblemaIn, SSProblemaResponse
 
 
 # BASE
@@ -48,6 +49,8 @@ class SolicitacaoServicoBase(BaseModel):
 
 
 # CREATE
+    problemas: list[SSProblemaIn] = []
+
 class SolicitacaoServicoCreate(SolicitacaoServicoBase):
     id_subestacao: Optional[int] = None
 
@@ -96,6 +99,8 @@ class SolicitacaoServicoUpdate(BaseModel):
     editado_por: Optional[str] = None
 
 
+    problemas: Optional[list[SSProblemaIn]] = None
+
 # RESPONSE
 class SolicitacaoServicoResponse(SolicitacaoServicoBase):
 
@@ -103,6 +108,7 @@ class SolicitacaoServicoResponse(SolicitacaoServicoBase):
     id_ss: int
     id_subestacao: Optional[int] = None
     codigo_ativo: Optional[str] = None
+    problemas: list[SSProblemaResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import text as QueryText
+from sqlalchemy import and_, or_, text as QueryText
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
@@ -15,6 +15,7 @@ from models.plano_manutencao_models import (
     ResultadoItemInspecao,
 )
 from models.Ativo import Ativo
+from models.OS_models import OrdemServico
 from plano_manutencao.schemas import (
     InspecaoCreate,
     InspecaoRead,
@@ -305,6 +306,136 @@ def listar_todas(
         .all()
     )
 
+
+def periodicidade_da_os(esquema_servicos: str | None):
+    texto = (esquema_servicos or "").upper().replace("-", "_").replace(" ", "_")
+    aliases = (
+        ("6_ANOS", PeriodicidadeEnum.SEIS_ANOS),
+        ("SEIS_ANOS", PeriodicidadeEnum.SEIS_ANOS),
+        ("5_ANOS", PeriodicidadeEnum.CINCO_ANOS),
+        ("CINCO_ANOS", PeriodicidadeEnum.CINCO_ANOS),
+        ("3_ANOS", PeriodicidadeEnum.TRES_ANOS),
+        ("TRES_ANOS", PeriodicidadeEnum.TRES_ANOS),
+        ("SEMESTRAL", PeriodicidadeEnum.SEMESTRAL),
+        ("BIMESTRAL", PeriodicidadeEnum.BIMESTRAL),
+        ("TRIMESTRAL", PeriodicidadeEnum.TRIMESTRAL),
+        ("MENSAL", PeriodicidadeEnum.MENSAL),
+        ("SEMANAL", PeriodicidadeEnum.SEMANAL),
+        ("ANUAL", PeriodicidadeEnum.ANUAL),
+    )
+    return next((periodicidade for termo, periodicidade in aliases if termo in texto), None)
+
+
+@router.post("/preparar-os-em-execucao")
+def preparar_inspecoes_os_em_execucao(
+    id_subestacao: int = Query(default=2, gt=0),
+    id_tipo_ativo: int = Query(default=4, gt=0),
+    periodicidade: Optional[PeriodicidadeEnum] = Query(default=None),
+    responsavel: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    ordens = (
+        db.query(OrdemServico)
+        .join(Ativo, Ativo.id_ativo == OrdemServico.id_ativo)
+        .filter(
+            OrdemServico.id_subestacao == id_subestacao,
+            Ativo.id_tipo_ativo == id_tipo_ativo,
+            OrdemServico.status == "EM_EXECUCAO",
+        )
+        .order_by(OrdemServico.id_os)
+        .with_for_update()
+        .all()
+    )
+
+    criadas = []
+    existentes = []
+    sem_periodicidade = []
+
+    for ordem in ordens:
+        inspecao_existente = (
+            db.query(Inspecao)
+            .filter(Inspecao.id_os == ordem.id_os)
+            .first()
+        )
+        if inspecao_existente:
+            existentes.append({
+                "id_os": ordem.id_os,
+                "numero_os": ordem.numero_os,
+                "id_inspecao": inspecao_existente.id_inspecao,
+            })
+            continue
+
+        periodicidade_final = periodicidade or periodicidade_da_os(ordem.esquema_servicos)
+        if not periodicidade_final:
+            sem_periodicidade.append({
+                "id_os": ordem.id_os,
+                "numero_os": ordem.numero_os,
+                "esquema_servicos": ordem.esquema_servicos,
+            })
+            continue
+
+        inspecao = Inspecao(
+            id_ativo=ordem.id_ativo,
+            id_os=ordem.id_os,
+            data_inspecao=datetime.now(timezone.utc),
+            periodicidade=periodicidade_final,
+            responsavel=responsavel or ordem.responsavel,
+            observacao_geral=f"Inspecao para OS {ordem.numero_os}",
+        )
+        db.add(inspecao)
+        db.flush()
+
+        itens = (
+            db.query(PlanoItem)
+            .join(
+                PlanoManutencao,
+                PlanoManutencao.id_plano_manutencao == PlanoItem.id_plano_manutencao,
+            )
+            .join(Ativo, Ativo.id_ativo == ordem.id_ativo)
+            .filter(
+                or_(
+                    PlanoItem.id_ativo == ordem.id_ativo,
+                    and_(
+                        PlanoItem.id_ativo.is_(None),
+                        PlanoManutencao.id_tipo_ativo == Ativo.id_tipo_ativo,
+                    ),
+                ),
+                PlanoItem.periodicidade == periodicidade_final,
+            )
+            .order_by(PlanoItem.ordem, PlanoItem.id_plano_item)
+            .all()
+        )
+
+        for item in itens:
+            db.add(ResultadoItemInspecao(
+                id_inspecao=inspecao.id_inspecao,
+                id_plano_item=item.id_plano_item,
+                nome_item=item.nome_item,
+                valor_referencia=item.valor_referencia,
+                tolerancia=item.tolerancia,
+                status_item="OK",
+            ))
+
+        if itens:
+            inspecao.status_geral = "OK"
+
+        criadas.append({
+            "id_os": ordem.id_os,
+            "numero_os": ordem.numero_os,
+            "id_inspecao": inspecao.id_inspecao,
+            "periodicidade": periodicidade_final.value,
+            "itens_preenchidos_ok": len(itens),
+        })
+
+    db.commit()
+    return {
+        "id_subestacao": id_subestacao,
+        "id_tipo_ativo": id_tipo_ativo,
+        "os_encontradas": len(ordens),
+        "inspecoes_criadas": criadas,
+        "inspecoes_existentes": existentes,
+        "os_sem_periodicidade": sem_periodicidade,
+    }
 
 @router.post("", response_model=InspecaoReadFull, status_code=201)
 @router.post("/", response_model=InspecaoReadFull, status_code=201)

@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import shutil
 from datetime import date, datetime, time, timedelta
@@ -18,6 +18,7 @@ from models.Ativo import Ativo, GrupoAtivo
 from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
 from models.OS_models import OrdemServico
 from models.SS_models import SolicitacaoServico
+from problemas_tipicos.service import sincronizar_ss
 from models.instalacao_models import Subestacao
 from SS.schemas import (
     SolicitacaoServicoCreate,
@@ -191,6 +192,30 @@ def gerar_xlsx(modelo, destino, contexto, mapeamento):
     wb.save(destino)
 
 
+def resumo_problemas_ss(ss):
+    linhas = []
+    for ocorrencia in ss.problemas or []:
+        problema = ocorrencia.problema
+        criticidade = ocorrencia.criticidade_identificada or problema.criticidade_padrao
+        valor_criticidade = criticidade.value if hasattr(criticidade, "value") else criticidade
+        linha = f"- {problema.titulo} [{valor_criticidade}]"
+        if ocorrencia.observacao:
+            linha += f" — {ocorrencia.observacao.strip()}"
+        if ocorrencia.confirmado:
+            linha += " — confirmado"
+        linhas.append(linha)
+    return "\n".join(linhas)
+
+
+def descricao_com_problemas_ss(ss):
+    blocos = []
+    if ss.descricao_problema and ss.descricao_problema.strip():
+        blocos.append(ss.descricao_problema.strip())
+    resumo = resumo_problemas_ss(ss)
+    if resumo:
+        blocos.append(f"PROBLEMAS IDENTIFICADOS:\n{resumo}")
+    return "\n\n".join(blocos)
+
 def montar_contexto_ss(ss, ativo=None):
     return {
         "NUM_SS": limpar(ss.numero_ss),
@@ -212,7 +237,7 @@ def montar_contexto_ss(ss, ativo=None):
         "CAUSA": limpar(ss.causa),
         "CAUSA_SECUNDARIA": limpar(ss.causa_secundaria),
         "EQUIPE": limpar(ss.equipe),
-        "DESC_PROBLEMA": limpar(ss.descricao_problema),
+        "DESC_PROBLEMA": limpar(descricao_com_problemas_ss(ss)),
         "PRIORIDADE": limpar(ss.prioridade),
         "STATUS": limpar(ss.status),
     }
@@ -222,6 +247,7 @@ def montar_contexto_ss(ss, ativo=None):
 def criar_ss(ss: SolicitacaoServicoCreate, db: Session = Depends(get_db)):
     garantir_colunas_ss(db)
     data = ss.model_dump()
+    problemas = data.pop("problemas", [])
     validar_selecao_ativo(db, data.get("id_subestacao"), data.get("id_funcao_operacao"), data.get("id_grupo_ativo"), data.get("escopo_ativo"), data.get("id_ativo"))
     id_subestacao = data.pop("id_subestacao", None)
     if not data.get("numero_ss"):
@@ -237,6 +263,8 @@ def criar_ss(ss: SolicitacaoServicoCreate, db: Session = Depends(get_db)):
     nova_ss = SolicitacaoServico(**data)
 
     db.add(nova_ss)
+    db.flush()
+    sincronizar_ss(db, nova_ss, ss.problemas)
     db.commit()
     db.refresh(nova_ss)
 
@@ -447,10 +475,15 @@ def editar_ss(
     if not ss:
         raise HTTPException(404, "SS nao encontrada")
 
-    for campo, valor in dados.model_dump(exclude_unset=True).items():
+    alteracoes = dados.model_dump(exclude_unset=True)
+    problemas = alteracoes.pop("problemas", None)
+    for campo, valor in alteracoes.items():
         if campo == "emissor":
             continue
         setattr(ss, campo, valor)
+
+    if problemas is not None:
+        sincronizar_ss(db, ss, dados.problemas or [])
 
     ss.editado_por = getattr(usuario, "nome", None) or getattr(usuario, "email", None)
 

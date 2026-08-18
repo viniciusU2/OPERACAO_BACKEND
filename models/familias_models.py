@@ -42,6 +42,8 @@ class TipoAtivo(Base):
         back_populates="tipo_ativo",
         cascade="all, delete"
     )
+    problemas_tipicos = relationship("ProblemaTipico", back_populates="tipo_ativo")
+
 
     planos_manutencao = relationship(
         "PlanoManutencao",

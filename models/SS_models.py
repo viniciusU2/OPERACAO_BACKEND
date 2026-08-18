@@ -51,7 +51,39 @@ class SolicitacaoServico(Base):
 
     ativo = relationship("Ativo")
     grupo_ativo = relationship("GrupoAtivo")
+    problemas = relationship("SSProblema", back_populates="ss", cascade="all, delete-orphan", lazy="selectin")
 
+    @property
+    def tipo_ativo_nome(self):
+        if self.ativo and self.ativo.tipo_ativo:
+            return self.ativo.tipo_ativo.nome
+        if self.grupo_ativo and self.grupo_ativo.tipo_ativo:
+            return self.grupo_ativo.tipo_ativo.nome
+        return None
+
+    @property
+    def fase_ativo(self):
+        return self.ativo.fase if self.ativo else None
+
+    @property
+    def problemas_titulos(self):
+        return "; ".join(item.problema.titulo for item in self.problemas if item.problema)
+
+    @property
+    def problemas_criticidades(self):
+        valores = []
+        for item in self.problemas:
+            valor = item.criticidade_identificada or (item.problema.criticidade_padrao if item.problema else None)
+            valores.append(valor.value if hasattr(valor, "value") else str(valor or ""))
+        return "; ".join(valores)
+
+    @property
+    def problemas_observacoes(self):
+        return " | ".join((item.observacao or "").strip() for item in self.problemas)
+
+    @property
+    def problemas_confirmados(self):
+        return "; ".join("SIM" if item.confirmado else "NAO" for item in self.problemas)
     @property
     def id_ss(self):
         return self.id

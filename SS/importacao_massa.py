@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session, selectinload
 from models.Ativo import Ativo
 from models.SS_models import SolicitacaoServico
 from models.instalacao_models import Subestacao
+from models.problemas_tipicos_models import ProblemaTipico
+from problemas_tipicos.schemas import SSProblemaIn
+from problemas_tipicos.service import sincronizar_ss
 
 
 COLUNAS = {
@@ -39,6 +42,14 @@ COLUNAS = {
     "causa secundaria": "causa_secundaria",
     "equipe": "equipe",
     "descricao problema": "descricao_problema",
+    "problema tipico": "problemas_tipicos",
+    "problemas tipicos": "problemas_tipicos",
+    "problemas identificados": "problemas_tipicos",
+    "criticidade identificada": "criticidades_identificadas",
+    "criticidades identificadas": "criticidades_identificadas",
+    "observacao problema": "observacoes_problemas",
+    "observacoes problemas": "observacoes_problemas",
+    "problema confirmado": "problemas_confirmados",
     "prioridade": "prioridade",
     "status": "status",
 }
@@ -57,6 +68,14 @@ def texto(valor):
         valor = int(valor)
     resultado = str(valor).strip()
     return resultado or None
+
+
+def lista_texto(valor, separador=r"[;\n]+"):
+    conteudo = texto(valor)
+    return [item.strip() for item in re.split(separador, conteudo or "") if item.strip()]
+
+def valor_booleano(valor) -> bool:
+    return normalizar(valor) in {"1", "sim", "s", "true", "verdadeiro", "confirmado"}
 
 
 def data_excel(valor, campo: str):
@@ -121,13 +140,16 @@ def importar_planilha_ss(
         raise HTTPException(status_code=400, detail="A planilha nao possui cabecalho.")
 
     campos = [COLUNAS.get(normalizar(cabecalho)) for cabecalho in cabecalhos]
-    obrigatorios = {"solicitante", "esquema_servico", "descricao_problema"}
+    obrigatorios = {"solicitante", "esquema_servico"}
     ausentes = sorted(obrigatorios - {campo for campo in campos if campo})
     if ausentes:
         raise HTTPException(
             status_code=400,
             detail=f"Colunas obrigatorias ausentes: {', '.join(ausentes)}",
         )
+    campos_presentes = {campo for campo in campos if campo}
+    if "descricao_problema" not in campos_presentes and "problemas_tipicos" not in campos_presentes:
+        raise HTTPException(status_code=400, detail="Informe a coluna Descricao Problema ou Problemas Tipicos.")
 
     subestacoes = db.query(Subestacao).all()
     ativos = db.query(Ativo).options(selectinload(Ativo.tipo_ativo)).all()
@@ -157,13 +179,14 @@ def importar_planilha_ss(
                 codigo_ativo = texto(dados.get("codigo_ativo") or dados.get("ativo"))
                 solicitante = texto(dados.get("solicitante"))
                 esquema = texto(dados.get("esquema_servico"))
-                descricao = texto(dados.get("descricao_problema"))
+                titulos_problemas = lista_texto(dados.get("problemas_tipicos"))
+                descricao = texto(dados.get("descricao_problema")) or "; ".join(titulos_problemas) or None
 
                 faltantes = [
                     nome for nome, valor in (
                         ("Solicitante", solicitante),
                         ("Esquema Servico", esquema),
-                        ("Descricao Problema", descricao),
+                        ("Descricao Problema ou Problemas Tipicos", descricao),
                     ) if not valor
                 ]
                 if faltantes:
@@ -209,6 +232,27 @@ def importar_planilha_ss(
                     raise ValueError(f"ativo ambiguo: {codigo_ativo}; informe Fase e Tipo Ativo")
 
                 ativo = candidatos[0]
+                problemas_ss = []
+                if titulos_problemas:
+                    disponiveis = db.query(ProblemaTipico).filter(
+                        ProblemaTipico.id_tipo_ativo == ativo.id_tipo_ativo,
+                        ProblemaTipico.ativo.is_(True),
+                    ).all()
+                    por_titulo = {normalizar(item.titulo): item for item in disponiveis}
+                    criticidades = lista_texto(dados.get("criticidades_identificadas"))
+                    observacoes = lista_texto(dados.get("observacoes_problemas"), r"[|\n]+")
+                    confirmacoes = lista_texto(dados.get("problemas_confirmados"))
+                    for indice, titulo in enumerate(titulos_problemas):
+                        problema = por_titulo.get(normalizar(titulo))
+                        if not problema:
+                            raise ValueError(f"problema tipico nao encontrado para {ativo.tipo_ativo.nome}: {titulo}")
+                        problemas_ss.append(SSProblemaIn(
+                            id_problema=problema.id_problema,
+                            criticidade_identificada=(criticidades[indice].upper() if indice < len(criticidades) else problema.criticidade_padrao),
+                            observacao=(observacoes[indice] if indice < len(observacoes) else None),
+                            confirmado=(valor_booleano(confirmacoes[indice]) if indice < len(confirmacoes) else False),
+                        ))
+
                 nova_ss = SolicitacaoServico(
                     numero_ss=gerar_numero_ss(db, sigla_ss_subestacao(subestacao)),
                     data_hora_solicitacao=data_excel(dados.get("data_hora_solicitacao"), "Data Solicitacao"),
@@ -239,6 +283,7 @@ def importar_planilha_ss(
                 )
                 db.add(nova_ss)
                 db.flush()
+                sincronizar_ss(db, nova_ss, problemas_ss)
                 criada = {
                     "linha": numero_linha,
                     "id_ss": nova_ss.id,
