@@ -17,12 +17,15 @@ from funcao_operacao import funcao_operacao
 from auth import auth
 from analytics import analytics
 from problemas_tipicos import routes as problemas_tipicos_routes
+from relatorio_manutencao import routes as relatorio_manutencao_routes
+from relatorio_manutencao import analysis_routes as relatorio_manutencao_analysis_routes
+from relatorio_manutencao import models as relatorio_manutencao_models
 from models import problemas_tipicos_models
 import downloads
 from database import Base, engine
 from ATIVO import ativos
 from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from models import rdo_models
 from models import APR_models
 from models import fo
@@ -35,6 +38,24 @@ load_dotenv()
 app = FastAPI(title="ManutenÃ§Ã£o de SubestaÃ§Ãµes")
 
 Base.metadata.create_all(bind=engine)
+
+# Compatibilidade com bancos criados antes dos campos complementares dos relatórios.
+if inspect(engine).has_table("relatorio_manutencao"):
+    colunas_relatorio = {coluna["name"] for coluna in inspect(engine).get_columns("relatorio_manutencao")}
+    colunas_pendentes = {
+        "id_usuario_edicao": "INT NULL",
+        "hora_inicio": "VARCHAR(10) NULL", "hora_fim": "VARCHAR(10) NULL",
+        "temperatura_inicio": "VARCHAR(20) NULL", "temperatura_fim": "VARCHAR(20) NULL",
+        "frequencia_inicio": "VARCHAR(20) NULL", "frequencia_fim": "VARCHAR(20) NULL",
+        "tensao_inicio": "VARCHAR(20) NULL", "tensao_fim": "VARCHAR(20) NULL",
+        "texto_introducao": "TEXT NULL", "corpo_tecnico_json": "TEXT NULL",
+        "numero_os": "VARCHAR(100) NULL", "numero_apr": "VARCHAR(100) NULL",
+        "periodo_capa": "VARCHAR(100) NULL", "concessao": "VARCHAR(255) NULL",
+    }
+    with engine.begin() as conexao:
+        for nome_coluna, definicao in colunas_pendentes.items():
+            if nome_coluna not in colunas_relatorio:
+                conexao.execute(text(f"ALTER TABLE relatorio_manutencao ADD COLUMN {nome_coluna} {definicao}"))
 
 db = SessionLocal()
 try:
@@ -116,6 +137,8 @@ app.include_router(downloads.router)
 app.include_router(analytics.router)
 app.include_router(analytics.recursos_router)
 app.include_router(problemas_tipicos_routes.router)
+app.include_router(relatorio_manutencao_analysis_routes.router)
+app.include_router(relatorio_manutencao_routes.router)
 
 
 
@@ -124,3 +147,5 @@ app.include_router(problemas_tipicos_routes.router)
 
 
 GOOGLE_CLIENT_ID =  os.getenv("CLIENT_ID")
+
+
