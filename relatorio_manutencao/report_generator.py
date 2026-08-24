@@ -1,5 +1,8 @@
 import io
 import re
+import shutil
+import subprocess
+import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -10,10 +13,11 @@ from docx.enum.table import (
     WD_CELL_VERTICAL_ALIGNMENT,
     WD_TABLE_ALIGNMENT,
 )
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT, WD_TAB_LEADER
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Inches, Pt, RGBColor
+from PIL import Image, ImageOps
 
 
 # ============================================================
@@ -757,35 +761,76 @@ def _nova_secao_conteudo(
 # SUMÁRIO
 # ============================================================
 
-def _adicionar_sumario(doc: Document):
-
+def _adicionar_sumario(doc: Document, grupos_fotos: list | None = None) -> None:
     p = doc.add_paragraph()
-
-    p.alignment = (
-        WD_ALIGN_PARAGRAPH.CENTER
-    )
-
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_after = Pt(18)
-
-    r = p.add_run(
-        "SUMÁRIO"
-    )
-
+    r = p.add_run("SUMÁRIO")
     r.bold = True
     r.font.name = "Arial"
     r.font.size = Pt(12)
 
+    # Campo automático do Word/LibreOffice. O pós-processamento headless
+    # recalcula os números antes do arquivo ser disponibilizado.
     p = doc.add_paragraph()
-
-    # 1-2 = Heading 1 e Heading 2
-    _campo_word(
-        p,
-        'TOC \\o "1-2" \\h \\z \\u'
-    )
-
-    # O corpo começa na página seguinte
+    _campo_word(p, 'TOC \\o "1-2" \\h \\z \\u')
     doc.add_page_break()
 
+
+def _atualizar_sumario_libreoffice(caminho: Path) -> bool:
+    executavel = shutil.which("libreoffice") or shutil.which("soffice")
+    if not executavel:
+        return False
+
+    # Caminho preferencial: UNO atualiza explicitamente todos os índices.
+    python_sistema = shutil.which("python3")
+    helper_uno = Path(__file__).with_name("update_toc_uno.py")
+    if python_sistema and helper_uno.exists():
+        try:
+            processo_uno = subprocess.run(
+                [python_sistema, str(helper_uno), str(caminho)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=150,
+                check=False,
+            )
+            if processo_uno.returncode == 0:
+                return True
+        except Exception:
+            pass
+
+    temporario = Path(tempfile.mkdtemp(prefix="engvi_toc_"))
+    perfil = temporario / "perfil"
+    saida = temporario / "saida"
+    perfil.mkdir(parents=True, exist_ok=True)
+    saida.mkdir(parents=True, exist_ok=True)
+    try:
+        comando = [
+            executavel,
+            "--headless",
+            f"-env:UserInstallation=file://{perfil.as_posix()}",
+            "--convert-to",
+            "docx:Office Open XML Text",
+            "--outdir",
+            str(saida),
+            str(caminho),
+        ]
+        processo = subprocess.run(
+            comando,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=120,
+            check=False,
+        )
+        atualizado = saida / caminho.name
+        if processo.returncode == 0 and atualizado.exists() and atualizado.stat().st_size > 0:
+            shutil.copy2(atualizado, caminho)
+            return True
+        return False
+    except Exception:
+        return False
+    finally:
+        shutil.rmtree(temporario, ignore_errors=True)
 
 # ============================================================
 # METADADOS
@@ -877,96 +922,84 @@ def _fotos_zip(
             )
 
 
-def _adicionar_foto(
-    doc: Document,
-    nome: str,
+def _agrupar_fotos_por_ativo(
+    fotos: list[tuple[str, bytes]],
+    revisoes: dict | None = None,
+) -> list[tuple[str, list[tuple[str, bytes]]]]:
+    revisoes = revisoes or {}
+    validas = [
+        (nome, conteudo)
+        for nome, conteudo in fotos
+        if revisoes.get(nome, {}).get("incluir", True)
+    ]
+    ordem_fases = {
+        "AZ": 0, "AZUL": 0,
+        "BR": 1, "BRANCA": 1, "BRANCO": 1,
+        "VM": 2, "VERMELHA": 2, "VERMELHO": 2,
+    }
+
+    def chave_ordenacao(foto):
+        revisao = revisoes.get(foto[0], {})
+        fase = _normalizar(str(revisao.get("fase") or "")).replace(" ", "")
+        return (
+            _normalizar(str(revisao.get("ativo") or "")),
+            _normalizar(str(revisao.get("item") or "")),
+            ordem_fases.get(fase, 99),
+            fase,
+        )
+
+    # Dentro de cada ativo: item do plano e depois AZ -> BR -> VM.
+    validas.sort(key=chave_ordenacao)
+    grupos: dict[str, list[tuple[str, bytes]]] = {}
+    for nome, conteudo in validas:
+        ativo = str(revisoes.get(nome, {}).get("ativo") or "ATIVO NÃO IDENTIFICADO").strip()
+        grupos.setdefault(ativo, []).append((nome, conteudo))
+    return list(grupos.items())
+
+
+def _preencher_celula_foto(
+    celula,
     conteudo: bytes,
     revisao: dict,
-):
-
-    tabela = doc.add_table(
-        rows=1,
-        cols=1
-    )
-
-    tabela.alignment = (
-        WD_TABLE_ALIGNMENT.CENTER
-    )
-
-    tabela.style = "Table Grid"
-
-    celula = tabela.cell(
-        0,
-        0
-    )
-
-    celula.vertical_alignment = (
-        WD_CELL_VERTICAL_ALIGNMENT.CENTER
-    )
-
+) -> None:
+    celula.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+    _set_cell_margins(celula, top=40, start=40, bottom=40, end=40)
+    celula.text = ""
     p = celula.paragraphs[0]
-
-    p.alignment = (
-        WD_ALIGN_PARAGRAPH.CENTER
-    )
-
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(2)
     try:
-
+        # Dimensões solicitadas: comprimento/largura 4,3 cm e altura 9,56 cm.
         p.add_run().add_picture(
             io.BytesIO(conteudo),
-            width=Cm(14.5),
+            width=Cm(4.3),
+            height=Cm(9.56),
         )
-
     except Exception:
+        p.add_run("Imagem não suportada")
 
-        p.add_run(
-            "Imagem não suportada"
-        )
-
-    # Legenda opcional
-    partes = [
-        revisao.get("ativo"),
-        revisao.get("item"),
-        revisao.get("valor"),
-        revisao.get("status"),
-    ]
-
-    legenda_texto = " | ".join(
-        str(parte)
-        for parte in partes
-        if parte
-    )
-
+    fase_legenda = f"Fase: {revisao.get('fase')}" if revisao.get("fase") else None
+    partes = [revisao.get("item"), fase_legenda, revisao.get("valor"), revisao.get("status")]
+    legenda_texto = " | ".join(str(parte) for parte in partes if parte)
     if legenda_texto:
-
-        legenda = celula.add_paragraph(
-            legenda_texto
-        )
-
-        legenda.alignment = (
-            WD_ALIGN_PARAGRAPH.CENTER
-        )
-
+        legenda = celula.add_paragraph(legenda_texto)
+        legenda.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        legenda.paragraph_format.space_before = Pt(0)
+        legenda.paragraph_format.space_after = Pt(0)
         for run in legenda.runs:
             run.font.name = "Arial"
-            run.font.size = Pt(8)
+            run.font.size = Pt(7.5)
             run.bold = True
 
     if revisao.get("observacao"):
-
-        nota = celula.add_paragraph(
-            str(
-                revisao["observacao"]
-            )
-        )
-
-        nota.alignment = (
-            WD_ALIGN_PARAGRAPH.CENTER
-        )
-
+        nota = celula.add_paragraph(str(revisao["observacao"]))
+        nota.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        nota.paragraph_format.space_before = Pt(0)
+        nota.paragraph_format.space_after = Pt(0)
         for run in nota.runs:
             run.font.name = "Arial"
-            run.font.size = Pt(8)
+            run.font.size = Pt(7)
 
 
 def _grade_fotos(
@@ -975,124 +1008,50 @@ def _grade_fotos(
     numero_secao: int,
     tipo_ativo: str,
     revisoes: dict | None = None,
+    grupos_fotos: list | None = None,
 ) -> None:
-
     revisoes = revisoes or {}
+    grupos_fotos = grupos_fotos if grupos_fotos is not None else _agrupar_fotos_por_ativo(fotos, revisoes)
 
-    # --------------------------------------
-    # Título principal
-    # --------------------------------------
+    doc.add_page_break()
+    titulo = doc.add_paragraph(style="Heading 1")
+    titulo.add_run(f"{numero_secao}. INSPEÇÕES {tipo_ativo.upper()}")
 
-    titulo = doc.add_paragraph(
-        style="Heading 1"
-    )
-
-    titulo.add_run(
-        f"{numero_secao}. "
-        f"INSPEÇÕES "
-        f"{tipo_ativo.upper()}"
-    )
-
-    fotos_validas = [
-        (nome, conteudo)
-        for nome, conteudo in fotos
-        if revisoes
-        .get(nome, {})
-        .get("incluir", True)
-    ]
-
-    # Mantém todas as evidências do mesmo ativo juntas. A ordenação é
-    # estável: dentro do ativo, segue item do plano e nome do arquivo.
-    def chave_ordenacao_foto(foto):
-        nome = foto[0]
-        revisao = revisoes.get(nome, {})
-        ativo = str(revisao.get("ativo") or "").strip()
-        item = str(revisao.get("item") or "").strip()
-        return (
-            1 if not ativo else 0,
-            _normalizar(ativo),
-            _normalizar(item),
-            _normalizar(Path(nome).name),
-        )
-
-    fotos_validas.sort(key=chave_ordenacao_foto)
-    if not fotos_validas:
-
-        doc.add_paragraph(
-            "Nenhuma evidência fotográfica disponível."
-        )
-
+    if not grupos_fotos:
+        doc.add_paragraph("Nenhuma evidência fotográfica disponível.")
         return
 
-    # --------------------------------------
-    # Cada foto recebe 3.1, 3.2...
-    # Dessa forma entra no sumário.
-    # --------------------------------------
+    primeira_grade = True
+    for indice_ativo, (ativo, fotos_ativo) in enumerate(grupos_fotos, start=1):
+        for inicio in range(0, len(fotos_ativo), 4):
+            lote = fotos_ativo[inicio:inicio + 4]
+            if not primeira_grade:
+                doc.add_page_break()
+            primeira_grade = False
 
-    for indice, (
-        nome,
-        conteudo
-    ) in enumerate(
-        fotos_validas,
-        start=1
-    ):
+            # Um único tópico por ativo; páginas adicionais mantêm somente as fotos/legendas.
+            if inicio == 0:
+                titulo_ativo = doc.add_paragraph(style="Heading 2")
+                titulo_ativo.add_run(f"{numero_secao}.{indice_ativo} - {ativo}")
 
-        revisao = revisoes.get(
-            nome,
-            {}
-        )
+            tabela = doc.add_table(rows=2, cols=2)
+            tabela.alignment = WD_TABLE_ALIGNMENT.CENTER
+            tabela.style = "Table Grid"
+            tabela.autofit = False
+            for linha in tabela.rows:
+                tr_pr = linha._tr.get_or_add_trPr()
+                cant_split = OxmlElement("w:cantSplit")
+                tr_pr.append(cant_split)
+                for celula in linha.cells:
+                    celula.width = Cm(8.2)
 
-        ativo = (
-            revisao.get("ativo")
-            or ""
-        )
-
-        item = (
-            revisao.get("item")
-            or ""
-        )
-
-        # Exemplo:
-        # 3.1 - 35C2-8 Visão Geral / Painéis
-
-        descricao = " ".join(
-            x
-            for x in [
-                ativo,
-                item,
-            ]
-            if x
-        )
-
-        if not descricao:
-            descricao = Path(
-                nome
-            ).stem
-
-        titulo_foto = doc.add_paragraph(
-            style="Heading 2"
-        )
-
-        titulo_foto.add_run(
-            f"{numero_secao}.{indice} - "
-            f"{descricao}"
-        )
-
-        _adicionar_foto(
-            doc,
-            nome,
-            conteudo,
-            revisao
-        )
-
-        # Duas inspeções por página,
-        # semelhante ao relatório original.
-        if (
-            indice % 2 == 0
-            and indice != len(fotos_validas)
-        ):
-            doc.add_page_break()
-
+            for posicao in range(4):
+                celula = tabela.cell(posicao // 2, posicao % 2)
+                if posicao < len(lote):
+                    nome, conteudo = lote[posicao]
+                    _preencher_celula_foto(celula, conteudo, revisoes.get(nome, {}))
+                else:
+                    celula.text = ""
 
 # ============================================================
 # PARÂMETROS DA INSPEÇÃO
@@ -1263,6 +1222,10 @@ def gerar_relatorio_word(
                 if foto.plano_item
                 else None,
 
+            "fase":
+                getattr(foto.ativo, "fase", None)
+                if foto.ativo
+                else None,
             "valor":
                 foto.valor_medido,
 
@@ -1281,6 +1244,8 @@ def gerar_relatorio_word(
             fotos_revisadas or []
         )
     }
+
+    grupos_fotos = _agrupar_fotos_por_ativo(fotos, revisoes)
 
     data = relatorio.data_referencia
 
@@ -1399,7 +1364,7 @@ def gerar_relatorio_word(
     # SUMÁRIO
     # ========================================================
 
-    _adicionar_sumario(doc)
+    _adicionar_sumario(doc, grupos_fotos)
 
     # ========================================================
     # 1. INTRODUÇÃO
@@ -1461,6 +1426,7 @@ def gerar_relatorio_word(
         numero_secao=3,
         tipo_ativo=tipo_ativo,
         revisoes=revisoes,
+        grupos_fotos=grupos_fotos,
     )
 
     # ========================================================
@@ -1509,8 +1475,10 @@ def gerar_relatorio_word(
     # ========================================================
 
     doc.save(destino)
+    _atualizar_sumario_libreoffice(destino)
 
     return destino
+
 
 
 

@@ -49,3 +49,5 @@ uvicorn==0.40.0
 xlsxwriter==3.2.9
 gunicorn
 python-docx==1.2.0
+pytesseract==0.3.13
+
