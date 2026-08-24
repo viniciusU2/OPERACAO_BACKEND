@@ -1,8 +1,5 @@
 import io
 import re
-import shutil
-import subprocess
-import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -761,76 +758,59 @@ def _nova_secao_conteudo(
 # SUMÁRIO
 # ============================================================
 
-def _adicionar_sumario(doc: Document, grupos_fotos: list | None = None) -> None:
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_after = Pt(18)
-    r = p.add_run("SUMÁRIO")
-    r.bold = True
-    r.font.name = "Arial"
-    r.font.size = Pt(12)
+def _adicionar_sumario(doc: Document, grupos_fotos: list | None = None, tipo_ativo: str = "ATIVOS") -> None:
+    """Gera um sumário estático, sem campos do Word ou LibreOffice."""
+    grupos_fotos = grupos_fotos or []
+    itens_por_pagina = 26
+    quantidade_entradas = 5 + len(grupos_fotos)
+    paginas_sumario = max(1, (quantidade_entradas + itens_por_pagina - 1) // itens_por_pagina)
 
-    # Campo automático do Word/LibreOffice. O pós-processamento headless
-    # recalcula os números antes do arquivo ser disponibilizado.
-    p = doc.add_paragraph()
-    _campo_word(p, 'TOC \\o "1-2" \\h \\z \\u')
+    pagina_introducao = 2 + paginas_sumario
+    pagina_inspecoes = pagina_introducao + 1
+    pagina_ativo = pagina_inspecoes
+    entradas = [
+        ("1. INTRODUÇÃO", pagina_introducao, 0),
+        ("2. PARÂMETROS NA INSPEÇÃO", pagina_introducao, 0),
+        ("a. CONDIÇÕES DIVERSAS", pagina_introducao, 1),
+        (f"3. INSPEÇÕES {tipo_ativo.upper()}", pagina_inspecoes, 0),
+    ]
+
+    total_paginas_fotos = 0
+    for indice, (ativo, fotos_ativo) in enumerate(grupos_fotos, start=1):
+        paginas_ativo = max(1, (len(fotos_ativo) + 3) // 4)
+        entradas.append((f"3.{indice} - {ativo}", pagina_ativo, 1))
+        pagina_ativo += paginas_ativo
+        total_paginas_fotos += paginas_ativo
+
+    pagina_anormalidades = pagina_inspecoes + max(1, total_paginas_fotos)
+    entradas.append(("4. ANORMALIDADES ENCONTRADAS", pagina_anormalidades, 0))
+
+    for indice_inicio in range(0, len(entradas), itens_por_pagina):
+        if indice_inicio:
+            doc.add_page_break()
+        titulo = doc.add_paragraph()
+        titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        titulo.paragraph_format.space_after = Pt(14)
+        run = titulo.add_run("SUMÁRIO" if not indice_inicio else "SUMÁRIO (CONTINUAÇÃO)")
+        run.bold = True
+        run.font.name = "Arial"
+        run.font.size = Pt(12)
+
+        for texto, pagina, nivel in entradas[indice_inicio:indice_inicio + itens_por_pagina]:
+            paragrafo = doc.add_paragraph()
+            paragrafo.paragraph_format.left_indent = Cm(0.7 if nivel else 0)
+            paragrafo.paragraph_format.space_before = Pt(0)
+            paragrafo.paragraph_format.space_after = Pt(3)
+            paragrafo.paragraph_format.tab_stops.add_tab_stop(Cm(16), WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
+            run_texto = paragrafo.add_run(texto)
+            run_texto.font.name = "Arial"
+            run_texto.font.size = Pt(9)
+            run_texto.bold = nivel == 0
+            run_pagina = paragrafo.add_run(f"\t{pagina}")
+            run_pagina.font.name = "Arial"
+            run_pagina.font.size = Pt(9)
+
     doc.add_page_break()
-
-
-def _atualizar_sumario_libreoffice(caminho: Path) -> bool:
-    executavel = shutil.which("libreoffice") or shutil.which("soffice")
-    if not executavel:
-        return False
-
-    # Caminho preferencial: UNO atualiza explicitamente todos os índices.
-    python_sistema = shutil.which("python3")
-    helper_uno = Path(__file__).with_name("update_toc_uno.py")
-    if python_sistema and helper_uno.exists():
-        try:
-            processo_uno = subprocess.run(
-                [python_sistema, str(helper_uno), str(caminho)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=150,
-                check=False,
-            )
-            if processo_uno.returncode == 0:
-                return True
-        except Exception:
-            pass
-
-    temporario = Path(tempfile.mkdtemp(prefix="engvi_toc_"))
-    perfil = temporario / "perfil"
-    saida = temporario / "saida"
-    perfil.mkdir(parents=True, exist_ok=True)
-    saida.mkdir(parents=True, exist_ok=True)
-    try:
-        comando = [
-            executavel,
-            "--headless",
-            f"-env:UserInstallation=file://{perfil.as_posix()}",
-            "--convert-to",
-            "docx:Office Open XML Text",
-            "--outdir",
-            str(saida),
-            str(caminho),
-        ]
-        processo = subprocess.run(
-            comando,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=120,
-            check=False,
-        )
-        atualizado = saida / caminho.name
-        if processo.returncode == 0 and atualizado.exists() and atualizado.stat().st_size > 0:
-            shutil.copy2(atualizado, caminho)
-            return True
-        return False
-    except Exception:
-        return False
-    finally:
-        shutil.rmtree(temporario, ignore_errors=True)
 
 # ============================================================
 # METADADOS
@@ -1364,7 +1344,7 @@ def gerar_relatorio_word(
     # SUMÁRIO
     # ========================================================
 
-    _adicionar_sumario(doc, grupos_fotos)
+    _adicionar_sumario(doc, grupos_fotos, tipo_ativo)
 
     # ========================================================
     # 1. INTRODUÇÃO
@@ -1430,6 +1410,8 @@ def gerar_relatorio_word(
     )
 
     # ========================================================
+    doc.add_page_break()
+
     # 4. ANORMALIDADES
     # ========================================================
 
@@ -1475,7 +1457,6 @@ def gerar_relatorio_word(
     # ========================================================
 
     doc.save(destino)
-    _atualizar_sumario_libreoffice(destino)
 
     return destino
 
