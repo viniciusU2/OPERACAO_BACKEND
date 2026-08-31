@@ -1,0 +1,2 @@
+"""Persistência MariaDB/SQLAlchemy."""
+

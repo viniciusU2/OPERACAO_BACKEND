@@ -30,6 +30,8 @@ from models import rdo_models
 from models import APR_models
 from models import fo
 from models import planning_resource_models
+from csd_monitor.database.models import Base as CsdBase
+from csd_monitor import routes as csd_monitor_routes
 
 
 
@@ -38,6 +40,7 @@ load_dotenv()
 app = FastAPI(title="ManutenÃ§Ã£o de SubestaÃ§Ãµes")
 
 Base.metadata.create_all(bind=engine)
+CsdBase.metadata.create_all(bind=engine)
 
 # Compatibilidade com bancos criados antes dos campos complementares dos relatórios.
 if inspect(engine).has_table("relatorio_manutencao"):
@@ -139,6 +142,7 @@ app.include_router(analytics.recursos_router)
 app.include_router(problemas_tipicos_routes.router)
 app.include_router(relatorio_manutencao_analysis_routes.router)
 app.include_router(relatorio_manutencao_routes.router)
+app.include_router(csd_monitor_routes.router)
 
 
 

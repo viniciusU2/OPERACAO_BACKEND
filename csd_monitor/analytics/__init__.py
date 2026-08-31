@@ -1,0 +1,2 @@
+"""Consultas analíticas do dashboard."""
+

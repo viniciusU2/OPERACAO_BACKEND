@@ -1,0 +1,2 @@
+"""Funções auxiliares da aplicação."""
+
