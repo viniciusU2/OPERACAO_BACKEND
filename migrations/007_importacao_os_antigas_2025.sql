@@ -366,7 +366,7 @@ migracao: BEGIN
 
     SELECT COUNT(*) INTO v_qtd
     FROM stg_os_antigas_2025 s
-    JOIN ordem_servico o ON o.numero_os = s.numero_os;
+    JOIN ordem_servico o ON BINARY o.numero_os = BINARY s.numero_os;
     IF v_qtd > 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Migração abortada: uma ou mais OS já existem em ordem_servico.';
@@ -374,7 +374,7 @@ migracao: BEGIN
 
     SELECT COUNT(*) INTO v_qtd
     FROM stg_os_antigas_2025 s
-    JOIN ordem_servico o ON o.numero_apr = s.numero_apr
+    JOIN ordem_servico o ON BINARY o.numero_apr = BINARY s.numero_apr
     WHERE s.numero_apr IS NOT NULL AND s.numero_apr <> '';
     IF v_qtd > 0 THEN
         SIGNAL SQLSTATE '45000'
@@ -486,7 +486,10 @@ migracao: BEGIN
     )
     SELECT
         s.numero_os, s.numero_si, s.id_subestacao, s.id_ativo,
-        COALESCE(NULLIF(NULLIF(TRIM(a.especie), ''), 'NULL'), s.especie),
+        COALESCE(
+            NULLIF(NULLIF(TRIM(a.especie COLLATE utf8mb4_general_ci), ''), 'NULL'),
+            s.especie COLLATE utf8mb4_general_ci
+        ),
         s.numero_apr, s.localizacao, s.complemento, s.esquema_servicos,
         s.prioridade, s.responsavel, s.responsavel_manutencao,
         s.responsavel_operacao, s.substituto, s.data_inicio_programado,
@@ -499,7 +502,8 @@ migracao: BEGIN
     LEFT JOIN ativo a ON a.id_ativo = s.id_ativo
     LEFT JOIN grupo_ativo g ON g.id_grupo_ativo = s.id_grupo_ativo
     WHERE NOT EXISTS (
-        SELECT 1 FROM ordem_servico o WHERE o.numero_os = s.numero_os
+        SELECT 1 FROM ordem_servico o
+        WHERE BINARY o.numero_os = BINARY s.numero_os
     );
 
     SET v_inseridos = ROW_COUNT();
@@ -510,7 +514,7 @@ migracao: BEGIN
 
     SELECT COUNT(*) INTO v_qtd
     FROM ordem_servico
-    WHERE origem = @lote_migracao;
+    WHERE BINARY origem = BINARY @lote_migracao;
     IF v_qtd <> 196 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Migração abortada: conferência final do lote diferente de 196.';
@@ -533,7 +537,7 @@ SELECT COUNT(*) AS total_lote,
        MIN(numero_os) AS primeira_os,
        MAX(numero_os) AS ultima_os
 FROM ordem_servico
-WHERE origem = @lote_migracao;
+WHERE BINARY origem = BINARY @lote_migracao;
 
 -- ROLLBACK APÓS COMMIT, se necessário. Execute conscientemente:
 -- START TRANSACTION;
