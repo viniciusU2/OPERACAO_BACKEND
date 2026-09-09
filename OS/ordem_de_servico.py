@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pymysql import IntegrityError
-from sqlalchemy import String, cast, func, or_, text
+from sqlalchemy import String, case, cast, func, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 from database import get_db
@@ -57,6 +57,15 @@ router = APIRouter(prefix="/os", tags=["Ordem de Serviço"])
 
 
 _ESTRUTURA_OS_GARANTIDA = False
+
+
+def criterios_ordenacao_os():
+    """Mantém as OS de 2025 após as demais, sem alterar a ordem interna."""
+    os_de_2025 = case(
+        (OS_models.OrdemServico.numero_os.like("%-2025"), 1),
+        else_=0,
+    )
+    return os_de_2025.asc(), OS_models.OrdemServico.id_os.desc()
 
 
 def garantir_colunas_os(db: Session):
@@ -678,7 +687,7 @@ def listar_os(
             OS_models.OrdemServico.id_ativo == id_ativo
         )
 
-    return query.order_by(OS_models.OrdemServico.id_os.desc()).all()
+    return query.order_by(*criterios_ordenacao_os()).all()
 
 
 @router.get("/paginado", response_model=OrdemServicoPaginadaResponse)
@@ -738,7 +747,7 @@ def listar_os_paginado(
             selectinload(OS_models.OrdemServico.ativo).selectinload(Ativo.tipo_ativo),
             selectinload(OS_models.OrdemServico.grupo_ativo).selectinload(GrupoAtivo.tipo_ativo),
         )
-        .order_by(OS_models.OrdemServico.id_os.desc())
+        .order_by(*criterios_ordenacao_os())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
@@ -763,6 +772,7 @@ def listar_os(
             selectinload(OS_models.OrdemServico.ativo).selectinload(Ativo.tipo_ativo)
         )
         .filter(OS_models.OrdemServico.id_ativo == id_ativo)
+        .order_by(*criterios_ordenacao_os())
         .all()
     )
 
