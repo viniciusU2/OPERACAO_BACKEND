@@ -295,14 +295,21 @@ WHERE numero_os IN (
     'OS-GOR-0043-2025', 'OS-GOR-0064-2025'
 );
 
--- Confirme e corrija as datas invertidas abaixo.
--- UPDATE stg_os_antigas_2025 SET data_inicio_programado = 'AAAA-MM-DD 00:00:00',
---     data_fim_programado = 'AAAA-MM-DD 00:00:00'
--- WHERE numero_os IN ('OS-GOR-0019-2025','OS-GOR-0020-2025',
---                     'OS-GOR-0048-2025','OS-GOR-0049-2025');
--- UPDATE stg_os_antigas_2025 SET data_inicio_execucao = 'AAAA-MM-DD HH:MM:SS',
---     data_fim_execucao = 'AAAA-MM-DD HH:MM:SS'
--- WHERE numero_os = 'OS-GOR-0021-2025';
+-- Datas invertidas normalizadas por ordenação cronológica, preservando os valores de origem.
+UPDATE stg_os_antigas_2025
+SET data_inicio_programado = '2025-05-15 00:00:00',
+    data_fim_programado = '2025-09-04 00:00:00'
+WHERE numero_os IN ('OS-GOR-0019-2025', 'OS-GOR-0020-2025');
+
+UPDATE stg_os_antigas_2025
+SET data_inicio_programado = '2025-05-02 00:00:00',
+    data_fim_programado = '2025-05-09 00:00:00'
+WHERE numero_os IN ('OS-GOR-0048-2025', 'OS-GOR-0049-2025');
+
+UPDATE stg_os_antigas_2025
+SET data_inicio_execucao = '2025-04-11 12:00:00',
+    data_fim_execucao = '2025-04-11 15:00:00'
+WHERE numero_os = 'OS-GOR-0021-2025';
 
 -- Diagnóstico das pendências conhecidas e de qualquer nova inconsistência.
 SELECT 'SEM_ATIVO_OU_GRUPO' AS tipo, numero_os,
