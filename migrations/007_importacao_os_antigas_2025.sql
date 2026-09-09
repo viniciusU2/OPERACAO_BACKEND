@@ -287,15 +287,13 @@ INSERT INTO stg_os_antigas_2025 (
 -- ---------------------------------------------------------------------------
 -- AJUSTES OBRIGATÓRIOS ANTES DA EXECUÇÃO
 -- ---------------------------------------------------------------------------
--- Estas OS não possuem id_ativo nem id_grupo_ativo. Informe a associação real.
--- UPDATE stg_os_antigas_2025 SET id_ativo = <ID>, id_grupo_ativo = <GRUPO>
--- WHERE numero_os = 'OS-GOR-0024-2025';
--- UPDATE stg_os_antigas_2025 SET id_ativo = <ID>, id_grupo_ativo = <GRUPO>
--- WHERE numero_os = 'OS-GOR-0031-2025';
--- UPDATE stg_os_antigas_2025 SET id_ativo = <ID>, id_grupo_ativo = <GRUPO>
--- WHERE numero_os = 'OS-GOR-0043-2025';
--- UPDATE stg_os_antigas_2025 SET id_ativo = <ID>, id_grupo_ativo = <GRUPO>
--- WHERE numero_os = 'OS-GOR-0064-2025';
+-- Associação aprovada: OS sem ativo específico ficam vinculadas ao grupo 3486.
+UPDATE stg_os_antigas_2025
+SET id_ativo = NULL, id_grupo_ativo = 3486
+WHERE numero_os IN (
+    'OS-GOR-0024-2025', 'OS-GOR-0031-2025',
+    'OS-GOR-0043-2025', 'OS-GOR-0064-2025'
+);
 
 -- Confirme e corrija as datas invertidas abaixo.
 -- UPDATE stg_os_antigas_2025 SET data_inicio_programado = 'AAAA-MM-DD 00:00:00',
