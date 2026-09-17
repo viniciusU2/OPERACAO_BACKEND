@@ -1,5 +1,5 @@
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from typing import Optional, Literal
 
@@ -221,6 +221,12 @@ class BaixaOSLoteResponse(BaseModel):
     ordens: list[BaixaOSLoteItemResponse]
 
 
+class OsPlanoSelecionada(BaseModel):
+    id_plano_manutencao: int = Field(gt=0)
+    id_ativo: int = Field(gt=0)
+
+
 class GerarOsPlanosRequest(BaseModel):
     data_simulacao: Optional[datetime] = None
     simular: bool = False
+    os_selecionadas: Optional[list[OsPlanoSelecionada]] = None

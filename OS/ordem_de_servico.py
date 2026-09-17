@@ -1555,6 +1555,8 @@ def montar_previa_os_plano(
         "id_tipo_ativo": tipo.id_tipo_ativo,
         "tipo_ativo": tipo.nome,
         "id_ativo": ativo.id_ativo,
+        "id_subestacao": ativo.id_subestacao,
+        "subestacao": ativo.subestacao.nome if ativo.subestacao else None,
         "ativo": ativo.codigo_ativo,
         "fase": ativo.fase,
         "bay": ativo.bay,
@@ -1584,7 +1586,10 @@ def gerar_os_por_planos_manutencao(
     db: Session,
     hoje: datetime | None = None,
     simular: bool = False,
+    os_selecionadas: set[tuple[int, int]] | None = None,
 ):
+    if os_selecionadas is not None and not os_selecionadas:
+        raise HTTPException(status_code=400, detail="Selecione ao menos uma OS para gerar.")
     garantir_colunas_os(db)
     hoje = hoje or datetime.now()
     os_criadas = []
@@ -1619,6 +1624,12 @@ def gerar_os_por_planos_manutencao(
             ativos.sort(key=chave_ordenacao_ativo)
 
             for ativo in ativos:
+                # Filtrar antes de criar ou alterar execucoes dos ativos.
+                if os_selecionadas is not None and (
+                    plano.id_plano_manutencao, ativo.id_ativo
+                ) not in os_selecionadas:
+                    continue
+
                 os_pendente_do_plano = (
                     db.query(OrdemServico.id_os)
                     .filter(
@@ -1880,6 +1891,10 @@ def gerar_os_planos(
             db,
             hoje=payload.data_simulacao if payload else None,
             simular=payload.simular if payload else False,
+            os_selecionadas=(
+                {(os.id_plano_manutencao, os.id_ativo) for os in payload.os_selecionadas}
+                if payload and payload.os_selecionadas is not None else None
+            ),
         )
     except HTTPException:
         raise
@@ -1898,6 +1913,10 @@ def gerar_os_semanal(
             db,
             hoje=payload.data_simulacao if payload else None,
             simular=payload.simular if payload else False,
+            os_selecionadas=(
+                {(os.id_plano_manutencao, os.id_ativo) for os in payload.os_selecionadas}
+                if payload and payload.os_selecionadas is not None else None
+            ),
         )
     except HTTPException:
         raise
