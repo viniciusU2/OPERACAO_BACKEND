@@ -27,10 +27,11 @@ from relatorio_manutencao.review_enrichment import criar_miniatura_data_url
 router = APIRouter(prefix="/relatorios-manutencao", tags=["Relatorios de manutencao"])
 
 PERIODICIDADES = {"SEMANAL", "MENSAL", "BIMESTRAL", "TRIMESTRAL", "SEMESTRAL", "ANUAL", "3_ANOS", "5_ANOS", "6_ANOS"}
-EXTENSOES_IMAGEM = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+EXTENSOES_IMAGEM = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".heic"}
 ASSINATURAS_IMAGEM = {
     ".jpg": (b"\xff\xd8\xff",), ".jpeg": (b"\xff\xd8\xff",),
-    ".png": (b"\x89PNG\r\n\x1a\n",), ".webp": (b"RIFF",), ".heic": (b"\x00\x00\x00",),
+    ".png": (b"\x89PNG\r\n\x1a\n",), ".bmp": (b"BM",),
+    ".webp": (b"RIFF",), ".heic": (b"\x00\x00\x00",),
 }
 MAX_ZIP_BYTES = int(os.getenv("RELATORIO_MANUTENCAO_MAX_ZIP_MB", "100")) * 1024 * 1024
 MAX_EXTRAIDO_BYTES = int(os.getenv("RELATORIO_MANUTENCAO_MAX_EXTRAIDO_MB", "500")) * 1024 * 1024

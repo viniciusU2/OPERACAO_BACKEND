@@ -28,6 +28,7 @@ EXTENSOES = {
     ".jpg",
     ".jpeg",
     ".png",
+    ".bmp",
     ".webp",
     ".heic",
 }
