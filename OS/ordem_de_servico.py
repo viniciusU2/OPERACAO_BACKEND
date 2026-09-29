@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 from database import get_db
 from utils.busca_inteligente import condicoes_textuais, termos_busca_inteligente
+from utils.agenda_planos import horario_inicio_plano
 from models.OS_models import OrdemServico
 from OS.schemas import (
     BaixaOSLoteResponse,
@@ -1413,10 +1414,7 @@ def delta_periodicidade(periodicidade: PeriodicidadeEnum, intervalo: int | None 
 
 
 def data_inicial_execucao(item: PlanoItem, hoje: datetime):
-    if item.data_inicio:
-        return datetime.combine(item.data_inicio, time.min)
-
-    return hoje
+    return horario_inicio_plano(item.data_inicio or hoje)
 
 
 def deve_gerar_os(item: PlanoItem, proxima_execucao: datetime, hoje: datetime):
@@ -1427,7 +1425,7 @@ def deve_gerar_os(item: PlanoItem, proxima_execucao: datetime, hoje: datetime):
 
 
 def proxima_data_execucao(item: PlanoItem, data_atual: datetime, hoje: datetime):
-    proxima = data_atual + delta_periodicidade(item.periodicidade, item.intervalo)
+    proxima = horario_inicio_plano(data_atual) + delta_periodicidade(item.periodicidade, item.intervalo)
 
     while deve_gerar_os(item, proxima, hoje):
         proxima += delta_periodicidade(item.periodicidade, item.intervalo)
@@ -1521,14 +1519,11 @@ def esquema_servico_por_periodicidade(item: PlanoItem):
 
 def data_programada_os(execucoes_pendentes: list[tuple[PlanoItem, PlanoExecucao]], hoje: datetime):
     primeira_data_vencida = min(
-        execucao.proxima_execucao or hoje
+        horario_inicio_plano(execucao.proxima_execucao or hoje)
         for _, execucao in execucoes_pendentes
     )
 
-    if primeira_data_vencida < hoje:
-        return hoje
-
-    return primeira_data_vencida
+    return max(primeira_data_vencida, horario_inicio_plano(hoje))
 
 
 def montar_previa_os_plano(

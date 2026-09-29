@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -102,34 +102,6 @@ def garantir_colunas_inspecao(db: Session):
         db.execute(QueryText("ALTER TABLE resultado_item_inspecao MODIFY COLUMN id_item_template INT NULL"))
 
 
-def calcular_proxima_execucao(data_base, periodicidade, intervalo):
-    periodicidade = getattr(periodicidade, "value", periodicidade)
-    if periodicidade == "SEMANAL":
-        return data_base + timedelta(weeks=intervalo)
-    if periodicidade == "MENSAL":
-        return data_base + timedelta(days=30 * intervalo)
-    if periodicidade == "BIMESTRAL":
-        return data_base + timedelta(days=60 * intervalo)
-    if periodicidade == "TRIMESTRAL":
-        return data_base + timedelta(days=90 * intervalo)
-    if periodicidade == "SEMESTRAL":
-        return data_base + timedelta(days=180 * intervalo)
-    if periodicidade == "ANUAL":
-        ano_destino = data_base.year + intervalo
-        try:
-            return data_base.replace(year=ano_destino)
-        except ValueError:
-            # 29/02 passa para 28/02 quando o ano de destino nao for bissexto.
-            return data_base.replace(year=ano_destino, month=2, day=28)
-    if periodicidade == "3_ANOS":
-        return data_base + timedelta(days=365 * 3 * intervalo)
-    if periodicidade == "5_ANOS":
-        return data_base + timedelta(days=365 * 5 * intervalo)
-    if periodicidade == "6_ANOS":
-        return data_base + timedelta(days=365 * 6 * intervalo)
-    return data_base
-
-
 def atualizar_resultados(db: Session, inspecao: Inspecao, resultados):
     status_geral = "OK" if resultados else "NA"
 
@@ -166,34 +138,7 @@ def atualizar_resultados(db: Session, inspecao: Inspecao, resultados):
         if res.status_item == "NOK":
             status_geral = "NOK"
 
-        proxima = calcular_proxima_execucao(
-            inspecao.data_inspecao,
-            plano_item.periodicidade,
-            plano_item.intervalo or 1,
-        )
-        execucao = (
-            db.query(PlanoExecucao)
-            .filter(
-                PlanoExecucao.id_plano_item == plano_item.id_plano_item,
-                PlanoExecucao.id_ativo == inspecao.id_ativo,
-            )
-            .first()
-        )
-        if execucao:
-            execucao.ultima_execucao = inspecao.data_inspecao
-            execucao.proxima_execucao = proxima
-            execucao.id_inspecao = inspecao.id_inspecao
-        else:
-            db.add(
-                PlanoExecucao(
-                    id_plano_item=plano_item.id_plano_item,
-                    id_ativo=inspecao.id_ativo,
-                    ultima_execucao=inspecao.data_inspecao,
-                    proxima_execucao=proxima,
-                    id_inspecao=inspecao.id_inspecao,
-                )
-            )
-
+    # Inspecoes registram resultados; o calendario avanca pelo encerramento da OS.
     inspecao.status_geral = status_geral
 
 

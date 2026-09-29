@@ -1,9 +1,13 @@
 # routers/inspecoes.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import case, func
+from auth.dependencies import get_current_user
+from models.familias_models import TipoAtivo
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 from datetime import datetime
 from database import get_db
+from utils.agenda_planos import FUSO_HORARIO_PLANOS, horario_inicio_plano
 from plano_manutencao.schemas import (
 
     PlanoManutencaoCreate,
@@ -96,10 +100,7 @@ def montar_execucao_planilha(execucao: PlanoExecucao):
 
 
 def data_inicial_execucao(item: PlanoItem):
-    if item.data_inicio:
-        return datetime.combine(item.data_inicio, datetime.min.time())
-
-    return datetime.now()
+    return horario_inicio_plano(item.data_inicio or datetime.now(FUSO_HORARIO_PLANOS))
 
 
 def sincronizar_execucoes_pendentes(db: Session, plano_id: int | None = None) -> int:
@@ -176,6 +177,66 @@ def listar_execucoes(db: Session = Depends(get_db)):
     return [montar_execucao_planilha(execucao) for execucao in execucoes]
 
 
+@router.get("/execucoes/resumo-dashboard")
+def resumo_execucoes_dashboard(
+    id_subestacao: int | None = Query(default=None, gt=0),
+    db: Session = Depends(get_db),
+    _usuario=Depends(get_current_user),
+):
+    # Uma linha por plano, periodicidade, intervalo e tipo de equipamento.
+    # As datas resumem os registros dos ativos, sem presumir conclusao de todo o plano.
+    campos = (
+        PlanoManutencao.id_plano_manutencao,
+        PlanoManutencao.descricao_geral,
+        PlanoItem.periodicidade,
+        PlanoItem.intervalo,
+        TipoAtivo.id_tipo_ativo,
+        TipoAtivo.nome,
+    )
+    query = (
+        db.query(
+            *campos,
+            func.max(PlanoExecucao.ultima_execucao).label("ultima_execucao"),
+            func.min(PlanoExecucao.proxima_execucao).label("proxima_execucao"),
+            func.count(func.distinct(PlanoExecucao.id_ativo)).label("total_ativos"),
+            func.count(func.distinct(case(
+                (PlanoExecucao.ultima_execucao.isnot(None), PlanoExecucao.id_ativo),
+                else_=None,
+            ))).label("ativos_com_execucao"),
+        )
+        .select_from(PlanoExecucao)
+        .join(PlanoItem, PlanoItem.id_plano_item == PlanoExecucao.id_plano_item)
+        .join(PlanoManutencao, PlanoManutencao.id_plano_manutencao == PlanoItem.id_plano_manutencao)
+        .join(Ativo, Ativo.id_ativo == PlanoExecucao.id_ativo)
+        .join(TipoAtivo, TipoAtivo.id_tipo_ativo == Ativo.id_tipo_ativo)
+    )
+    if id_subestacao is not None:
+        query = query.filter(Ativo.id_subestacao == id_subestacao)
+
+    registros = query.group_by(*campos).order_by(
+        func.min(PlanoExecucao.proxima_execucao),
+        PlanoManutencao.id_plano_manutencao,
+        PlanoItem.periodicidade,
+        PlanoItem.intervalo,
+        TipoAtivo.id_tipo_ativo,
+    ).all()
+    return [
+        {
+            "id_plano_manutencao": registro.id_plano_manutencao,
+            "plano": registro.descricao_geral,
+            "periodicidade": getattr(registro.periodicidade, "value", registro.periodicidade),
+            "intervalo": registro.intervalo or 1,
+            "id_tipo_ativo": registro.id_tipo_ativo,
+            "tipo_ativo": registro.nome,
+            "ultima_execucao": registro.ultima_execucao,
+            "proxima_execucao": registro.proxima_execucao,
+            "total_ativos": registro.total_ativos,
+            "ativos_com_execucao": registro.ativos_com_execucao,
+        }
+        for registro in registros
+    ]
+
+
 @router.post("/execucoes/sincronizar")
 def sincronizar_execucoes(db: Session = Depends(get_db)):
     criadas = sincronizar_execucoes_pendentes(db)
@@ -219,7 +280,7 @@ def reagendar_execucoes_plano(
     )
 
     for execucao in execucoes:
-        execucao.proxima_execucao = payload.proxima_execucao
+        execucao.proxima_execucao = horario_inicio_plano(payload.proxima_execucao)
         if payload.atualizar_ultima_execucao:
             execucao.ultima_execucao = payload.ultima_execucao
 
@@ -250,7 +311,7 @@ def atualizar_execucao(
         raise HTTPException(status_code=404, detail="Execucao nao encontrada")
 
     execucao.ultima_execucao = execucao_in.ultima_execucao
-    execucao.proxima_execucao = execucao_in.proxima_execucao
+    execucao.proxima_execucao = horario_inicio_plano(execucao_in.proxima_execucao)
 
     db.commit()
     db.refresh(execucao)
