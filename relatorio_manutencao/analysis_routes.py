@@ -413,5 +413,35 @@ async def analisar_zip(
     }
 
 
+@router.post("/analisar-imagem")
+async def analisar_imagem(
+    id_subestacao: int = Form(...),
+    id_tipo_ativo: int = Form(...),
+    periodicidade: str = Form(...),
+    arquivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    nome_imagem = Path(arquivo.filename or "").name
+    conteudo_imagem = await arquivo.read(MAX_ZIP_BYTES + 1)
+    if not nome_imagem or not conteudo_imagem:
+        raise HTTPException(400, "A imagem selecionada esta vazia ou sem nome.")
+    if len(conteudo_imagem) > MAX_ZIP_BYTES:
+        raise HTTPException(413, "A imagem excede o limite permitido.")
+
+    pacote = io.BytesIO()
+    with zipfile.ZipFile(pacote, "w", compression=zipfile.ZIP_DEFLATED) as arquivo_zip:
+        arquivo_zip.writestr(nome_imagem, conteudo_imagem)
+    arquivo_interno = UploadFile(filename="imagem.zip", file=io.BytesIO(pacote.getvalue()))
+    return await analisar_zip(
+        id_subestacao=id_subestacao,
+        id_tipo_ativo=id_tipo_ativo,
+        periodicidade=periodicidade,
+        arquivo=arquivo_interno,
+        db=db,
+        _usuario=usuario,
+    )
+
+
 
 

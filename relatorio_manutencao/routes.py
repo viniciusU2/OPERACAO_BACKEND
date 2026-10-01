@@ -363,6 +363,203 @@ def obter_revisao(id_relatorio_manutencao: int, db: Session = Depends(get_db), _
         "fotos": [{"arquivo": f.nome_arquivo_zip.replace("\\", "/"), "miniatura": miniaturas.get(f.nome_arquivo_zip.replace("\\", "/")), "id_ativo": f.id_ativo, "id_plano_item": f.id_plano_item, "valor": f.valor_medido or "", "status": f.status_item, "observacao": f.observacao or "", "incluir": f.incluir, "confianca": float(f.confianca or 0)} for f in fotos],
     }
 
+
+def _aplicar_campos_revisao(relatorio: RelatorioManutencao, payload: dict) -> None:
+    if "data_referencia" in payload:
+        try:
+            relatorio.data_referencia = date.fromisoformat(str(payload["data_referencia"]))
+        except ValueError as exc:
+            raise HTTPException(400, "Data de referencia invalida.") from exc
+    if "observacao" in payload:
+        relatorio.observacao = str(payload.get("observacao") or "").strip() or None
+    for chave in (
+        "texto_introducao", "numero_os", "numero_apr", "periodo_capa", "concessao",
+        "hora_inicio", "hora_fim", "temperatura_inicio", "temperatura_fim",
+        "frequencia_inicio", "frequencia_fim", "tensao_inicio", "tensao_fim",
+    ):
+        if chave in payload:
+            setattr(relatorio, chave, str(payload.get(chave) or "").strip() or None)
+    if "corpo_tecnico" in payload:
+        pessoas = payload.get("corpo_tecnico")
+        if not isinstance(pessoas, list) or not pessoas:
+            raise HTTPException(400, "Informe ao menos uma pessoa no corpo tecnico.")
+        pessoas = [
+            {"nome": str(pessoa.get("nome", "")).strip(), "funcao": str(pessoa.get("funcao", "")).strip()}
+            for pessoa in pessoas if isinstance(pessoa, dict)
+        ]
+        if not pessoas or any(not pessoa["nome"] or not pessoa["funcao"] for pessoa in pessoas):
+            raise HTTPException(400, "Nome e funcao sao obrigatorios para todo o corpo tecnico.")
+        relatorio.corpo_tecnico_json = json.dumps(pessoas, ensure_ascii=False)
+
+
+def _validar_revisao_foto(db: Session, relatorio: RelatorioManutencao, revisao: dict, nome_foto: str) -> None:
+    if revisao.get("status") not in {"OK", "NOK", "NA"}:
+        raise HTTPException(400, f"Status invalido para {nome_foto}.")
+    if revisao.get("id_ativo"):
+        ativo = db.get(Ativo, int(revisao["id_ativo"]))
+        if not ativo or ativo.id_subestacao != relatorio.id_subestacao or ativo.id_tipo_ativo != relatorio.id_tipo_ativo:
+            raise HTTPException(400, f"Ativo invalido para {nome_foto}.")
+    if revisao.get("id_plano_item"):
+        item = db.query(PlanoItem).join(PlanoManutencao).filter(
+            PlanoItem.id_plano_item == int(revisao["id_plano_item"]),
+            PlanoManutencao.id_tipo_ativo == relatorio.id_tipo_ativo,
+            PlanoItem.periodicidade == relatorio.periodicidade,
+        ).first()
+        if not item:
+            raise HTTPException(400, f"Item do plano invalido para {nome_foto}.")
+
+
+def _preencher_foto(foto: RelatorioManutencaoFoto, revisao: dict) -> None:
+    foto.id_ativo = int(revisao["id_ativo"]) if revisao.get("id_ativo") else None
+    foto.id_plano_item = int(revisao["id_plano_item"]) if revisao.get("id_plano_item") else None
+    foto.valor_medido = str(revisao.get("valor", "")).strip() or None
+    foto.status_item = revisao["status"]
+    foto.observacao = str(revisao.get("observacao", "")).strip() or None
+    foto.incluir = bool(revisao.get("incluir", True))
+    if "confianca" in revisao:
+        foto.confianca = str(revisao.get("confianca", "")) or None
+
+
+def _ler_imagens_zip(conteudo: bytes) -> dict[str, bytes]:
+    imagens: dict[str, bytes] = {}
+    with zipfile.ZipFile(io.BytesIO(conteudo)) as pacote:
+        for info in pacote.infolist():
+            if info.is_dir():
+                continue
+            nome = info.filename.replace("\\", "/")
+            if nome in imagens:
+                raise HTTPException(400, f"O ZIP possui nomes de arquivos repetidos: {nome}.")
+            imagens[nome] = pacote.read(info)
+    return imagens
+
+
+@router.put("/{id_relatorio_manutencao}/revisao-arquivos")
+async def atualizar_revisao_arquivos(
+    id_relatorio_manutencao: int,
+    payload_json: str = Form(...),
+    arquivo: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    relatorio = db.get(RelatorioManutencao, id_relatorio_manutencao)
+    if not relatorio:
+        raise HTTPException(404, "Relatorio de manutencao nao encontrado.")
+    try:
+        payload = json.loads(payload_json)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(400, "Dados da revisao possuem JSON invalido.") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Dados da revisao invalidos.")
+    revisoes = payload.get("fotos")
+    if not isinstance(revisoes, list) or not revisoes:
+        raise HTTPException(400, "O relatorio deve manter ao menos uma fotografia.")
+    if len(revisoes) > MAX_FOTOS:
+        raise HTTPException(400, f"O relatorio excede o limite de {MAX_FOTOS} fotos.")
+
+    caminho_zip = Path(relatorio.caminho_arquivo).resolve()
+    if caminho_zip.parent != PASTA_UPLOADS.resolve():
+        raise HTTPException(500, "Caminho do arquivo fora da pasta permitida.")
+    if not caminho_zip.is_file():
+        raise HTTPException(404, "Arquivo ZIP do relatorio nao encontrado.")
+
+    imagens_adicionadas: dict[str, bytes] = {}
+    if arquivo is not None:
+        nome_adicao = Path(arquivo.filename or "").name
+        conteudo_adicao = await arquivo.read(MAX_ZIP_BYTES + 1)
+        if not nome_adicao or not conteudo_adicao:
+            raise HTTPException(400, "A imagem selecionada esta vazia ou sem nome.")
+        if len(conteudo_adicao) > MAX_ZIP_BYTES:
+            raise HTTPException(413, f"A imagem excede o limite de {MAX_ZIP_BYTES // (1024 * 1024)} MB.")
+        pacote_validacao = io.BytesIO()
+        with zipfile.ZipFile(pacote_validacao, "w", compression=zipfile.ZIP_DEFLATED) as pacote:
+            pacote.writestr(nome_adicao, conteudo_adicao)
+        _validar_zip(pacote_validacao.getvalue())
+        imagens_adicionadas[nome_adicao] = conteudo_adicao
+
+    try:
+        conteudo_original = caminho_zip.read_bytes()
+        imagens_originais = _ler_imagens_zip(conteudo_original)
+    except (OSError, zipfile.BadZipFile) as exc:
+        raise HTTPException(500, "Nao foi possivel ler o ZIP atual do relatorio.") from exc
+    revisoes_por_nome: dict[str, dict] = {}
+    for revisao in revisoes:
+        if not isinstance(revisao, dict):
+            raise HTTPException(400, "Revisao de fotografia invalida.")
+        nome_foto = str(revisao.get("arquivo", "")).replace("\\", "/")
+        if not nome_foto:
+            raise HTTPException(400, "Fotografia sem nome de arquivo.")
+        if nome_foto in revisoes_por_nome:
+            raise HTTPException(400, f"Fotografia repetida na revisao: {nome_foto}.")
+        if nome_foto in imagens_originais and nome_foto in imagens_adicionadas:
+            raise HTTPException(400, f"Ja existe uma fotografia com o nome {nome_foto} no relatorio.")
+        if nome_foto not in imagens_originais and nome_foto not in imagens_adicionadas:
+            raise HTTPException(400, f"Fotografia nao encontrada no relatorio nem na imagem enviada: {nome_foto}.")
+        _validar_revisao_foto(db, relatorio, revisao, nome_foto)
+        revisoes_por_nome[nome_foto] = revisao
+
+    imagens_finais = {
+        nome: imagens_originais.get(nome, imagens_adicionadas.get(nome))
+        for nome in revisoes_por_nome
+    }
+    total_extraido = sum(len(conteudo or b"") for conteudo in imagens_finais.values())
+    if total_extraido > MAX_EXTRAIDO_BYTES:
+        raise HTTPException(400, "O conteudo final do relatorio excede o limite permitido.")
+
+    temporario = caminho_zip.with_name(f".{uuid4().hex}.tmp.zip")
+    backup = caminho_zip.with_name(f".{uuid4().hex}.bak.zip")
+    troca_iniciada = False
+    try:
+        with zipfile.ZipFile(temporario, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as pacote:
+            for nome, conteudo in imagens_finais.items():
+                pacote.writestr(nome, conteudo or b"")
+        tamanho_final = temporario.stat().st_size
+        if tamanho_final > MAX_ZIP_BYTES:
+            raise HTTPException(413, f"O ZIP final excede o limite de {MAX_ZIP_BYTES // (1024 * 1024)} MB.")
+
+        _aplicar_campos_revisao(relatorio, payload)
+        relatorio.id_usuario_edicao = usuario.id
+        relatorio.quantidade_fotos = len(revisoes_por_nome)
+        relatorio.tamanho_bytes = tamanho_final
+        fotos_existentes = db.query(RelatorioManutencaoFoto).filter(
+            RelatorioManutencaoFoto.id_relatorio_manutencao == id_relatorio_manutencao
+        ).all()
+        existentes_por_nome = {foto.nome_arquivo_zip.replace("\\", "/"): foto for foto in fotos_existentes}
+        if len(existentes_por_nome) != len(fotos_existentes):
+            raise HTTPException(400, "O relatorio atual possui nomes de fotografias duplicados.")
+        for nome, revisao in revisoes_por_nome.items():
+            foto = existentes_por_nome.get(nome)
+            if foto is None:
+                foto = RelatorioManutencaoFoto(
+                    id_relatorio_manutencao=id_relatorio_manutencao,
+                    nome_arquivo_zip=nome,
+                )
+                db.add(foto)
+            _preencher_foto(foto, revisao)
+        for nome, foto in existentes_por_nome.items():
+            if nome not in revisoes_por_nome:
+                db.delete(foto)
+        db.flush()
+
+        caminho_zip.replace(backup)
+        troca_iniciada = True
+        temporario.replace(caminho_zip)
+        db.commit()
+    except Exception:
+        db.rollback()
+        temporario.unlink(missing_ok=True)
+        if troca_iniciada and backup.exists():
+            caminho_zip.unlink(missing_ok=True)
+            backup.replace(caminho_zip)
+        raise
+
+    backup.unlink(missing_ok=True)
+    caminho_zip.with_suffix(".docx").unlink(missing_ok=True)
+    return {
+        "ok": True,
+        "id_relatorio_manutencao": id_relatorio_manutencao,
+        "quantidade_fotos": len(revisoes_por_nome),
+    }
+
 @router.put("/{id_relatorio_manutencao}/revisao")
 def atualizar_revisao(id_relatorio_manutencao: int, payload: dict = Body(...), db: Session = Depends(get_db), usuario=Depends(get_current_user)):
     relatorio = db.get(RelatorioManutencao, id_relatorio_manutencao)

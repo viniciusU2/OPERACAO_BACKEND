@@ -322,6 +322,7 @@ def listar_ss_paginado(
 ):
     garantir_colunas_ss(db)
     query = db.query(SolicitacaoServico)
+    ativos_associados = False
 
     if search and search.strip():
         query = query.outerjoin(
@@ -329,6 +330,7 @@ def listar_ss_paginado(
         ).outerjoin(
             GrupoAtivo, SolicitacaoServico.id_grupo_ativo == GrupoAtivo.id_grupo_ativo
         )
+        ativos_associados = True
         for palavra in termos_busca_inteligente(search):
             termo = f"%{palavra}%"
             query = query.filter(or_(
@@ -353,8 +355,21 @@ def listar_ss_paginado(
         ))
     colunas = {coluna.name for coluna in SolicitacaoServico.__table__.columns}
     for campo, valor in zip(filter_field, filter_value):
-        if campo in colunas and valor.strip():
-            query = query.filter(cast(getattr(SolicitacaoServico, campo), String).ilike(f"%{valor.strip()}%"))
+        valor = valor.strip()
+        if not valor:
+            continue
+        if campo == "codigo_ativo":
+            termo = f"%{valor}%"
+            query = query.filter(or_(
+                SolicitacaoServico.id_ativo.in_(
+                    db.query(Ativo.id_ativo).filter(Ativo.codigo_ativo.ilike(termo))
+                ),
+                SolicitacaoServico.id_grupo_ativo.in_(
+                    db.query(GrupoAtivo.id_grupo_ativo).filter(GrupoAtivo.codigo_ativo.ilike(termo))
+                ),
+            ))
+        elif campo in colunas:
+            query = query.filter(cast(getattr(SolicitacaoServico, campo), String).ilike(f"%{valor}%"))
 
     hoje = datetime.combine(date.today(), time.min)
     amanha = hoje + timedelta(days=1)
@@ -402,16 +417,17 @@ def listar_ss_paginado(
         subestacao = db.query(Subestacao).filter(
             Subestacao.id_subestacao == id_subestacao
         ).first()
-        query = (
-            query
-            .outerjoin(Ativo, SolicitacaoServico.id_ativo == Ativo.id_ativo)
-            .outerjoin(GrupoAtivo, SolicitacaoServico.id_grupo_ativo == GrupoAtivo.id_grupo_ativo)
-            .filter(
-                or_(
-                    Ativo.id_subestacao == id_subestacao,
-                    GrupoAtivo.id_subestacao == id_subestacao,
-                    SolicitacaoServico.instalacao == (subestacao.nome if subestacao else ""),
-                )
+        if not ativos_associados:
+            query = query.outerjoin(
+                Ativo, SolicitacaoServico.id_ativo == Ativo.id_ativo
+            ).outerjoin(
+                GrupoAtivo, SolicitacaoServico.id_grupo_ativo == GrupoAtivo.id_grupo_ativo
+            )
+        query = query.filter(
+            or_(
+                Ativo.id_subestacao == id_subestacao,
+                GrupoAtivo.id_subestacao == id_subestacao,
+                SolicitacaoServico.instalacao == (subestacao.nome if subestacao else ""),
             )
         )
 
