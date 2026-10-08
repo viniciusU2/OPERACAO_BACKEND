@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pymysql import IntegrityError
-from sqlalchemy import String, case, cast, func, or_, text
+from sqlalchemy import Integer, String, case, cast, func, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 from database import get_db
@@ -61,12 +61,16 @@ _ESTRUTURA_OS_GARANTIDA = False
 
 
 def criterios_ordenacao_os():
-    """Mantém as OS de 2025 após as demais, sem alterar a ordem interna."""
-    os_de_2025 = case(
-        (OS_models.OrdemServico.numero_os.like("%-2025"), 1),
-        else_=0,
+    """Ordena pelo número central da OS, do maior para o menor."""
+    numero_os = cast(
+        func.substring_index(
+            func.substring_index(OS_models.OrdemServico.numero_os, "-", 3),
+            "-",
+            -1,
+        ),
+        Integer,
     )
-    return os_de_2025.asc(), OS_models.OrdemServico.id_os.desc()
+    return numero_os.desc(), OS_models.OrdemServico.numero_os.desc(), OS_models.OrdemServico.id_os.desc()
 
 
 def garantir_colunas_os(db: Session):

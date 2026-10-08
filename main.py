@@ -6,6 +6,7 @@ import os
 from SS import solicitacao_servico
 from SI import solicitcao_intervencao
 from OS import ordem_de_servico
+from OS import validacao_importacao
 from LR import livro_registro
 from familias import familias
 from Instalacao import instalacao
@@ -127,6 +128,7 @@ app.add_middleware(
 app.include_router(solicitacao_servico.router)
 app.include_router(auth.router)
 app.include_router(ordem_de_servico.router)
+app.include_router(validacao_importacao.router)
 app.include_router(familias.router)
 app.include_router(funcao_operacao.router)
 app.include_router(instalacao.router)
