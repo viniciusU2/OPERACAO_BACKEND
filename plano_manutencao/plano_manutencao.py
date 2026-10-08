@@ -29,6 +29,7 @@ from models.plano_manutencao_models import (
     PlanoExecucao
 )
 from models.Ativo import Ativo
+from models.instalacao_models import Subestacao
 from models.OS_models import OrdemServico
 
 
@@ -333,10 +334,18 @@ def dashboard_planos_manutencao(
         )
         .join(PlanoExecucao, PlanoExecucao.id_plano_item == PlanoItem.id_plano_item)
     )
-    if id_subestacao is not None:
-        proximas_query = proximas_query.join(Ativo, Ativo.id_ativo == PlanoExecucao.id_ativo).filter(
-            Ativo.id_subestacao == id_subestacao
+    if id_subestacao is not None or instalacao:
+        proximas_query = proximas_query.join(
+            Ativo,
+            Ativo.id_ativo == PlanoExecucao.id_ativo,
         )
+    if id_subestacao is not None:
+        proximas_query = proximas_query.filter(Ativo.id_subestacao == id_subestacao)
+    if instalacao:
+        proximas_query = proximas_query.join(
+            Subestacao,
+            Subestacao.id_subestacao == Ativo.id_subestacao,
+        ).filter(Subestacao.nome == instalacao.strip())
     proximas = {
         item.id_plano_manutencao: item.proxima_execucao
         for item in proximas_query.group_by(PlanoItem.id_plano_manutencao).all()
@@ -354,10 +363,11 @@ def dashboard_planos_manutencao(
     if id_subestacao is not None:
         instalacoes_query = instalacoes_query.filter(OrdemServico.id_subestacao == id_subestacao)
     instalacoes_por_plano: dict[int, set[str]] = {}
-    for plano_id, instalacao in instalacoes_query.distinct().all():
-        instalacoes_por_plano.setdefault(plano_id, set()).add(instalacao)
+    for plano_id, nome_instalacao in instalacoes_query.distinct().all():
+        instalacoes_por_plano.setdefault(plano_id, set()).add(nome_instalacao)
 
     planos = []
+    instalacao_filtrada = instalacao.strip() if instalacao else None
     for registro in registros:
         if id_subestacao is not None and not registro.total_os and registro.id_plano_manutencao not in proximas:
             continue
@@ -375,7 +385,15 @@ def dashboard_planos_manutencao(
             "taxa_conclusao": round((realizadas / total_os) * 100, 1) if total_os else 0,
             "ultima_execucao": registro.ultima_execucao,
             "proxima_execucao": proximas.get(registro.id_plano_manutencao),
-            "instalacoes": sorted(instalacoes_por_plano.get(registro.id_plano_manutencao, set())),
+            "instalacoes": (
+                (
+                    [instalacao_filtrada]
+                    if instalacao_filtrada in instalacoes_por_plano.get(registro.id_plano_manutencao, set())
+                    else []
+                )
+                if instalacao_filtrada
+                else sorted(instalacoes_por_plano.get(registro.id_plano_manutencao, set()))
+            ),
         })
 
     indicadores = {

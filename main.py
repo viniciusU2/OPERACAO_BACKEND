@@ -6,11 +6,13 @@ import os
 from SS import solicitacao_servico
 from SI import solicitcao_intervencao
 from OS import ordem_de_servico
+from OS import dashboard_corretivas
 from OS import validacao_importacao
 from LR import livro_registro
 from familias import familias
 from Instalacao import instalacao
 from plano_manutencao import plano_manutencao
+from plano_manutencao import dashboard_inspecoes
 from plano_manutencao import inspecoes
 from RDO import rdo
 from Sobreaviso import sobreaviso
@@ -127,12 +129,14 @@ app.add_middleware(
 
 app.include_router(solicitacao_servico.router)
 app.include_router(auth.router)
+app.include_router(dashboard_corretivas.router)
 app.include_router(ordem_de_servico.router)
 app.include_router(validacao_importacao.router)
 app.include_router(familias.router)
 app.include_router(funcao_operacao.router)
 app.include_router(instalacao.router)
 app.include_router(plano_manutencao.router)
+app.include_router(dashboard_inspecoes.router)
 app.include_router(inspecoes.router)
 app.include_router(ativos.router)
 app.include_router(solicitcao_intervencao.router)
