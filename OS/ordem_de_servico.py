@@ -1431,7 +1431,11 @@ def deve_gerar_os(item: PlanoItem, proxima_execucao: datetime, hoje: datetime):
 def proxima_data_execucao(item: PlanoItem, data_atual: datetime, hoje: datetime):
     proxima = horario_inicio_plano(data_atual) + delta_periodicidade(item.periodicidade, item.intervalo)
 
-    while deve_gerar_os(item, proxima, hoje):
+    # A antecedencia define quando a OS pode ser gerada, mas nao deve pular
+    # uma recorrencia ao concluir a ordem. A agenda avanca pela data real da
+    # baixa e somente salta datas que ja ficaram no passado.
+    referencia = horario_inicio_plano(hoje)
+    while proxima <= referencia:
         proxima += delta_periodicidade(item.periodicidade, item.intervalo)
 
     return proxima
@@ -1469,7 +1473,7 @@ def avancar_execucoes_plano_por_os(
         execucao.ultima_execucao = data_base
         execucao.proxima_execucao = proxima_data_execucao(
             item,
-            execucao.proxima_execucao or data_base,
+            data_base,
             data_base,
         )
         execucao.id_os = None
@@ -1690,7 +1694,7 @@ def gerar_os_por_planos_manutencao(
                                     ultima_execucao=data_base,
                                     proxima_execucao=proxima_data_execucao(
                                         item,
-                                        execucao.proxima_execucao or data_base,
+                                        data_base,
                                         data_base,
                                     ),
                                 )

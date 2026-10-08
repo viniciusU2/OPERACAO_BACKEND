@@ -1,11 +1,11 @@
 # routers/inspecoes.py
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import case, func
+from sqlalchemy import and_, case, func, or_
 from auth.dependencies import get_current_user
 from models.familias_models import TipoAtivo
 from sqlalchemy.orm import Session, joinedload
 from typing import List
-from datetime import datetime
+from datetime import date, datetime, time
 from database import get_db
 from utils.agenda_planos import FUSO_HORARIO_PLANOS, horario_inicio_plano
 from plano_manutencao.schemas import (
@@ -29,6 +29,7 @@ from models.plano_manutencao_models import (
     PlanoExecucao
 )
 from models.Ativo import Ativo
+from models.OS_models import OrdemServico
 
 
 router = APIRouter(prefix="/planos-manutencao", tags=["planos-manutencao"])
@@ -235,6 +236,281 @@ def resumo_execucoes_dashboard(
         }
         for registro in registros
     ]
+
+
+STATUS_OS_REALIZADA = ("ENCERRADA", "CONCLUIDA", "CONCLUÍDA", "EXECUTADA", "FINALIZADA")
+STATUS_OS_CANCELADA = ("CANCELADA", "CANCELADO")
+
+
+def _condicao_os_realizada():
+    status = func.upper(func.coalesce(OrdemServico.status, ""))
+    return and_(
+        ~status.in_(STATUS_OS_CANCELADA),
+        or_(
+            OrdemServico.data_fim_execucao.isnot(None),
+            status.in_(STATUS_OS_REALIZADA),
+        ),
+    )
+
+
+def _data_referencia_os():
+    return func.coalesce(
+        OrdemServico.data_fim_execucao,
+        OrdemServico.data_inicio_execucao,
+        OrdemServico.data_fim_programado,
+        OrdemServico.data_inicio_programado,
+        OrdemServico.criado_em,
+    )
+
+
+def _filtros_periodo_os(data_inicio: date | None, data_fim: date | None):
+    filtros = []
+    data_referencia = _data_referencia_os()
+    if data_inicio is not None:
+        filtros.append(data_referencia >= datetime.combine(data_inicio, time.min))
+    if data_fim is not None:
+        filtros.append(data_referencia <= datetime.combine(data_fim, time.max))
+    return filtros
+
+
+@router.get("/dashboard")
+def dashboard_planos_manutencao(
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    id_subestacao: int | None = Query(default=None, gt=0),
+    instalacao: str | None = None,
+    db: Session = Depends(get_db),
+    _usuario=Depends(get_current_user),
+):
+    realizada = _condicao_os_realizada()
+    status = func.upper(func.coalesce(OrdemServico.status, ""))
+    cancelada = status.in_(STATUS_OS_CANCELADA)
+    aberta = and_(~realizada, ~cancelada)
+    vencida = and_(
+        aberta,
+        OrdemServico.data_fim_programado.isnot(None),
+        OrdemServico.data_fim_programado < datetime.now(),
+    )
+
+    condicoes_os = [
+        OrdemServico.id_plano_manutencao == PlanoManutencao.id_plano_manutencao,
+        *_filtros_periodo_os(data_inicio, data_fim),
+    ]
+    if id_subestacao is not None:
+        condicoes_os.append(OrdemServico.id_subestacao == id_subestacao)
+    if instalacao:
+        condicoes_os.append(OrdemServico.instalacao == instalacao.strip())
+
+    registros = (
+        db.query(
+            PlanoManutencao.id_plano_manutencao,
+            PlanoManutencao.descricao_geral,
+            TipoAtivo.nome.label("tipo_ativo"),
+            func.count(func.distinct(PlanoItem.id_plano_item)).label("total_itens"),
+            func.count(func.distinct(OrdemServico.id_os)).label("total_os"),
+            func.count(func.distinct(case((realizada, OrdemServico.id_os), else_=None))).label("os_realizadas"),
+            func.count(func.distinct(case((aberta, OrdemServico.id_os), else_=None))).label("os_abertas"),
+            func.count(func.distinct(case((vencida, OrdemServico.id_os), else_=None))).label("os_vencidas"),
+            func.max(case((realizada, _data_referencia_os()), else_=None)).label("ultima_execucao"),
+        )
+        .select_from(PlanoManutencao)
+        .outerjoin(TipoAtivo, TipoAtivo.id_tipo_ativo == PlanoManutencao.id_tipo_ativo)
+        .outerjoin(PlanoItem, PlanoItem.id_plano_manutencao == PlanoManutencao.id_plano_manutencao)
+        .outerjoin(OrdemServico, and_(*condicoes_os))
+        .group_by(
+            PlanoManutencao.id_plano_manutencao,
+            PlanoManutencao.descricao_geral,
+            TipoAtivo.nome,
+        )
+        .order_by(PlanoManutencao.id_plano_manutencao)
+        .all()
+    )
+
+    proximas_query = (
+        db.query(
+            PlanoItem.id_plano_manutencao,
+            func.min(PlanoExecucao.proxima_execucao).label("proxima_execucao"),
+        )
+        .join(PlanoExecucao, PlanoExecucao.id_plano_item == PlanoItem.id_plano_item)
+    )
+    if id_subestacao is not None:
+        proximas_query = proximas_query.join(Ativo, Ativo.id_ativo == PlanoExecucao.id_ativo).filter(
+            Ativo.id_subestacao == id_subestacao
+        )
+    proximas = {
+        item.id_plano_manutencao: item.proxima_execucao
+        for item in proximas_query.group_by(PlanoItem.id_plano_manutencao).all()
+    }
+
+    instalacoes_query = db.query(
+        OrdemServico.id_plano_manutencao,
+        OrdemServico.instalacao,
+    ).filter(
+        OrdemServico.id_plano_manutencao.isnot(None),
+        OrdemServico.instalacao.isnot(None),
+        OrdemServico.instalacao != "",
+        *_filtros_periodo_os(data_inicio, data_fim),
+    )
+    if id_subestacao is not None:
+        instalacoes_query = instalacoes_query.filter(OrdemServico.id_subestacao == id_subestacao)
+    instalacoes_por_plano: dict[int, set[str]] = {}
+    for plano_id, instalacao in instalacoes_query.distinct().all():
+        instalacoes_por_plano.setdefault(plano_id, set()).add(instalacao)
+
+    planos = []
+    for registro in registros:
+        if id_subestacao is not None and not registro.total_os and registro.id_plano_manutencao not in proximas:
+            continue
+        total_os = int(registro.total_os or 0)
+        realizadas = int(registro.os_realizadas or 0)
+        planos.append({
+            "id_plano_manutencao": registro.id_plano_manutencao,
+            "plano": registro.descricao_geral or f"Plano #{registro.id_plano_manutencao}",
+            "tipo_ativo": registro.tipo_ativo or "Tipo não informado",
+            "total_itens": int(registro.total_itens or 0),
+            "total_os": total_os,
+            "os_realizadas": realizadas,
+            "os_abertas": int(registro.os_abertas or 0),
+            "os_vencidas": int(registro.os_vencidas or 0),
+            "taxa_conclusao": round((realizadas / total_os) * 100, 1) if total_os else 0,
+            "ultima_execucao": registro.ultima_execucao,
+            "proxima_execucao": proximas.get(registro.id_plano_manutencao),
+            "instalacoes": sorted(instalacoes_por_plano.get(registro.id_plano_manutencao, set())),
+        })
+
+    indicadores = {
+        "total_planos": len(planos),
+        "planos_com_execucao": sum(1 for plano in planos if plano["os_realizadas"] > 0),
+        "os_total": sum(plano["total_os"] for plano in planos),
+        "os_realizadas": sum(plano["os_realizadas"] for plano in planos),
+        "os_abertas": sum(plano["os_abertas"] for plano in planos),
+        "os_vencidas": sum(plano["os_vencidas"] for plano in planos),
+    }
+    indicadores["taxa_conclusao"] = round(
+        (indicadores["os_realizadas"] / indicadores["os_total"]) * 100,
+        1,
+    ) if indicadores["os_total"] else 0
+
+    return {
+        "indicadores": indicadores,
+        "planos": planos,
+        "instalacoes": sorted({
+            instalacao
+            for valores in instalacoes_por_plano.values()
+            for instalacao in valores
+        }),
+    }
+
+
+@router.get("/{plano_id}/ordens-servico-realizadas")
+def listar_os_realizadas_plano(
+    plano_id: int,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    id_subestacao: int | None = Query(default=None, gt=0),
+    instalacao: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _usuario=Depends(get_current_user),
+):
+    plano = db.get(PlanoManutencao, plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+
+    filtros = [
+        OrdemServico.id_plano_manutencao == plano_id,
+        _condicao_os_realizada(),
+        *_filtros_periodo_os(data_inicio, data_fim),
+    ]
+    if id_subestacao is not None:
+        filtros.append(OrdemServico.id_subestacao == id_subestacao)
+    if instalacao:
+        filtros.append(OrdemServico.instalacao == instalacao.strip())
+
+    query = db.query(OrdemServico).filter(*filtros)
+    total = query.count()
+
+    data_referencia = _data_referencia_os()
+    distribuicao = (
+        query.with_entities(
+            func.date_format(data_referencia, "%Y-%m").label("mes"),
+            func.count(OrdemServico.id_os).label("quantidade"),
+        )
+        .group_by(func.date_format(data_referencia, "%Y-%m"))
+        .order_by(func.date_format(data_referencia, "%Y-%m"))
+        .all()
+    )
+
+    ordens = (
+        query.options(
+            joinedload(OrdemServico.ativo).joinedload(Ativo.tipo_ativo),
+            joinedload(OrdemServico.ativo).joinedload(Ativo.subestacao),
+            joinedload(OrdemServico.grupo_ativo),
+            joinedload(OrdemServico.subestacao),
+        )
+        .order_by(data_referencia.desc(), OrdemServico.id_os.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    ids_itens = {ordem.id_plano_item for ordem in ordens if ordem.id_plano_item}
+    nomes_itens = {
+        item.id_plano_item: item.nome_item
+        for item in db.query(PlanoItem).filter(PlanoItem.id_plano_item.in_(ids_itens or [-1])).all()
+    }
+
+    itens = []
+    for ordem in ordens:
+        data_execucao = ordem.data_fim_execucao or ordem.data_inicio_execucao or ordem.data_fim_programado or ordem.criado_em
+        duracao_horas = None
+        if ordem.data_inicio_execucao and ordem.data_fim_execucao:
+            duracao_horas = round(
+                max(0, (ordem.data_fim_execucao - ordem.data_inicio_execucao).total_seconds()) / 3600,
+                2,
+            )
+        atraso_dias = 0
+        if data_execucao and ordem.data_fim_programado and data_execucao > ordem.data_fim_programado:
+            atraso_dias = (data_execucao.date() - ordem.data_fim_programado.date()).days
+
+        itens.append({
+            "id_os": ordem.id_os,
+            "numero_os": ordem.numero_os,
+            "status": ordem.status,
+            "instalacao": ordem.instalacao or (ordem.subestacao.nome if ordem.subestacao else None),
+            "codigo_ativo": ordem.codigo_ativo,
+            "tipo_ativo": ordem.tipo_ativo,
+            "item_plano": nomes_itens.get(ordem.id_plano_item),
+            "data_inicio_programado": ordem.data_inicio_programado,
+            "data_fim_programado": ordem.data_fim_programado,
+            "data_inicio_execucao": ordem.data_inicio_execucao,
+            "data_fim_execucao": ordem.data_fim_execucao,
+            "data_execucao": data_execucao,
+            "responsavel": ordem.responsavel_manutencao or ordem.responsavel,
+            "duracao_horas": duracao_horas,
+            "atraso_dias": atraso_dias,
+            "origem": ordem.origem,
+            "emissor": ordem.emissor,
+        })
+
+    return {
+        "plano": {
+            "id_plano_manutencao": plano.id_plano_manutencao,
+            "descricao": plano.descricao_geral or f"Plano #{plano.id_plano_manutencao}",
+            "tipo_ativo": plano.tipo_ativo.nome if plano.tipo_ativo else None,
+        },
+        "items": itens,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size),
+        "distribuicao_mensal": [
+            {"mes": item.mes, "quantidade": int(item.quantidade)}
+            for item in distribuicao
+            if item.mes
+        ],
+    }
 
 
 @router.post("/execucoes/sincronizar")
