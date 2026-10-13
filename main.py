@@ -12,6 +12,7 @@ from LR import livro_registro
 from familias import familias
 from Instalacao import instalacao
 from plano_manutencao import plano_manutencao
+from plano_manutencao import simulacao_anual
 from plano_manutencao import dashboard_inspecoes
 from plano_manutencao import inspecoes
 from RDO import rdo
@@ -135,6 +136,7 @@ app.include_router(validacao_importacao.router)
 app.include_router(familias.router)
 app.include_router(funcao_operacao.router)
 app.include_router(instalacao.router)
+app.include_router(simulacao_anual.router)
 app.include_router(plano_manutencao.router)
 app.include_router(dashboard_inspecoes.router)
 app.include_router(inspecoes.router)

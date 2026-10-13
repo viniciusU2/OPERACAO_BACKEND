@@ -1407,6 +1407,8 @@ def delta_periodicidade(periodicidade: PeriodicidadeEnum, intervalo: int | None 
         return relativedelta(months=3 * multiplicador)
     if periodicidade == PeriodicidadeEnum.SEMESTRAL:
         return relativedelta(months=6 * multiplicador)
+    if periodicidade == PeriodicidadeEnum.ANUAL:
+        return relativedelta(years=multiplicador)
     if periodicidade == PeriodicidadeEnum.TRES_ANOS:
         return relativedelta(years=3 * multiplicador)
     if periodicidade == PeriodicidadeEnum.CINCO_ANOS:
@@ -1492,6 +1494,7 @@ def meses_por_periodicidade(periodicidade: PeriodicidadeEnum, intervalo: int | N
         "BIMESTRAL": 2,
         "TRIMESTRAL": 3,
         "SEMESTRAL": 6,
+        "ANUAL": 12,
         "3_ANOS": 36,
         "5_ANOS": 60,
         "6_ANOS": 72,

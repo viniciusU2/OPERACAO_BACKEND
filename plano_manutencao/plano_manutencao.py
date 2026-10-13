@@ -427,6 +427,7 @@ def listar_os_realizadas_plano(
     data_fim: date | None = None,
     id_subestacao: int | None = Query(default=None, gt=0),
     instalacao: str | None = None,
+    status: str | None = None,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -436,25 +437,46 @@ def listar_os_realizadas_plano(
     if not plano:
         raise HTTPException(status_code=404, detail="Plano não encontrado")
 
-    filtros = [
+    filtros_base = [
         OrdemServico.id_plano_manutencao == plano_id,
-        _condicao_os_realizada(),
         *_filtros_periodo_os(data_inicio, data_fim),
     ]
     if id_subestacao is not None:
-        filtros.append(OrdemServico.id_subestacao == id_subestacao)
+        filtros_base.append(OrdemServico.id_subestacao == id_subestacao)
     if instalacao:
-        filtros.append(OrdemServico.instalacao == instalacao.strip())
+        filtros_base.append(OrdemServico.instalacao == instalacao.strip())
 
-    query = db.query(OrdemServico).filter(*filtros)
+    realizada = _condicao_os_realizada()
+    status_os = func.upper(func.coalesce(OrdemServico.status, ""))
+    cancelada = status_os.in_(STATUS_OS_CANCELADA)
+    aberta = and_(~realizada, ~cancelada)
+    vencida = and_(
+        aberta,
+        OrdemServico.data_fim_programado.isnot(None),
+        OrdemServico.data_fim_programado < datetime.now(),
+    )
+
+    filtros_tabela = list(filtros_base)
+    status_solicitado = (status or "").strip().upper().replace(" ", "_")
+    if status_solicitado == "VENCIDAS":
+        filtros_tabela.append(vencida)
+    elif status_solicitado == "ABERTAS":
+        filtros_tabela.append(aberta)
+    elif status_solicitado == "REALIZADAS":
+        filtros_tabela.append(realizada)
+    elif status_solicitado:
+        filtros_tabela.append(status_os == status_solicitado)
+
+    query = db.query(OrdemServico).filter(*filtros_tabela)
     total = query.count()
 
     data_referencia = _data_referencia_os()
     distribuicao = (
-        query.with_entities(
+        db.query(
             func.date_format(data_referencia, "%Y-%m").label("mes"),
             func.count(OrdemServico.id_os).label("quantidade"),
         )
+        .filter(*filtros_base, realizada)
         .group_by(func.date_format(data_referencia, "%Y-%m"))
         .order_by(func.date_format(data_referencia, "%Y-%m"))
         .all()
@@ -467,7 +489,11 @@ def listar_os_realizadas_plano(
             joinedload(OrdemServico.grupo_ativo),
             joinedload(OrdemServico.subestacao),
         )
-        .order_by(data_referencia.desc(), OrdemServico.id_os.desc())
+        .order_by(
+            case((vencida, 1), else_=0).desc(),
+            data_referencia.desc(),
+            OrdemServico.id_os.desc(),
+        )
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
@@ -481,15 +507,29 @@ def listar_os_realizadas_plano(
 
     itens = []
     for ordem in ordens:
-        data_execucao = ordem.data_fim_execucao or ordem.data_inicio_execucao or ordem.data_fim_programado or ordem.criado_em
+        data_execucao = ordem.data_fim_execucao or ordem.data_inicio_execucao
         duracao_horas = None
         if ordem.data_inicio_execucao and ordem.data_fim_execucao:
             duracao_horas = round(
                 max(0, (ordem.data_fim_execucao - ordem.data_inicio_execucao).total_seconds()) / 3600,
                 2,
             )
+        status_atual = (ordem.status or "").upper()
+        ordem_realizada = bool(
+            ordem.data_fim_execucao
+            or status_atual in STATUS_OS_REALIZADA
+        )
+        ordem_cancelada = status_atual in STATUS_OS_CANCELADA
+        ordem_vencida = bool(
+            not ordem_realizada
+            and not ordem_cancelada
+            and ordem.data_fim_programado
+            and ordem.data_fim_programado < datetime.now()
+        )
         atraso_dias = 0
-        if data_execucao and ordem.data_fim_programado and data_execucao > ordem.data_fim_programado:
+        if ordem_vencida and ordem.data_fim_programado:
+            atraso_dias = (datetime.now().date() - ordem.data_fim_programado.date()).days
+        elif data_execucao and ordem.data_fim_programado and data_execucao > ordem.data_fim_programado:
             atraso_dias = (data_execucao.date() - ordem.data_fim_programado.date()).days
 
         itens.append({
@@ -508,6 +548,7 @@ def listar_os_realizadas_plano(
             "responsavel": ordem.responsavel_manutencao or ordem.responsavel,
             "duracao_horas": duracao_horas,
             "atraso_dias": atraso_dias,
+            "vencida": ordem_vencida,
             "origem": ordem.origem,
             "emissor": ordem.emissor,
         })
