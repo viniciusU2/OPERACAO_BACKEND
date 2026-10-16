@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy import func, or_
@@ -585,21 +585,138 @@ def remover_ied(db: Session, id_ied: int) -> schemas.IEDRemocaoOut:
     db.query(models.IED).filter(models.IED.id_ied == id_ied).delete(synchronize_session=False)
     db.commit()
     removidos = sum(1 for id_arquivo in arquivos if _remover_arquivo_orfao(db, id_arquivo))
-    db.commit()
+    if removidos:
+        db.commit()
     return schemas.IEDRemocaoOut(id_ied=id_ied, tag_operacional=tag, arquivos_removidos=removidos)
 
 
-def dashboard(db: Session):
-    ativos = models.IED.ativo.is_(True)
-    total = db.query(func.count(models.IED.id_ied)).filter(ativos).scalar() or 0
-    em_operacao = db.query(func.count(models.IED.id_ied)).filter(ativos, models.IED.status_operacional == "EM_OPERACAO").scalar() or 0
-    sem_funcao = db.query(func.count(models.IED.id_ied)).filter(ativos, models.IED.id_funcao_operacao.is_(None)).scalar() or 0
-    sem_firmware = db.query(func.count(models.IED.id_ied)).filter(ativos, or_(models.IED.versao_firmware.is_(None), models.IED.versao_firmware == "")).scalar() or 0
+def arquivar_ied(db: Session, id_ied: int, id_usuario: int) -> schemas.IEDRemocaoOut:
+    """Arquiva o IED (``ativo = false``) sem apagar histórico técnico ou arquivos.
+
+    Alternativa reversível à exclusão definitiva: o IED sai do inventário vigente,
+    as instalações em aberto são encerradas e o ativo do ENGVI permanece vinculado
+    (por isso o mesmo ativo só pode voltar a receber um IED após ``reativar_ied``
+    ou a exclusão definitiva). Os arquivos são preservados.
+    """
+    ied = _ied(db, id_ied)
+    tag = ied.tag_operacional
+    ied.ativo = False
+    ied.status_operacional = "RETIRADO"
+    ied.versao += 1
+    ied.id_usuario_atualizacao = id_usuario
+    db.query(models.IEDInstalacao).filter(
+        models.IEDInstalacao.id_ied == id_ied,
+        models.IEDInstalacao.data_fim.is_(None),
+    ).update({models.IEDInstalacao.data_fim: date.today()}, synchronize_session=False)
+    db.commit()
+    return schemas.IEDRemocaoOut(id_ied=id_ied, tag_operacional=tag, arquivos_removidos=0)
+
+
+def reativar_ied(db: Session, id_ied: int, id_usuario: int) -> schemas.IEDDetalhe:
+    """Devolve um IED arquivado ao inventário vigente (``ativo = true``)."""
+    ied = _ied(db, id_ied)
+    if ied.ativo:
+        raise HTTPException(status_code=400, detail="O IED já está ativo no inventário")
+    ied.ativo = True
+    if ied.status_operacional == "RETIRADO":
+        ied.status_operacional = "EM_OPERACAO"
+    ied.versao += 1
+    ied.id_usuario_atualizacao = id_usuario
+    db.commit()
+    return obter_ied(db, id_ied)
+
+
+def dashboard(
+    db: Session,
+    id_subestacao: int | None = None,
+    id_modelo_ied: int | None = None,
+    id_funcao_operacao: int | None = None,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+):
+    base = db.query(models.IED).filter(models.IED.ativo.is_(True))
+    if id_subestacao:
+        base = base.filter(models.IED.id_subestacao == id_subestacao)
+    if id_modelo_ied:
+        base = base.filter(models.IED.id_modelo_ied == id_modelo_ied)
+    if id_funcao_operacao:
+        base = base.filter(models.IED.id_funcao_operacao == id_funcao_operacao)
+    if data_inicio:
+        base = base.filter(models.IED.data_instalacao >= data_inicio)
+    if data_fim:
+        base = base.filter(models.IED.data_instalacao <= data_fim)
+    ids = base.with_entities(models.IED.id_ied).subquery()
+    total = base.count()
+    em_operacao = base.filter(models.IED.status_operacional == "EM_OPERACAO").count()
+    sem_funcao = base.filter(models.IED.id_funcao_operacao.is_(None)).count()
+    sem_firmware = base.filter(or_(models.IED.versao_firmware.is_(None), models.IED.versao_firmware == "")).count()
+
+    ultima_validada = (
+        db.query(
+            models.IEDConfiguracao.id_ied.label("id_ied"),
+            func.max(models.IEDConfiguracao.data_coleta).label("ultima_data"),
+        )
+        .filter(models.IEDConfiguracao.status_validacao == "VALIDADA")
+        .group_by(models.IEDConfiguracao.id_ied)
+        .subquery()
+    )
+    sem_backup_validado = (
+        db.query(func.count(ids.c.id_ied))
+        .outerjoin(ultima_validada, ultima_validada.c.id_ied == ids.c.id_ied)
+        .filter(ultima_validada.c.id_ied.is_(None))
+        .scalar()
+        or 0
+    )
+    limite_backup = date.today() - timedelta(days=180)
+    backups_desatualizados = (
+        db.query(func.count(ids.c.id_ied))
+        .join(ultima_validada, ultima_validada.c.id_ied == ids.c.id_ied)
+        .filter(ultima_validada.c.ultima_data < limite_backup)
+        .scalar()
+        or 0
+    )
+    alteracoes_pendentes = (
+        db.query(func.count(models.SolicitacaoAlteracao.id_solicitacao_alteracao))
+        .join(ids, ids.c.id_ied == models.SolicitacaoAlteracao.id_ied)
+        .filter(models.SolicitacaoAlteracao.status.in_(("SUBMETIDA", "EM_ANALISE", "APROVADA", "IMPLANTADA", "EM_VALIDACAO")))
+        .scalar()
+        or 0
+    )
+    implantadas_nao_validadas = (
+        db.query(func.count(models.SolicitacaoAlteracao.id_solicitacao_alteracao))
+        .join(ids, ids.c.id_ied == models.SolicitacaoAlteracao.id_ied)
+        .filter(models.SolicitacaoAlteracao.status.in_(("IMPLANTADA", "EM_VALIDACAO")))
+        .scalar()
+        or 0
+    )
+    ensaios_vencidos = (
+        db.query(func.count(models.IEDEnsaio.id_ied_ensaio))
+        .join(ids, ids.c.id_ied == models.IEDEnsaio.id_ied)
+        .filter(models.IEDEnsaio.data_prevista < date.today(), models.IEDEnsaio.status.in_(("PLANEJADO", "EM_ANDAMENTO")))
+        .scalar()
+        or 0
+    )
+    ocorrencias_abertas = (
+        db.query(func.count(models.IEDOcorrencia.id_ied_ocorrencia))
+        .join(ids, ids.c.id_ied == models.IEDOcorrencia.id_ied)
+        .filter(models.IEDOcorrencia.status.in_(("ABERTA", "EM_ANALISE")))
+        .scalar()
+        or 0
+    )
+
+    por_fabricante = (
+        db.query(models.ModeloIED.fabricante, func.count(models.IED.id_ied))
+        .join(models.IED, models.IED.id_modelo_ied == models.ModeloIED.id_modelo_ied)
+        .join(ids, ids.c.id_ied == models.IED.id_ied)
+        .group_by(models.ModeloIED.fabricante)
+        .order_by(func.count(models.IED.id_ied).desc())
+        .all()
+    )
 
     por_modelo = (
         db.query(models.ModeloIED.modelo, func.count(models.IED.id_ied))
         .join(models.IED, models.IED.id_modelo_ied == models.ModeloIED.id_modelo_ied)
-        .filter(ativos)
+        .join(ids, ids.c.id_ied == models.IED.id_ied)
         .group_by(models.ModeloIED.id_modelo_ied, models.ModeloIED.modelo)
         .order_by(func.count(models.IED.id_ied).desc())
         .all()
@@ -607,15 +724,15 @@ def dashboard(db: Session):
     por_subestacao = (
         db.query(Subestacao.nome, func.count(models.IED.id_ied))
         .join(models.IED, models.IED.id_subestacao == Subestacao.id_subestacao)
-        .filter(ativos)
+        .join(ids, ids.c.id_ied == models.IED.id_ied)
         .group_by(Subestacao.id_subestacao, Subestacao.nome)
         .order_by(func.count(models.IED.id_ied).desc())
         .all()
     )
-    por_status = db.query(models.IED.status_operacional, func.count(models.IED.id_ied)).filter(ativos).group_by(models.IED.status_operacional).all()
+    por_status = db.query(models.IED.status_operacional, func.count(models.IED.id_ied)).join(ids, ids.c.id_ied == models.IED.id_ied).group_by(models.IED.status_operacional).all()
     por_firmware = (
         db.query(func.coalesce(func.nullif(models.IED.versao_firmware, ""), "Não informado"), func.count(models.IED.id_ied))
-        .filter(ativos)
+        .join(ids, ids.c.id_ied == models.IED.id_ied)
         .group_by(func.coalesce(func.nullif(models.IED.versao_firmware, ""), "Não informado"))
         .order_by(func.count(models.IED.id_ied).desc())
         .all()
@@ -627,6 +744,13 @@ def dashboard(db: Session):
         em_operacao=em_operacao,
         sem_funcao_operacao=sem_funcao,
         sem_firmware=sem_firmware,
+        backups_desatualizados=backups_desatualizados,
+        sem_backup_validado=sem_backup_validado,
+        alteracoes_pendentes=alteracoes_pendentes,
+        implantadas_nao_validadas=implantadas_nao_validadas,
+        ensaios_vencidos=ensaios_vencidos,
+        ocorrencias_abertas=ocorrencias_abertas,
+        por_fabricante=itens(por_fabricante),
         por_modelo=itens(por_modelo),
         por_subestacao=itens(por_subestacao),
         por_status=itens(por_status),

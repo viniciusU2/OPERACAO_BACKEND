@@ -39,12 +39,14 @@ from csd_monitor.database.models import Base as CsdBase
 from csd_monitor import routes as csd_monitor_routes
 from engenharia_protecao import routes as engenharia_protecao_routes
 from engenharia_protecao import migracoes as engenharia_protecao_migracoes
+from engenharia_protecao.audit import EngenhariaProtecaoAuditMiddleware
 
 
 
 load_dotenv()
 
 app = FastAPI(title="ManutenÃ§Ã£o de SubestaÃ§Ãµes")
+app.add_middleware(EngenhariaProtecaoAuditMiddleware)
 
 Base.metadata.create_all(bind=engine)
 CsdBase.metadata.create_all(bind=engine)

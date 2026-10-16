@@ -1,9 +1,12 @@
+import inspect
 import unittest
 from datetime import date
+from typing import get_args
 
 from pydantic import ValidationError
+from starlette.requests import Request
 
-from engenharia_protecao import models, schemas, service
+from engenharia_protecao import audit, models, schemas, service, service_alteracoes, service_config
 
 
 class EngenhariaProtecaoSchemaTests(unittest.TestCase):
@@ -93,6 +96,126 @@ class EngenhariaProtecaoRemocaoIEDTests(unittest.TestCase):
         self.assertEqual(dados.id_ied, 8)
         self.assertEqual(dados.tag_operacional, "21C2-GOR")
         self.assertEqual(dados.arquivos_removidos, 3)
+
+
+class EngenhariaProtecaoHardeningTests(unittest.TestCase):
+    """Fase 6: segregação de funções, reversão, auditoria transversal e integridade."""
+
+    def test_novos_estados_e_acoes_de_alteracao(self):
+        estados = get_args(schemas.StatusAlteracao)
+        for esperado in ("EM_ANALISE", "EM_VALIDACAO", "CONCLUIDA", "REVERTIDA"):
+            self.assertIn(esperado, estados)
+        acoes = get_args(schemas.AcaoAlteracao)
+        for esperada in ("ANALISE", "INICIO_VALIDACAO", "CONCLUSAO", "REVERSAO"):
+            self.assertIn(esperada, acoes)
+
+    def test_reversao_exige_motivo_e_configuracao(self):
+        with self.assertRaises(ValidationError):
+            schemas.ReversaoAlteracao(id_configuracao_rollback=0, motivo="motivo valido")
+        with self.assertRaises(ValidationError):
+            schemas.ReversaoAlteracao(id_configuracao_rollback=1, motivo="abc")
+        dados = schemas.ReversaoAlteracao(id_configuracao_rollback=9, motivo="rollback de ajuste")
+        self.assertEqual(dados.id_configuracao_rollback, 9)
+
+    def test_evidencia_de_implantacao_limita_tamanho(self):
+        schemas.ImplantacaoAlteracao(evidencia_implantacao="x" * 4000)
+        with self.assertRaises(ValidationError):
+            schemas.ImplantacaoAlteracao(evidencia_implantacao="x" * 4001)
+
+    def test_solicitacao_out_expoe_implantador_e_reversao(self):
+        campos = set(schemas.SolicitacaoAlteracaoOut.model_fields)
+        for esperado in (
+            "id_usuario_implantador",
+            "nome_implantador",
+            "id_usuario_reversao",
+            "nome_usuario_reversao",
+            "id_configuracao_rollback",
+            "data_reversao",
+            "evidencia_implantacao",
+        ):
+            self.assertIn(esperado, campos)
+
+    def test_colunas_novas_no_modelo_de_alteracao(self):
+        colunas = set(models.SolicitacaoAlteracao.__table__.columns.keys())
+        for esperada in (
+            "id_usuario_implantador",
+            "id_usuario_reversao",
+            "id_configuracao_rollback",
+            "data_reversao",
+            "evidencia_implantacao",
+        ):
+            self.assertIn(esperada, colunas)
+
+    def test_checks_de_status_e_acao_foram_ampliados(self):
+        def sql_do_check(nome: str, tabela) -> str:
+            for constraint in tabela.constraints:
+                if getattr(constraint, "name", None) == nome:
+                    return str(constraint.sqltext)
+            self.fail(f"constraint {nome} ausente")
+
+        status = sql_do_check("ck_solicitacao_alteracao_status", models.SolicitacaoAlteracao.__table__)
+        for valor in ("EM_ANALISE", "EM_VALIDACAO", "CONCLUIDA", "REVERTIDA"):
+            self.assertIn(valor, status)
+
+        acao = sql_do_check("ck_alteracao_historico_acao", models.AlteracaoHistorico.__table__)
+        for valor in ("ANALISE", "INICIO_VALIDACAO", "CONCLUSAO", "REVERSAO"):
+            self.assertIn(valor, acao)
+
+    def test_tabela_de_auditoria_esta_no_metadata(self):
+        self.assertIn("engenharia_protecao_auditoria", models.Base.metadata.tables)
+        colunas = set(models.EngenhariaProtecaoAuditoria.__table__.columns.keys())
+        for esperada in ("acao", "metodo", "caminho", "recurso", "id_recurso", "status_http", "endereco_ip", "criado_em"):
+            self.assertIn(esperada, colunas)
+
+    def test_alteracao_em_analise_pode_ser_cancelada(self):
+        self.assertIn("EM_ANALISE", service_alteracoes.STATUS_CANCELAVEIS)
+
+    def test_transicoes_de_analise_validacao_e_reversao_existem(self):
+        for nome in ("iniciar_analise", "iniciar_validacao", "reverter"):
+            self.assertTrue(callable(getattr(service_alteracoes, nome)), f"{nome} ausente")
+
+    def test_classificacao_da_auditoria(self):
+        def requisicao(metodo: str, caminho: str) -> Request:
+            return Request(
+                {
+                    "type": "http",
+                    "method": metodo,
+                    "path": caminho,
+                    "query_string": b"",
+                    "scheme": "http",
+                    "server": ("testserver", 80),
+                    "client": ("127.0.0.1", 1234),
+                    "headers": [],
+                }
+            )
+
+        self.assertEqual(
+            audit._classificar(requisicao("POST", "/engenharia-protecao/ieds/8/arquivar")),
+            ("ARQUIVAMENTO", "ieds", "8"),
+        )
+        self.assertEqual(
+            audit._classificar(requisicao("POST", "/engenharia-protecao/ieds/8/reativar")),
+            ("REATIVACAO", "ieds", "8"),
+        )
+        self.assertEqual(
+            audit._classificar(requisicao("DELETE", "/engenharia-protecao/ieds/8")),
+            ("REMOCAO", "ieds", "8"),
+        )
+        self.assertEqual(
+            audit._classificar(requisicao("GET", "/engenharia-protecao/arquivos/4/download")),
+            ("DOWNLOAD", "arquivos", "4"),
+        )
+        self.assertIsNone(audit._classificar(requisicao("GET", "/engenharia-protecao/dashboard")))
+        self.assertTrue(callable(audit.listar_auditoria))
+
+    def test_exclusao_definitiva_e_arquivamento_sao_operacoes_distintas(self):
+        parametros_definitivo = list(inspect.signature(service.remover_ied).parameters)
+        self.assertEqual(parametros_definitivo, ["db", "id_ied"])
+        self.assertEqual(list(inspect.signature(service.arquivar_ied).parameters), ["db", "id_ied", "id_usuario"])
+        self.assertEqual(list(inspect.signature(service.reativar_ied).parameters), ["db", "id_ied", "id_usuario"])
+
+    def test_helper_de_integridade_de_arquivo_disponivel(self):
+        self.assertTrue(callable(service_config._caminho_integro))
 
 
 if __name__ == "__main__":

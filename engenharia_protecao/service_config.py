@@ -886,6 +886,21 @@ def validar_configuracao(
             status_code=400,
             detail="Anexe o arquivo principal (com hash SHA-256) antes de validar o backup",
         )
+    principal = (
+        db.query(models.Arquivo)
+        .join(models.ConfiguracaoArquivo, models.ConfiguracaoArquivo.id_arquivo == models.Arquivo.id_arquivo)
+        .filter(
+            models.ConfiguracaoArquivo.id_ied_configuracao == id_configuracao,
+            models.ConfiguracaoArquivo.papel == "PRINCIPAL",
+        )
+        .order_by(models.ConfiguracaoArquivo.id_configuracao_arquivo.desc())
+        .first()
+    )
+    if not principal:
+        raise HTTPException(status_code=400, detail="Arquivo principal não encontrado")
+    caminho_principal = _caminho_integro(principal)
+    if hashlib.sha256(caminho_principal.read_bytes()).hexdigest() != config.hash_configuracao:
+        raise HTTPException(status_code=409, detail="O hash do arquivo principal diverge da configuração")
     db.add(
         models.IEDBackupValidacao(
             id_ied_configuracao=id_configuracao,
@@ -961,15 +976,23 @@ def remover_arquivo_configuracao(
     return _configuracao_out(db, config, detalhado=True)
 
 
-def caminho_download(db: Session, id_arquivo: int):
-    arquivo = db.query(models.Arquivo).filter(models.Arquivo.id_arquivo == id_arquivo).first()
-    if not arquivo:
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+def _caminho_integro(arquivo: models.Arquivo) -> Path:
     caminho = Path(arquivo.caminho).resolve()
     if caminho.parent != PASTA_UPLOADS:
         raise HTTPException(status_code=500, detail="Caminho do arquivo fora da pasta permitida")
     if not caminho.is_file():
         raise HTTPException(status_code=404, detail="Arquivo não encontrado no armazenamento")
+    hash_atual = hashlib.sha256(caminho.read_bytes()).hexdigest()
+    if hash_atual != arquivo.sha256:
+        raise HTTPException(status_code=409, detail="Falha de integridade: hash SHA-256 divergente")
+    return caminho
+
+
+def caminho_download(db: Session, id_arquivo: int):
+    arquivo = db.query(models.Arquivo).filter(models.Arquivo.id_arquivo == id_arquivo).first()
+    if not arquivo:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    caminho = _caminho_integro(arquivo)
     return arquivo, caminho
 
 

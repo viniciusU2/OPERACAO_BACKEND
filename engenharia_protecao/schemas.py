@@ -227,6 +227,13 @@ class DashboardOut(SchemaBase):
     em_operacao: int
     sem_funcao_operacao: int
     sem_firmware: int
+    backups_desatualizados: int
+    sem_backup_validado: int
+    alteracoes_pendentes: int
+    implantadas_nao_validadas: int
+    ensaios_vencidos: int
+    ocorrencias_abertas: int
+    por_fabricante: list[DashboardItem]
     por_modelo: list[DashboardItem]
     por_subestacao: list[DashboardItem]
     por_status: list[DashboardItem]
@@ -514,12 +521,16 @@ class ResumoConfiguracaoOut(SchemaBase):
 StatusAlteracao = Literal[
     "RASCUNHO",
     "SUBMETIDA",
+    "EM_ANALISE",
     "APROVADA",
     "REJEITADA",
     "IMPLANTADA",
+    "EM_VALIDACAO",
     "VALIDADA",
     "NAO_VALIDADA",
+    "CONCLUIDA",
     "CANCELADA",
+    "REVERTIDA",
 ]
 TipoAlteracao = Literal["AJUSTE", "FIRMWARE", "HARDWARE", "COMUNICACAO", "CORRECAO", "OUTRO"]
 PrioridadeAlteracao = Literal["BAIXA", "MEDIA", "ALTA", "CRITICA"]
@@ -527,12 +538,16 @@ AcaoAlteracao = Literal[
     "CRIACAO",
     "ATUALIZACAO",
     "SUBMISSAO",
+    "ANALISE",
     "APROVACAO",
     "REJEICAO",
     "IMPLANTACAO",
+    "INICIO_VALIDACAO",
     "VALIDACAO",
+    "CONCLUSAO",
     "REJEICAO_VALIDACAO",
     "CANCELAMENTO",
+    "REVERSAO",
 ]
 SituacaoComparacao = Literal["ADICIONADO", "REMOVIDO", "ALTERADO", "IGUAL"]
 
@@ -636,8 +651,15 @@ class SolicitacaoAlteracaoOut(SchemaBase):
     nome_solicitante: str | None = None
     id_usuario_aprovador: int | None = None
     nome_aprovador: str | None = None
+    id_usuario_implantador: int | None = None
+    nome_implantador: str | None = None
     id_usuario_validador: int | None = None
     nome_validador: str | None = None
+    id_usuario_reversao: int | None = None
+    nome_usuario_reversao: str | None = None
+    id_configuracao_rollback: int | None = None
+    data_reversao: date | None = None
+    evidencia_implantacao: str | None = None
     quantidade_itens: int = 0
     versao: int
     criado_em: datetime
@@ -691,6 +713,7 @@ class TransicaoAlteracao(SchemaBase):
 class ImplantacaoAlteracao(SchemaBase):
     id_configuracao_resultante: int | None = Field(default=None, gt=0)
     data_implantacao: date | None = None
+    evidencia_implantacao: str | None = Field(default=None, max_length=4000)
     comentario: str | None = None
 
 
@@ -699,6 +722,12 @@ class ValidacaoAlteracao(SchemaBase):
     id_configuracao_validada: int | None = Field(default=None, gt=0)
     data_validacao: date | None = None
     comentario: str | None = None
+
+
+class ReversaoAlteracao(SchemaBase):
+    id_configuracao_rollback: int = Field(gt=0)
+    data_reversao: date | None = None
+    motivo: str = Field(min_length=5, max_length=1000)
 
 
 class ImportarItensAlteracao(SchemaBase):
@@ -1355,6 +1384,28 @@ class AuditoriaOut(SchemaBase):
     id_usuario: int | None = None
     nome_usuario: str | None = None
     criado_em: datetime
+
+
+class AuditoriaGeralOut(SchemaBase):
+    id_engenharia_protecao_auditoria: int
+    id_usuario: int | None = None
+    nome_usuario: str | None = None
+    acao: str
+    metodo: str
+    caminho: str
+    recurso: str | None = None
+    id_recurso: str | None = None
+    status_http: int
+    endereco_ip: str | None = None
+    detalhes: str | None = None
+    criado_em: datetime
+
+
+class AuditoriaGeralLista(SchemaBase):
+    total: int
+    page: int
+    page_size: int
+    items: list[AuditoriaGeralOut]
 
 
 class ResumoOcorrenciaOut(SchemaBase):

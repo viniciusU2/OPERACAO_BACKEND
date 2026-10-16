@@ -8,10 +8,14 @@ from auth.dependencies import get_current_user, require_roles
 from database import get_db
 from models.auth_models import Usuario
 
-from . import schemas, service, service_alteracoes, service_config, service_engenharia, service_ocorrencias
+from . import audit, schemas, service, service_alteracoes, service_config, service_engenharia, service_ocorrencias
 
 
 router = APIRouter(prefix="/engenharia-protecao", tags=["Engenharia de Proteção"])
+
+ESCRITA = require_roles("admin", "mantenedor", "engenheiro_protecao", "tecnico_manutencao")
+APROVACAO = require_roles("admin", "engenheiro_protecao")
+EXCLUSAO = require_roles("admin")
 
 
 # Limite padrao das colecoes por IED/ocorrencia. As rotas aceitam `offset` e
@@ -34,10 +38,15 @@ def garantir_catalogo_funcoes_ansi(db: Session) -> None:
 
 @router.get("/dashboard", response_model=schemas.DashboardOut)
 def obter_dashboard(
+    id_subestacao: int | None = None,
+    id_modelo_ied: int | None = None,
+    id_funcao_operacao: int | None = None,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
     db: Session = Depends(get_db),
     _usuario: Usuario = Depends(get_current_user),
 ):
-    return service.dashboard(db)
+    return service.dashboard(db, id_subestacao, id_modelo_ied, id_funcao_operacao, data_inicio, data_fim)
 
 
 @router.get("/modelos", response_model=schemas.ModeloIEDLista)
@@ -65,7 +74,7 @@ def obter_modelo(
 def criar_modelo(
     dados: schemas.ModeloIEDCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(require_roles("admin", "mantenedor")),
+    usuario: Usuario = Depends(ESCRITA),
 ):
     return service.criar_modelo(db, dados, usuario.id)
 
@@ -75,7 +84,7 @@ def atualizar_modelo(
     id_modelo_ied: int,
     dados: schemas.ModeloIEDUpdate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(require_roles("admin", "mantenedor")),
+    usuario: Usuario = Depends(ESCRITA),
 ):
     return service.atualizar_modelo(db, id_modelo_ied, dados, usuario.id)
 
@@ -108,7 +117,7 @@ def listar_ieds(
 def criar_ied(
     dados: schemas.IEDCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(require_roles("admin", "mantenedor")),
+    usuario: Usuario = Depends(ESCRITA),
 ):
     return service.criar_ied(db, dados, usuario.id)
 
@@ -127,7 +136,7 @@ def atualizar_ied(
     id_ied: int,
     dados: schemas.IEDUpdate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(require_roles("admin", "mantenedor")),
+    usuario: Usuario = Depends(ESCRITA),
 ):
     return service.atualizar_ied(db, id_ied, dados, usuario.id)
 
@@ -136,10 +145,30 @@ def atualizar_ied(
 def remover_ied(
     id_ied: int,
     db: Session = Depends(get_db),
-    _usuario: Usuario = Depends(require_roles("admin")),
+    _usuario: Usuario = Depends(EXCLUSAO),
 ):
-    """Remove o IED e todos os dados do módulo. Operação restrita ao perfil admin."""
+    """Remove definitivamente o IED e todos os dados do módulo. Restrito ao perfil admin."""
     return service.remover_ied(db, id_ied)
+
+
+@router.post("/ieds/{id_ied}/arquivar", response_model=schemas.IEDRemocaoOut)
+def arquivar_ied(
+    id_ied: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(ESCRITA),
+):
+    """Arquiva o IED (ativo = false) preservando histórico e arquivos. Operação reversível."""
+    return service.arquivar_ied(db, id_ied, usuario.id)
+
+
+@router.post("/ieds/{id_ied}/reativar", response_model=schemas.IEDDetalhe)
+def reativar_ied(
+    id_ied: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(ESCRITA),
+):
+    """Devolve um IED arquivado ao inventário vigente do módulo."""
+    return service.reativar_ied(db, id_ied, usuario.id)
 
 
 @router.post("/ieds/{id_ied}/movimentacoes", response_model=schemas.IEDDetalhe)
@@ -147,7 +176,7 @@ def movimentar_ied(
     id_ied: int,
     dados: schemas.TransferenciaCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(require_roles("admin", "mantenedor")),
+    usuario: Usuario = Depends(ESCRITA),
 ):
     return service.transferir_ied(db, id_ied, dados, usuario.id)
 
@@ -157,7 +186,7 @@ def adicionar_modulo(
     id_ied: int,
     dados: schemas.ModuloCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(require_roles("admin", "mantenedor")),
+    usuario: Usuario = Depends(ESCRITA),
 ):
     return service.adicionar_modulo(db, id_ied, dados, usuario.id)
 
@@ -167,7 +196,7 @@ def registrar_firmware(
     id_ied: int,
     dados: schemas.FirmwareCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(require_roles("admin", "mantenedor")),
+    usuario: Usuario = Depends(ESCRITA),
 ):
     return service.registrar_firmware(db, id_ied, dados, usuario.id)
 
@@ -177,7 +206,7 @@ def associar_equipamento(
     id_ied: int,
     dados: schemas.EquipamentoCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(require_roles("admin", "mantenedor")),
+    usuario: Usuario = Depends(ESCRITA),
 ):
     return service.associar_equipamento(db, id_ied, dados, usuario.id)
 
@@ -188,7 +217,7 @@ def encerrar_associacao_equipamento(
     id_ied_equipamento: int,
     data_fim: date = Query(default_factory=date.today),
     db: Session = Depends(get_db),
-    _usuario: Usuario = Depends(require_roles("admin", "mantenedor")),
+    _usuario: Usuario = Depends(ESCRITA),
 ):
     return service.encerrar_associacao_equipamento(db, id_ied, id_ied_equipamento, data_fim)
 
@@ -196,9 +225,6 @@ def encerrar_associacao_equipamento(
 # --------------------------------------------------------------------------- #
 # Fase 2 - Funcoes de protecao, ajustes, configuracoes e backups
 # --------------------------------------------------------------------------- #
-
-ESCRITA = require_roles("admin", "mantenedor")
-
 
 @router.get("/funcoes-ansi", response_model=schemas.FuncaoANSILista)
 def listar_funcoes_ansi(
@@ -606,12 +632,22 @@ def submeter_alteracao(
     return service_alteracoes.submeter(db, id_solicitacao, dados, usuario.id)
 
 
+@router.post("/alteracoes/{id_solicitacao}/iniciar-analise", response_model=schemas.SolicitacaoAlteracaoDetalhe)
+def iniciar_analise_alteracao(
+    id_solicitacao: int,
+    dados: schemas.TransicaoAlteracao,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(APROVACAO),
+):
+    return service_alteracoes.iniciar_analise(db, id_solicitacao, dados, usuario.id)
+
+
 @router.post("/alteracoes/{id_solicitacao}/aprovar", response_model=schemas.SolicitacaoAlteracaoDetalhe)
 def aprovar_alteracao(
     id_solicitacao: int,
     dados: schemas.TransicaoAlteracao,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(ESCRITA),
+    usuario: Usuario = Depends(APROVACAO),
 ):
     return service_alteracoes.aprovar(db, id_solicitacao, dados, usuario.id)
 
@@ -621,7 +657,7 @@ def rejeitar_alteracao(
     id_solicitacao: int,
     dados: schemas.TransicaoAlteracao,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(ESCRITA),
+    usuario: Usuario = Depends(APROVACAO),
 ):
     return service_alteracoes.rejeitar(db, id_solicitacao, dados, usuario.id)
 
@@ -651,9 +687,42 @@ def validar_alteracao(
     id_solicitacao: int,
     dados: schemas.ValidacaoAlteracao,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(ESCRITA),
+    usuario: Usuario = Depends(APROVACAO),
 ):
     return service_alteracoes.validar(db, id_solicitacao, dados, usuario.id)
+
+
+@router.post("/alteracoes/{id_solicitacao}/iniciar-validacao", response_model=schemas.SolicitacaoAlteracaoDetalhe)
+def iniciar_validacao_alteracao(
+    id_solicitacao: int,
+    dados: schemas.TransicaoAlteracao,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(APROVACAO),
+):
+    return service_alteracoes.iniciar_validacao(db, id_solicitacao, dados, usuario.id)
+
+
+@router.post("/alteracoes/{id_solicitacao}/reverter", response_model=schemas.SolicitacaoAlteracaoDetalhe)
+def reverter_alteracao(
+    id_solicitacao: int,
+    dados: schemas.ReversaoAlteracao,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(APROVACAO),
+):
+    return service_alteracoes.reverter(db, id_solicitacao, dados, usuario.id)
+
+
+@router.get("/auditoria", response_model=schemas.AuditoriaGeralLista)
+def listar_auditoria_geral(
+    acao: str | None = None,
+    recurso: str | None = None,
+    id_usuario: int | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    _usuario: Usuario = Depends(require_roles("admin", "engenheiro_protecao", "auditor")),
+):
+    return audit.listar_auditoria(db, acao, recurso, id_usuario, page, page_size)
 
 
 @router.get("/comparacoes/grupos", response_model=schemas.ComparacaoGruposOut)

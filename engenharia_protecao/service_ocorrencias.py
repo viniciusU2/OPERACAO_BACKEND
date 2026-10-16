@@ -20,6 +20,7 @@ from .service_config import (
     EXTENSOES_PERMITIDAS,
     MAX_ARQUIVO_BYTES,
     PASTA_UPLOADS,
+    _caminho_integro,
     _categoria_por_extensao,
     _texto,
     _usuario_nome,
@@ -222,11 +223,7 @@ def _caminho_download(db: Session, id_arquivo: int):
     arquivo = db.query(models.Arquivo).filter(models.Arquivo.id_arquivo == id_arquivo).first()
     if not arquivo:
         raise HTTPException(status_code=404, detail="Arquivo não encontrado")
-    caminho = Path(arquivo.caminho).resolve()
-    if caminho.parent != PASTA_UPLOADS:
-        raise HTTPException(status_code=500, detail="Caminho do arquivo fora da pasta permitida")
-    if not caminho.is_file():
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado no armazenamento")
+    caminho = _caminho_integro(arquivo)
     return arquivo, caminho
 
 

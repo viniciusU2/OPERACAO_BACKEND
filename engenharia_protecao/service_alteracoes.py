@@ -15,7 +15,7 @@ from models.auth_models import Usuario
 from . import models, schemas
 
 STATUS_ABERTOS_EDICAO = ("RASCUNHO", "SUBMETIDA")
-STATUS_CANCELAVEIS = ("RASCUNHO", "SUBMETIDA", "APROVADA")
+STATUS_CANCELAVEIS = ("RASCUNHO", "SUBMETIDA", "EM_ANALISE", "APROVADA")
 
 
 # --------------------------------------------------------------------------- #
@@ -219,8 +219,15 @@ def _solicitacao_out(
         nome_solicitante=_nome_usuario(db, registro.id_usuario_solicitante),
         id_usuario_aprovador=registro.id_usuario_aprovador,
         nome_aprovador=_nome_usuario(db, registro.id_usuario_aprovador),
+        id_usuario_implantador=registro.id_usuario_implantador,
+        nome_implantador=_nome_usuario(db, registro.id_usuario_implantador),
         id_usuario_validador=registro.id_usuario_validador,
         nome_validador=_nome_usuario(db, registro.id_usuario_validador),
+        id_usuario_reversao=registro.id_usuario_reversao,
+        nome_usuario_reversao=_nome_usuario(db, registro.id_usuario_reversao),
+        id_configuracao_rollback=registro.id_configuracao_rollback,
+        data_reversao=registro.data_reversao,
+        evidencia_implantacao=registro.evidencia_implantacao,
         quantidade_itens=qtd_itens,
         versao=registro.versao,
         criado_em=registro.criado_em,
@@ -534,9 +541,9 @@ def submeter(
     )
     if total_itens == 0:
         raise HTTPException(status_code=400, detail="Inclua ao menos um item antes de submeter a solicitação")
+    _registrar_historico(db, registro, "SUBMISSAO", "SUBMETIDA", id_usuario, dados.comentario)
     registro.status = "SUBMETIDA"
     registro.id_usuario_atualizacao = id_usuario
-    _registrar_historico(db, registro, "SUBMISSAO", "SUBMETIDA", id_usuario, dados.comentario)
     _commit(db, "Não foi possível submeter a solicitação")
     db.refresh(registro)
     return _solicitacao_out(db, registro, detalhado=True)
@@ -546,12 +553,14 @@ def aprovar(
     db: Session, id_solicitacao: int, dados: schemas.TransicaoAlteracao, id_usuario: int
 ) -> schemas.SolicitacaoAlteracaoDetalhe:
     registro = _solicitacao(db, id_solicitacao)
-    if registro.status != "SUBMETIDA":
-        raise HTTPException(status_code=400, detail="Somente solicitações submetidas podem ser aprovadas")
+    if registro.status not in ("SUBMETIDA", "EM_ANALISE"):
+        raise HTTPException(status_code=400, detail="Somente solicitações em análise podem ser aprovadas")
+    if registro.id_usuario_solicitante == id_usuario:
+        raise HTTPException(status_code=403, detail="O solicitante não pode aprovar a própria alteração")
+    _registrar_historico(db, registro, "APROVACAO", "APROVADA", id_usuario, dados.comentario)
     registro.status = "APROVADA"
     registro.id_usuario_aprovador = id_usuario
     registro.id_usuario_atualizacao = id_usuario
-    _registrar_historico(db, registro, "APROVACAO", "APROVADA", id_usuario, dados.comentario)
     _commit(db, "Não foi possível aprovar a solicitação")
     db.refresh(registro)
     return _solicitacao_out(db, registro, detalhado=True)
@@ -561,12 +570,14 @@ def rejeitar(
     db: Session, id_solicitacao: int, dados: schemas.TransicaoAlteracao, id_usuario: int
 ) -> schemas.SolicitacaoAlteracaoDetalhe:
     registro = _solicitacao(db, id_solicitacao)
-    if registro.status != "SUBMETIDA":
-        raise HTTPException(status_code=400, detail="Somente solicitações submetidas podem ser rejeitadas")
+    if registro.status not in ("SUBMETIDA", "EM_ANALISE"):
+        raise HTTPException(status_code=400, detail="Somente solicitações em análise podem ser rejeitadas")
+    if registro.id_usuario_solicitante == id_usuario:
+        raise HTTPException(status_code=403, detail="O solicitante não pode rejeitar a própria alteração")
+    _registrar_historico(db, registro, "REJEICAO", "REJEITADA", id_usuario, dados.comentario)
     registro.status = "REJEITADA"
     registro.id_usuario_aprovador = id_usuario
     registro.id_usuario_atualizacao = id_usuario
-    _registrar_historico(db, registro, "REJEICAO", "REJEITADA", id_usuario, dados.comentario)
     _commit(db, "Não foi possível rejeitar a solicitação")
     db.refresh(registro)
     return _solicitacao_out(db, registro, detalhado=True)
@@ -578,9 +589,9 @@ def cancelar(
     registro = _solicitacao(db, id_solicitacao)
     if registro.status not in STATUS_CANCELAVEIS:
         raise HTTPException(status_code=400, detail=f"Solicitação com status {registro.status} não pode ser cancelada")
+    _registrar_historico(db, registro, "CANCELAMENTO", "CANCELADA", id_usuario, dados.comentario)
     registro.status = "CANCELADA"
     registro.id_usuario_atualizacao = id_usuario
-    _registrar_historico(db, registro, "CANCELAMENTO", "CANCELADA", id_usuario, dados.comentario)
     _commit(db, "Não foi possível cancelar a solicitação")
     db.refresh(registro)
     return _solicitacao_out(db, registro, detalhado=True)
@@ -595,10 +606,14 @@ def implantar(
     if dados.id_configuracao_resultante:
         _validar_configuracao_do_ied(db, dados.id_configuracao_resultante, registro.id_ied)
         registro.id_configuracao_resultante = dados.id_configuracao_resultante
+    if registro.prioridade == "CRITICA" and not _texto(dados.evidencia_implantacao):
+        raise HTTPException(status_code=400, detail="Alterações críticas exigem evidência de implantação")
+    _registrar_historico(db, registro, "IMPLANTACAO", "IMPLANTADA", id_usuario, dados.comentario)
     registro.status = "IMPLANTADA"
     registro.data_implantacao = dados.data_implantacao or date.today()
+    registro.id_usuario_implantador = id_usuario
+    registro.evidencia_implantacao = _texto(dados.evidencia_implantacao)
     registro.id_usuario_atualizacao = id_usuario
-    _registrar_historico(db, registro, "IMPLANTACAO", "IMPLANTADA", id_usuario, dados.comentario)
     _commit(db, "Não foi possível registrar a implantação")
     db.refresh(registro)
     return _solicitacao_out(db, registro, detalhado=True)
@@ -608,25 +623,81 @@ def validar(
     db: Session, id_solicitacao: int, dados: schemas.ValidacaoAlteracao, id_usuario: int
 ) -> schemas.SolicitacaoAlteracaoDetalhe:
     registro = _solicitacao(db, id_solicitacao)
-    if registro.status != "IMPLANTADA":
+    if registro.status not in ("IMPLANTADA", "EM_VALIDACAO"):
         raise HTTPException(status_code=400, detail="Somente solicitações implantadas podem ser validadas")
+    if id_usuario in {registro.id_usuario_solicitante, registro.id_usuario_aprovador}:
+        raise HTTPException(
+            status_code=403,
+            detail="A validação deve ser executada por usuário diferente do solicitante e do aprovador",
+        )
     if dados.id_configuracao_validada:
         _validar_configuracao_do_ied(db, dados.id_configuracao_validada, registro.id_ied)
         registro.id_configuracao_resultante = dados.id_configuracao_validada
-    registro.status = "VALIDADA" if dados.aprovado else "NAO_VALIDADA"
+    status_novo = "CONCLUIDA" if dados.aprovado else "NAO_VALIDADA"
+    _registrar_historico(
+        db,
+        registro,
+        "CONCLUSAO" if dados.aprovado else "REJEICAO_VALIDACAO",
+        status_novo,
+        id_usuario,
+        dados.comentario,
+    )
+    registro.status = status_novo
     registro.resultado_validacao = "APROVADO" if dados.aprovado else "REPROVADO"
     registro.data_validacao = dados.data_validacao or date.today()
     registro.id_usuario_validador = id_usuario
     registro.id_usuario_atualizacao = id_usuario
-    _registrar_historico(
-        db,
-        registro,
-        "VALIDACAO" if dados.aprovado else "REJEICAO_VALIDACAO",
-        registro.status,
-        id_usuario,
-        dados.comentario,
-    )
     _commit(db, "Não foi possível registrar a validação")
+    db.refresh(registro)
+    return _solicitacao_out(db, registro, detalhado=True)
+
+
+def iniciar_analise(
+    db: Session, id_solicitacao: int, dados: schemas.TransicaoAlteracao, id_usuario: int
+) -> schemas.SolicitacaoAlteracaoDetalhe:
+    registro = _solicitacao(db, id_solicitacao)
+    if registro.status != "SUBMETIDA":
+        raise HTTPException(status_code=400, detail="Somente solicitações submetidas podem entrar em análise")
+    if registro.id_usuario_solicitante == id_usuario:
+        raise HTTPException(status_code=403, detail="O solicitante não pode conduzir a própria análise")
+    _registrar_historico(db, registro, "ANALISE", "EM_ANALISE", id_usuario, dados.comentario)
+    registro.status = "EM_ANALISE"
+    registro.id_usuario_atualizacao = id_usuario
+    _commit(db, "Não foi possível iniciar a análise")
+    db.refresh(registro)
+    return _solicitacao_out(db, registro, detalhado=True)
+
+
+def iniciar_validacao(
+    db: Session, id_solicitacao: int, dados: schemas.TransicaoAlteracao, id_usuario: int
+) -> schemas.SolicitacaoAlteracaoDetalhe:
+    registro = _solicitacao(db, id_solicitacao)
+    if registro.status != "IMPLANTADA":
+        raise HTTPException(status_code=400, detail="Somente solicitações implantadas podem entrar em validação")
+    if id_usuario in {registro.id_usuario_solicitante, registro.id_usuario_aprovador}:
+        raise HTTPException(status_code=403, detail="A validação exige segregação entre solicitante e aprovador")
+    _registrar_historico(db, registro, "INICIO_VALIDACAO", "EM_VALIDACAO", id_usuario, dados.comentario)
+    registro.status = "EM_VALIDACAO"
+    registro.id_usuario_atualizacao = id_usuario
+    _commit(db, "Não foi possível iniciar a validação")
+    db.refresh(registro)
+    return _solicitacao_out(db, registro, detalhado=True)
+
+
+def reverter(
+    db: Session, id_solicitacao: int, dados: schemas.ReversaoAlteracao, id_usuario: int
+) -> schemas.SolicitacaoAlteracaoDetalhe:
+    registro = _solicitacao(db, id_solicitacao)
+    if registro.status not in ("IMPLANTADA", "EM_VALIDACAO", "CONCLUIDA", "NAO_VALIDADA"):
+        raise HTTPException(status_code=400, detail="A alteração ainda não pode ser revertida")
+    _validar_configuracao_do_ied(db, dados.id_configuracao_rollback, registro.id_ied)
+    _registrar_historico(db, registro, "REVERSAO", "REVERTIDA", id_usuario, dados.motivo)
+    registro.status = "REVERTIDA"
+    registro.id_configuracao_rollback = dados.id_configuracao_rollback
+    registro.id_usuario_reversao = id_usuario
+    registro.data_reversao = dados.data_reversao or date.today()
+    registro.id_usuario_atualizacao = id_usuario
+    _commit(db, "Não foi possível registrar a reversão")
     db.refresh(registro)
     return _solicitacao_out(db, registro, detalhado=True)
 

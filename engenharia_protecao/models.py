@@ -511,8 +511,8 @@ class SolicitacaoAlteracao(Base):
             name="ck_solicitacao_alteracao_prioridade",
         ),
         CheckConstraint(
-            "status IN ('RASCUNHO','SUBMETIDA','APROVADA','REJEITADA','IMPLANTADA',"
-            "'VALIDADA','NAO_VALIDADA','CANCELADA')",
+            "status IN ('RASCUNHO','SUBMETIDA','EM_ANALISE','APROVADA','REJEITADA','IMPLANTADA',"
+            "'EM_VALIDACAO','VALIDADA','NAO_VALIDADA','CONCLUIDA','CANCELADA','REVERTIDA')",
             name="ck_solicitacao_alteracao_status",
         ),
         CheckConstraint(
@@ -558,7 +558,17 @@ class SolicitacaoAlteracao(Base):
     resultado_validacao = Column(String(20), nullable=True)
     id_usuario_solicitante = Column(Integer, ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False, index=True)
     id_usuario_aprovador = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    id_usuario_implantador = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     id_usuario_validador = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    id_usuario_reversao = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    id_configuracao_rollback = Column(
+        Integer,
+        ForeignKey("ied_configuracao.id_ied_configuracao", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    data_reversao = Column(Date, nullable=True)
+    evidencia_implantacao = Column(Text, nullable=True)
     versao = Column(Integer, nullable=False, default=1, server_default="1")
     id_usuario_criacao = Column(Integer, ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False)
     id_usuario_atualizacao = Column(Integer, ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False)
@@ -615,8 +625,9 @@ class AlteracaoHistorico(Base):
     __tablename__ = "alteracao_historico"
     __table_args__ = (
         CheckConstraint(
-            "acao IN ('CRIACAO','ATUALIZACAO','SUBMISSAO','APROVACAO','REJEICAO',"
-            "'IMPLANTACAO','VALIDACAO','REJEICAO_VALIDACAO','CANCELAMENTO')",
+            "acao IN ('CRIACAO','ATUALIZACAO','SUBMISSAO','ANALISE','APROVACAO','REJEICAO',"
+            "'IMPLANTACAO','INICIO_VALIDACAO','VALIDACAO','CONCLUSAO','REJEICAO_VALIDACAO',"
+            "'CANCELAMENTO','REVERSAO')",
             name="ck_alteracao_historico_acao",
         ),
         MYSQL_ARGS,
@@ -1161,3 +1172,28 @@ class IEDRelatorioArquivo(Base):
 
     relatorio = relationship("IEDRelatorio", back_populates="arquivos")
     arquivo = relationship("Arquivo")
+
+
+class EngenhariaProtecaoAuditoria(Base):
+    """Trilha imutável das operações sensíveis do módulo."""
+
+    __tablename__ = "engenharia_protecao_auditoria"
+    __table_args__ = (
+        Index("ix_eng_protecao_auditoria_data", "criado_em"),
+        Index("ix_eng_protecao_auditoria_usuario_data", "id_usuario", "criado_em"),
+        Index("ix_eng_protecao_auditoria_recurso", "recurso", "id_recurso"),
+        MYSQL_ARGS,
+    )
+
+    id_engenharia_protecao_auditoria = Column(Integer, primary_key=True, autoincrement=True)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
+    acao = Column(String(30), nullable=False, index=True)
+    metodo = Column(String(10), nullable=False)
+    caminho = Column(String(500), nullable=False)
+    recurso = Column(String(100), nullable=True, index=True)
+    id_recurso = Column(String(100), nullable=True)
+    status_http = Column(Integer, nullable=False, index=True)
+    endereco_ip = Column(String(64), nullable=True)
+    user_agent = Column(String(300), nullable=True)
+    detalhes = Column(Text, nullable=True)
+    criado_em = Column(DateTime, nullable=False, server_default=func.now())

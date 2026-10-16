@@ -6,8 +6,9 @@ com guarda). Este módulo garante que elas sejam efetivamente aplicadas na subid
 da aplicação e registradas em ``engenharia_protecao_migracao`` — substituindo a
 dependência exclusiva de ``Base.metadata.create_all``.
 
-Uma falha em uma migração **não** derruba a aplicação: é registrada como aviso,
-pois o ``create_all`` continua garantindo o esquema mínimo.
+Uma falha interrompe a subida da aplicação. ``create_all`` não altera tabelas já
+existentes e, portanto, seguir com uma migração parcial deixaria a API executando
+contra um esquema incompatível com os modelos.
 """
 
 from __future__ import annotations
@@ -67,9 +68,10 @@ def aplicar_migracoes(db: Session, pasta: Path | None = None) -> list[str]:
             )
             db.commit()
             registradas.append(arquivo.name)
-        except Exception as exc:  # noqa: BLE001 - best-effort, nunca derruba a subida
+        except Exception as exc:  # noqa: BLE001 - registra contexto e falha rápido
             db.rollback()
-            LOGGER.warning("Falha ao aplicar a migração %s: %s", arquivo.name, exc)
+            LOGGER.exception("Falha ao aplicar a migração %s", arquivo.name)
+            raise RuntimeError(f"Falha ao aplicar a migração {arquivo.name}") from exc
 
     if registradas:
         LOGGER.info("Migrações de Proteção aplicadas: %s", ", ".join(registradas))

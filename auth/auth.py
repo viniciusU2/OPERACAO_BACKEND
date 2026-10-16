@@ -114,7 +114,16 @@ def listar_usuarios(
 @router.get("/usuarios/ativos", response_model=list[schemas.UsuarioAtivoOption])
 def listar_usuarios_ativos(
     db: Session = Depends(get_db),
-    _usuario=Depends(require_roles("admin", "mantenedor", "operador")),
+    _usuario=Depends(
+        require_roles(
+            "admin",
+            "mantenedor",
+            "operador",
+            "engenheiro_protecao",
+            "tecnico_manutencao",
+            "auditor",
+        )
+    ),
 ):
     garantir_colunas_usuarios(db)
     return (
@@ -142,7 +151,15 @@ def atualizar_usuario_admin(
 
     if "role" in payload:
         role = (payload["role"] or "usuario").strip().lower()
-        if role not in ["admin", "mantenedor", "operador", "usuario"]:
+        if role not in [
+            "admin",
+            "mantenedor",
+            "operador",
+            "usuario",
+            "engenheiro_protecao",
+            "tecnico_manutencao",
+            "auditor",
+        ]:
             raise HTTPException(status_code=400, detail="Perfil invalido")
         if usuario_id == usuario_admin.id and role != "admin":
             raise HTTPException(
