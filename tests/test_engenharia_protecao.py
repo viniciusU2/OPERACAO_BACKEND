@@ -56,6 +56,44 @@ class EngenhariaProtecaoModelTests(unittest.TestCase):
         self.assertIn("modelo_ied.id_modelo_ied", destinos)
         self.assertIn("ativo.id_ativo", destinos)
 
+    def test_ied_possui_cascata_para_os_filhos(self):
+        """A exclusão do IED depende do cascade do ORM/DB para não deixar órfãos."""
+        relacoes_com_cascata = {
+            "instalacoes",
+            "modulos",
+            "firmwares",
+            "equipamentos",
+            "funcoes",
+            "grupos_ajuste",
+            "configuracoes",
+            "alteracoes",
+            "interfaces_comunicacao",
+            "goose_controles",
+            "circuitos",
+            "sinais",
+            "ensaios",
+            "ocorrencias",
+            "oscilografias",
+            "relatorios",
+        }
+        # `_props` é preenchido na construção do mapper e não dispara
+        # `configure_mappers()` (que exigiria importar todos os modelos do ENGVI).
+        props = models.IED.__mapper__._props
+        for nome in relacoes_com_cascata:
+            self.assertIn(nome, props, f"relacionamento {nome} ausente no IED")
+            self.assertIn("delete", props[nome].cascade, f"{nome} sem cascade de exclusão")
+
+
+class EngenhariaProtecaoRemocaoIEDTests(unittest.TestCase):
+    def test_remocao_de_ied_esta_disponivel_no_service(self):
+        self.assertTrue(callable(service.remover_ied))
+
+    def test_schema_de_remocao_expoe_o_resultado(self):
+        dados = schemas.IEDRemocaoOut(id_ied=8, tag_operacional="21C2-GOR", arquivos_removidos=3)
+        self.assertEqual(dados.id_ied, 8)
+        self.assertEqual(dados.tag_operacional, "21C2-GOR")
+        self.assertEqual(dados.arquivos_removidos, 3)
+
 
 if __name__ == "__main__":
     unittest.main()

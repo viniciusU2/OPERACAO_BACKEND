@@ -129,6 +129,12 @@ class IEDLista(SchemaBase):
     items: list[IEDResumo]
 
 
+class IEDRemocaoOut(SchemaBase):
+    id_ied: int
+    tag_operacional: str
+    arquivos_removidos: int
+
+
 class InstalacaoOut(SchemaBase):
     id_ied_instalacao: int
     id_subestacao: int

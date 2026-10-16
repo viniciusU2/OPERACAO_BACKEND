@@ -922,14 +922,18 @@ def _agrupar_fotos_por_ativo(
     def chave_ordenacao(foto):
         revisao = revisoes.get(foto[0], {})
         fase = _normalizar(str(revisao.get("fase") or "")).replace(" ", "")
+        ordem_item = revisao.get("item_ordem")
+        id_item = revisao.get("item_id")
         return (
             _normalizar(str(revisao.get("ativo") or "")),
-            _normalizar(str(revisao.get("item") or "")),
+            ordem_item if ordem_item is not None else float("inf"),
+            id_item if id_item is not None else float("inf"),
             ordem_fases.get(fase, 99),
             fase,
+            _normalizar(str(revisao.get("item") or "")),
         )
 
-    # Dentro de cada ativo: item do plano e depois AZ -> BR -> VM.
+    # Dentro de cada ativo: sequencia cadastrada no plano e depois AZ -> BR -> VM.
     validas.sort(key=chave_ordenacao)
     grupos: dict[str, list[tuple[str, bytes]]] = {}
     for nome, conteudo in validas:
@@ -1200,6 +1204,16 @@ def gerar_relatorio_word(
 
             "item":
                 foto.plano_item.nome_item
+                if foto.plano_item
+                else None,
+
+            "item_ordem":
+                foto.plano_item.ordem
+                if foto.plano_item
+                else None,
+
+            "item_id":
+                foto.plano_item.id_plano_item
                 if foto.plano_item
                 else None,
 

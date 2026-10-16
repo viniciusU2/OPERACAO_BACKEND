@@ -916,18 +916,22 @@ def _arquivo_em_uso(db: Session, id_arquivo: int) -> bool:
     )
 
 
-def _remover_arquivo_orfao(db: Session, id_arquivo: int) -> None:
-    """Remove o arquivo fisico e o registro quando nao houver mais vinculos."""
+def _remover_arquivo_orfao(db: Session, id_arquivo: int) -> bool:
+    """Remove o arquivo físico e o registro quando não houver mais vínculos.
+
+    Retorna True quando o registro foi removido.
+    """
     if _arquivo_em_uso(db, id_arquivo):
-        return
+        return False
     arquivo = db.query(models.Arquivo).filter(models.Arquivo.id_arquivo == id_arquivo).first()
     if not arquivo:
-        return
+        return False
     try:
         Path(arquivo.caminho).unlink(missing_ok=True)
     except OSError:
         pass
     db.delete(arquivo)
+    return True
 
 
 def remover_arquivo_configuracao(

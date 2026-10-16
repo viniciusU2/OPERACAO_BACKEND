@@ -132,6 +132,16 @@ def atualizar_ied(
     return service.atualizar_ied(db, id_ied, dados, usuario.id)
 
 
+@router.delete("/ieds/{id_ied}", response_model=schemas.IEDRemocaoOut)
+def remover_ied(
+    id_ied: int,
+    db: Session = Depends(get_db),
+    _usuario: Usuario = Depends(require_roles("admin")),
+):
+    """Remove o IED e todos os dados do módulo. Operação restrita ao perfil admin."""
+    return service.remover_ied(db, id_ied)
+
+
 @router.post("/ieds/{id_ied}/movimentacoes", response_model=schemas.IEDDetalhe)
 def movimentar_ied(
     id_ied: int,

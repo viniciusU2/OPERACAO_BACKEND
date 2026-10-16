@@ -303,12 +303,28 @@ def baixar_word(
     if not Path(relatorio.caminho_arquivo).is_file():
         raise HTTPException(404, "Arquivo fonte do relatorio nao encontrado.")
     try:
+        fotos_revisadas = (
+            db.query(RelatorioManutencaoFoto)
+            .outerjoin(
+                PlanoItem,
+                RelatorioManutencaoFoto.id_plano_item == PlanoItem.id_plano_item,
+            )
+            .filter(
+                RelatorioManutencaoFoto.id_relatorio_manutencao == id_relatorio_manutencao
+            )
+            .order_by(
+                PlanoItem.ordem.asc(),
+                PlanoItem.id_plano_item.asc(),
+                RelatorioManutencaoFoto.id_relatorio_manutencao_foto.asc(),
+            )
+            .all()
+        )
         caminho = gerar_relatorio_word(
             relatorio,
             relatorio.tipo_ativo.nome,
             relatorio.subestacao.nome,
             relatorio.usuario_envio.nome,
-            db.query(RelatorioManutencaoFoto).filter(RelatorioManutencaoFoto.id_relatorio_manutencao == id_relatorio_manutencao).all(),
+            fotos_revisadas,
             corpo_tecnico=json.loads(relatorio.corpo_tecnico_json) if relatorio.corpo_tecnico_json else None,
             numero_os=relatorio.numero_os or "", numero_apr=relatorio.numero_apr or "",
             periodo_capa=relatorio.periodo_capa or "", concessao=relatorio.concessao or "Rialma Transmissora de Energia - RTV",

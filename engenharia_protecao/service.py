@@ -14,6 +14,7 @@ from models.fo import FuncaoOperacao
 from models.instalacao_models import Subestacao
 
 from . import models, schemas
+from .service_config import _remover_arquivo_orfao
 
 
 def _texto(valor: str | None) -> str | None:
@@ -530,6 +531,62 @@ def obter_ied(db: Session, id_ied: int):
         firmwares=firmwares,
         equipamentos=equipamentos_saida,
     )
+
+
+def _arquivos_do_ied(db: Session, id_ied: int) -> set[int]:
+    """Coleta os arquivos vinculados ao IED antes da remoção em cascata."""
+    consultas = (
+        db.query(models.ConfiguracaoArquivo.id_arquivo)
+        .join(
+            models.IEDConfiguracao,
+            models.IEDConfiguracao.id_ied_configuracao == models.ConfiguracaoArquivo.id_ied_configuracao,
+        )
+        .filter(models.IEDConfiguracao.id_ied == id_ied),
+        db.query(models.IEDEnsaioArquivo.id_arquivo)
+        .join(models.IEDEnsaio, models.IEDEnsaio.id_ied_ensaio == models.IEDEnsaioArquivo.id_ied_ensaio)
+        .filter(models.IEDEnsaio.id_ied == id_ied),
+        db.query(models.IEDOcorrenciaArquivo.id_arquivo)
+        .join(
+            models.IEDOcorrencia,
+            models.IEDOcorrencia.id_ied_ocorrencia == models.IEDOcorrenciaArquivo.id_ied_ocorrencia,
+        )
+        .filter(models.IEDOcorrencia.id_ied == id_ied),
+        db.query(models.IEDOscilografiaArquivo.id_arquivo)
+        .join(
+            models.IEDOscilografia,
+            models.IEDOscilografia.id_ied_oscilografia == models.IEDOscilografiaArquivo.id_ied_oscilografia,
+        )
+        .filter(models.IEDOscilografia.id_ied == id_ied),
+        db.query(models.IEDRelatorioArquivo.id_arquivo)
+        .join(
+            models.IEDRelatorio,
+            models.IEDRelatorio.id_ied_relatorio == models.IEDRelatorioArquivo.id_ied_relatorio,
+        )
+        .filter(models.IEDRelatorio.id_ied == id_ied),
+    )
+    ids: set[int] = set()
+    for consulta in consultas:
+        ids.update(linha[0] for linha in consulta.all())
+    return ids
+
+
+def remover_ied(db: Session, id_ied: int) -> schemas.IEDRemocaoOut:
+    """Remove um IED e todos os dados do módulo ligados a ele (não remove o ativo).
+
+    As chaves estrangeiras do módulo usam ON DELETE CASCADE, então a remoção do
+    registro em ``ied`` propaga para instalações, módulos, firmwares, equipamentos,
+    funções, grupos e parâmetros, configurações, alterações, comunicação, circuitos,
+    sinais, ensaios, ocorrências, oscilografias e relatórios. Os arquivos (tabela
+    ``arquivo``) não participam da cascata e são limpos aqui.
+    """
+    ied = _ied(db, id_ied)
+    tag = ied.tag_operacional
+    arquivos = _arquivos_do_ied(db, id_ied)
+    db.query(models.IED).filter(models.IED.id_ied == id_ied).delete(synchronize_session=False)
+    db.commit()
+    removidos = sum(1 for id_arquivo in arquivos if _remover_arquivo_orfao(db, id_arquivo))
+    db.commit()
+    return schemas.IEDRemocaoOut(id_ied=id_ied, tag_operacional=tag, arquivos_removidos=removidos)
 
 
 def dashboard(db: Session):
