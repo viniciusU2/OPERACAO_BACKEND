@@ -11,3 +11,9 @@ dist/
 temp/
 saida/
 .env
+
+# Logs e caches
+*.log
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

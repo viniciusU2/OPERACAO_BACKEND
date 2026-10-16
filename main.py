@@ -37,6 +37,8 @@ from models import fo
 from models import planning_resource_models
 from csd_monitor.database.models import Base as CsdBase
 from csd_monitor import routes as csd_monitor_routes
+from engenharia_protecao import routes as engenharia_protecao_routes
+from engenharia_protecao import migracoes as engenharia_protecao_migracoes
 
 
 
@@ -77,6 +79,8 @@ try:
     solicitcao_intervencao.garantir_tabela_liberacoes_si(db)
     ativos.garantir_colunas_torre(db)
     funcao_operacao.service.garantir_estrutura_funcao_operacao(db)
+    engenharia_protecao_routes.garantir_catalogo_funcoes_ansi(db)
+    engenharia_protecao_migracoes.aplicar_migracoes(db)
     inspecoes.garantir_colunas_inspecao(db)
     coluna_numero_ss_os = db.execute(
         text("SHOW COLUMNS FROM ordem_servico LIKE 'numero_ss'")
@@ -153,6 +157,7 @@ app.include_router(problemas_tipicos_routes.router)
 app.include_router(relatorio_manutencao_analysis_routes.router)
 app.include_router(relatorio_manutencao_routes.router)
 app.include_router(csd_monitor_routes.router)
+app.include_router(engenharia_protecao_routes.router)
 
 
 

@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - "engenharia_protecao/**"
+      - "migrations/**"
+      - "tests/**"
+      - "main.py"
+      - "requirements.txt"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "engenharia_protecao/**"
+      - "migrations/**"
+      - "tests/**"
+      - "main.py"
+
+jobs:
+  testes-engenharia-protecao:
+    runs-on: ubuntu-latest
+    env:
+      # As dependências importam `database.py`, que exige DATABASE_URL no import.
+      # Nenhuma conexão real é aberta nos testes de unidade.
+      DATABASE_URL: mysql+pymysql://ci:ci@127.0.0.1:3306/ci
+      SECRET_KEY: ci-secret
+      ENGENHARIA_PROTECAO_UPLOAD_DIR: ${{ runner.temp }}/engenharia-protecao
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+      - name: Testes de unidade da Engenharia de Proteção
+        run: python -m unittest discover -s tests -p "test_engenharia_protecao*.py" -v
