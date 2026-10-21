@@ -49,6 +49,7 @@ router = APIRouter(prefix="/sobreaviso", tags=["Sobreaviso"])
 
 STATUS_VALIDOS = {"PLANEJADO", "PENDENTE", "APROVADO", "REPROVADO", "CANCELADO"}
 ORIGENS_VALIDAS = {"ADMIN", "GESTOR", "COLABORADOR", "IMPORTACAO"}
+PERFIS_GESTAO_SOBREAVISO = {"admin", "mantenedor"}
 STATUS_INATIVOS_PARA_CONFLITO = {"CANCELADO", "REPROVADO"}
 DIAS_SEMANA = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"]
 MESES_PT = [
@@ -179,6 +180,53 @@ def buscar_sobreaviso_ou_404(db: Session, id_sobreaviso: int) -> SobreavisoPerio
     if not sobreaviso:
         raise HTTPException(status_code=404, detail="Sobreaviso nao encontrado")
     return sobreaviso
+
+
+def usuario_gerencia_sobreaviso(usuario: Usuario) -> bool:
+    """Admin e mantenedor pesquisam toda a escala; os demais perfis, so o proprio."""
+    return (usuario.role or "").strip().lower() in PERFIS_GESTAO_SOBREAVISO
+
+
+def colaborador_do_usuario(
+    db: Session,
+    usuario: Usuario,
+) -> Optional[SobreavisoColaborador]:
+    return (
+        db.query(SobreavisoColaborador)
+        .filter(SobreavisoColaborador.id_usuario == usuario.id)
+        .first()
+    )
+
+
+def id_colaborador_do_usuario(db: Session, usuario: Usuario) -> Optional[int]:
+    colaborador = colaborador_do_usuario(db, usuario)
+    return colaborador.id_colaborador if colaborador else None
+
+
+def validar_acesso_sobreaviso(sobreaviso: SobreavisoPeriodo, usuario: Usuario):
+    if usuario_gerencia_sobreaviso(usuario):
+        return
+    colaborador = sobreaviso.colaborador
+    if not colaborador or colaborador.id_usuario != usuario.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Voce so pode acessar os seus proprios sobreavisos",
+        )
+
+
+def exigir_proprio_colaborador(
+    db: Session,
+    usuario: Usuario,
+    id_colaborador: int,
+):
+    if usuario_gerencia_sobreaviso(usuario):
+        return
+    proprio = id_colaborador_do_usuario(db, usuario)
+    if proprio is None or proprio != id_colaborador:
+        raise HTTPException(
+            status_code=403,
+            detail="Voce so pode cadastrar sobreaviso para o seu proprio perfil",
+        )
 
 
 def existe_sobreposicao(
@@ -840,6 +888,9 @@ def listar_colaboradores(
             )
         )
     )
+    if not usuario_gerencia_sobreaviso(_usuario):
+        # O operador so pode pesquisar/selecionar o proprio perfil.
+        query = query.filter(SobreavisoColaborador.id_usuario == _usuario.id)
     if id_equipe:
         query = query.filter(SobreavisoColaborador.id_equipe == id_equipe)
     if ativo is not None:
@@ -976,6 +1027,11 @@ def listar_sobreavisos(
 ):
     sincronizar_colaboradores_usuarios(db)
     query = db.query(SobreavisoPeriodo).options(selectinload(SobreavisoPeriodo.colaborador))
+    if not usuario_gerencia_sobreaviso(_usuario):
+        proprio = id_colaborador_do_usuario(db, _usuario)
+        if proprio is None:
+            return []
+        query = query.filter(SobreavisoPeriodo.id_colaborador == proprio)
     query = aplicar_filtros_sobreaviso(query, data_inicio, data_fim, id_equipe, id_colaborador, status, busca)
     return query.order_by(SobreavisoPeriodo.inicio.desc(), SobreavisoPeriodo.id_sobreaviso.desc()).all()
 
@@ -989,6 +1045,11 @@ def listar_calendario(
     _usuario=Depends(require_roles("admin", "mantenedor", "operador")),
 ):
     query = db.query(SobreavisoPeriodo).options(selectinload(SobreavisoPeriodo.colaborador))
+    if not usuario_gerencia_sobreaviso(_usuario):
+        proprio = id_colaborador_do_usuario(db, _usuario)
+        if proprio is None:
+            return []
+        query = query.filter(SobreavisoPeriodo.id_colaborador == proprio)
     query = aplicar_filtros_sobreaviso(query, data_inicio, data_fim, id_equipe, None, None, None)
     return query.order_by(SobreavisoPeriodo.inicio).all()
 
@@ -998,13 +1059,17 @@ def listar_pendentes(
     db: Session = Depends(get_db),
     _usuario=Depends(require_roles("admin", "mantenedor", "operador")),
 ):
-    return (
+    query = (
         db.query(SobreavisoPeriodo)
         .options(selectinload(SobreavisoPeriodo.colaborador))
         .filter(SobreavisoPeriodo.status == "PENDENTE")
-        .order_by(SobreavisoPeriodo.inicio)
-        .all()
     )
+    if not usuario_gerencia_sobreaviso(_usuario):
+        proprio = id_colaborador_do_usuario(db, _usuario)
+        if proprio is None:
+            return []
+        query = query.filter(SobreavisoPeriodo.id_colaborador == proprio)
+    return query.order_by(SobreavisoPeriodo.inicio).all()
 
 
 @router.get("/relatorios/resumo", response_model=ResumoSobreavisoResponse)
@@ -1016,6 +1081,17 @@ def resumo_sobreavisos(
     _usuario=Depends(require_roles("admin", "mantenedor", "operador")),
 ):
     query = db.query(SobreavisoPeriodo).options(selectinload(SobreavisoPeriodo.colaborador))
+    if not usuario_gerencia_sobreaviso(_usuario):
+        proprio = id_colaborador_do_usuario(db, _usuario)
+        if proprio is None:
+            return {
+                "total_horas": Decimal("0"),
+                "total_aprovadas": Decimal("0"),
+                "pendentes": 0,
+                "planejados": 0,
+                "colaboradores": 0,
+            }
+        query = query.filter(SobreavisoPeriodo.id_colaborador == proprio)
     query = aplicar_filtros_sobreaviso(query, data_inicio, data_fim, id_equipe, None, None, None)
     itens = query.all()
     total_horas = sum((item.total_horas or Decimal("0")) for item in itens if item.status != "CANCELADO")
@@ -1051,6 +1127,17 @@ def listar_solicitacoes_ajuste(
     _usuario=Depends(require_roles("admin", "mantenedor", "operador")),
 ):
     query = db.query(SobreavisoSolicitacaoAjuste)
+    if not usuario_gerencia_sobreaviso(_usuario):
+        proprio = id_colaborador_do_usuario(db, _usuario)
+        if proprio is None:
+            return []
+        query = (
+            query.join(
+                SobreavisoPeriodo,
+                SobreavisoSolicitacaoAjuste.id_sobreaviso == SobreavisoPeriodo.id_sobreaviso,
+            )
+            .filter(SobreavisoPeriodo.id_colaborador == proprio)
+        )
     if status and status != "all":
         query = query.filter(SobreavisoSolicitacaoAjuste.status == status.upper())
     return query.order_by(SobreavisoSolicitacaoAjuste.criado_em.desc()).all()
@@ -1066,6 +1153,7 @@ def exportar_folha_ponto_sobreaviso(
 ):
     if data_fim < data_inicio:
         raise HTTPException(status_code=400, detail="Data final deve ser maior ou igual a data inicial")
+    exigir_proprio_colaborador(db, _usuario, id_colaborador)
 
     colaborador = buscar_colaborador_ou_404(db, id_colaborador)
     sobreavisos = (
@@ -1108,6 +1196,11 @@ def exportar_escala_geral_sobreaviso(
 ):
     if data_fim < data_inicio:
         raise HTTPException(status_code=400, detail="Data final deve ser maior ou igual a data inicial")
+    if not usuario_gerencia_sobreaviso(_usuario):
+        raise HTTPException(
+            status_code=403,
+            detail="A escala geral esta disponivel apenas para admin e mantenedor",
+        )
     if (data_fim.date() - data_inicio.date()).days > 62:
         raise HTTPException(status_code=400, detail="O relatorio geral aceita no maximo 63 dias")
 
@@ -1168,7 +1261,9 @@ def buscar_sobreaviso(
     db: Session = Depends(get_db),
     _usuario=Depends(require_roles("admin", "mantenedor", "operador")),
 ):
-    return buscar_sobreaviso_ou_404(db, id_sobreaviso)
+    sobreaviso = buscar_sobreaviso_ou_404(db, id_sobreaviso)
+    validar_acesso_sobreaviso(sobreaviso, _usuario)
+    return sobreaviso
 
 
 @router.post("/", response_model=SobreavisoResponse, status_code=201)
@@ -1178,8 +1273,9 @@ def criar_sobreaviso(
     usuario: Usuario = Depends(require_roles("admin", "mantenedor", "operador")),
 ):
     buscar_colaborador_ou_404(db, dados.id_colaborador, exigir_ativo=True)
-    status = normalizar_status(dados.status)
-    origem = normalizar_origem(dados.origem)
+    exigir_proprio_colaborador(db, usuario, dados.id_colaborador)
+    status = normalizar_status(dados.status if usuario_gerencia_sobreaviso(usuario) else "PENDENTE")
+    origem = normalizar_origem(dados.origem if usuario_gerencia_sobreaviso(usuario) else "COLABORADOR")
 
     if existe_sobreposicao(db, dados.id_colaborador, dados.inicio, dados.fim):
         raise HTTPException(status_code=400, detail="Ja existe sobreaviso no mesmo periodo para este colaborador")
@@ -1221,12 +1317,18 @@ def atualizar_sobreaviso(
     usuario: Usuario = Depends(require_roles("admin", "mantenedor", "operador")),
 ):
     sobreaviso = buscar_sobreaviso_ou_404(db, id_sobreaviso)
+    validar_acesso_sobreaviso(sobreaviso, usuario)
     payload = dados.model_dump(exclude_unset=True)
+    if not usuario_gerencia_sobreaviso(usuario):
+        # Operador nao altera o colaborador, o status nem a origem pela API.
+        payload.pop("status", None)
+        payload.pop("origem", None)
     id_colaborador = payload.get("id_colaborador", sobreaviso.id_colaborador)
     inicio = payload.get("inicio", sobreaviso.inicio)
     fim = payload.get("fim", sobreaviso.fim)
 
     buscar_colaborador_ou_404(db, id_colaborador, exigir_ativo=True)
+    exigir_proprio_colaborador(db, usuario, id_colaborador)
     if existe_sobreposicao(db, id_colaborador, inicio, fim, id_sobreaviso):
         raise HTTPException(status_code=400, detail="Ja existe sobreaviso no mesmo periodo para este colaborador")
 
@@ -1344,6 +1446,7 @@ def alterar_status_sobreaviso(
     usuario: Usuario,
 ):
     sobreaviso = buscar_sobreaviso_ou_404(db, id_sobreaviso)
+    validar_acesso_sobreaviso(sobreaviso, usuario)
     anterior = {"status": sobreaviso.status, "justificativa": sobreaviso.justificativa}
     sobreaviso.status = status
     if justificativa:
@@ -1402,6 +1505,7 @@ def solicitar_ajuste(
     usuario: Usuario = Depends(require_roles("admin", "mantenedor", "operador")),
 ):
     sobreaviso = buscar_sobreaviso_ou_404(db, id_sobreaviso)
+    validar_acesso_sobreaviso(sobreaviso, usuario)
     if existe_sobreposicao(
         db,
         sobreaviso.id_colaborador,
@@ -1451,6 +1555,7 @@ def avaliar_solicitacao(
         raise HTTPException(status_code=400, detail="Solicitacao ja avaliada")
 
     sobreaviso = buscar_sobreaviso_ou_404(db, solicitacao.id_sobreaviso)
+    validar_acesso_sobreaviso(sobreaviso, usuario)
     if status == "APROVADA":
         if existe_sobreposicao(
             db,
