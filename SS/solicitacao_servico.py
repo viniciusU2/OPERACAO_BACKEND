@@ -54,9 +54,6 @@ def garantir_colunas_ss(db: Session):
     db.commit()
     _ESTRUTURA_SS_GARANTIDA = True
 
-SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
-
-
 MAPEAMENTO_CELULAS = {
     "NUM_SS": "H1",
     "DT_SOLICITACAO": "A4",
@@ -106,28 +103,34 @@ def set_valor_seguro(ws, celula, valor):
     ws[celula] = valor
 
 
-def sigla_por_ativo(db: Session, id_ativo: int | None):
-    if not id_ativo:
-        return "GERAL"
+def sigla_por_subestacao(db: Session, id_subestacao: int | None) -> str:
+    """Deriva a sigla do cadastro da instalacao, sem usar prefixo GERAL.
 
-    ativo = db.query(Ativo).filter(Ativo.id_ativo == id_ativo).first()
-    if not ativo or not ativo.id_subestacao:
-        return "GERAL"
-
-    try:
-        return SUBESTACOES_SIGLAS[ativo.id_subestacao - 1]
-    except IndexError:
-        return "GERAL"
-
-
-def sigla_por_subestacao(id_subestacao: int | None):
+    A numeracao da SS precisa identificar a instalacao mesmo quando o documento
+    e aberto por grupo/ativo (sem id_ativo individual). O fallback pelo id do
+    ativo gerava "SS-GERAL-..." para qualquer instalacao fora da lista fixa.
+    """
     if not id_subestacao:
-        return "GERAL"
+        raise HTTPException(400, "Selecione a instalacao para gerar o numero da SS")
 
-    try:
-        return SUBESTACOES_SIGLAS[id_subestacao - 1]
-    except IndexError:
-        return "GERAL"
+    subestacao = db.query(Subestacao).filter(
+        Subestacao.id_subestacao == id_subestacao
+    ).first()
+    if not subestacao:
+        raise HTTPException(400, "Instalacao invalida para gerar o numero da SS")
+
+    sigla = str(getattr(subestacao, "sigla", "") or "").strip().upper()
+    if not sigla or sigla == "GERAL":
+        raise HTTPException(400, "Nao foi possivel definir a sigla da instalacao")
+
+    circuito = re.search(
+        r"\bC\s*[-_]?\s*(\d+)\b",
+        str(subestacao.nome or ""),
+        re.IGNORECASE,
+    )
+    if circuito:
+        sigla = f"{sigla}-C{circuito.group(1)}"
+    return sigla
 
 
 def gerar_numero_ss(db: Session, sigla: str):
@@ -251,13 +254,9 @@ def criar_ss(ss: SolicitacaoServicoCreate, db: Session = Depends(get_db)):
     validar_selecao_ativo(db, data.get("id_subestacao"), data.get("id_funcao_operacao"), data.get("id_grupo_ativo"), data.get("escopo_ativo"), data.get("id_ativo"))
     id_subestacao = data.pop("id_subestacao", None)
     if not data.get("numero_ss"):
-        sigla = sigla_por_subestacao(id_subestacao)
-        if sigla == "GERAL":
-            sigla = sigla_por_ativo(db, data.get("id_ativo"))
-
         data["numero_ss"] = gerar_numero_ss(
             db,
-            sigla,
+            sigla_por_subestacao(db, id_subestacao),
         )
 
     nova_ss = SolicitacaoServico(**data)
@@ -492,7 +491,21 @@ def editar_ss(
         raise HTTPException(404, "SS nao encontrada")
 
     alteracoes = dados.model_dump(exclude_unset=True)
+    id_subestacao_informada = alteracoes.pop("id_subestacao", None)
     problemas = alteracoes.pop("problemas", None)
+
+    # O id_subestacao da SS e derivado do ativo/grupo (propriedade no model),
+    # portanto nao pode ser gravado diretamente. Ele e usado aqui para validar
+    # que o ativo/grupo escolhido na edicao pertence a instalacao selecionada.
+    validar_selecao_ativo(
+        db,
+        id_subestacao_informada,
+        alteracoes.get("id_funcao_operacao", ss.id_funcao_operacao),
+        alteracoes.get("id_grupo_ativo", ss.id_grupo_ativo),
+        alteracoes.get("escopo_ativo", ss.escopo_ativo),
+        alteracoes.get("id_ativo", ss.id_ativo),
+    )
+
     for campo, valor in alteracoes.items():
         if campo == "emissor":
             continue

@@ -129,6 +129,13 @@ def grupos_por_funcao(db: Session, id_funcao_operacao: int):
 
 
 def validar_selecao_ativo(db: Session, id_subestacao: int | None, id_funcao_operacao: int | None, id_grupo_ativo: int | None, escopo_ativo: str | None, id_ativo: int | None):
+    if id_ativo:
+        ativo = db.query(Ativo).filter(Ativo.id_ativo == id_ativo).first()
+        if not ativo:
+            raise HTTPException(400, "Ativo invalido")
+        if id_subestacao and ativo.id_subestacao != id_subestacao:
+            raise HTTPException(400, "O ativo nao pertence a subestacao selecionada")
+
     if not id_grupo_ativo and not escopo_ativo:
         return  # compatibilidade: documento historico com apenas id_ativo
     if escopo_ativo not in {"GRUPO", "FASE"}:

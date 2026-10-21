@@ -115,7 +115,9 @@ def prioridade_ss(valor):
 
 
 def sigla_ss_subestacao(subestacao: Subestacao) -> str:
-    sigla_base = subestacao.sigla or "GERAL"
+    sigla_base = str(subestacao.sigla or "").strip().upper()
+    if not sigla_base or sigla_base == "GERAL":
+        raise ValueError("Nao foi possivel definir a sigla da instalacao para a SS")
     circuito = re.search(r"\bC\s*[-_]?\s*(\d+)\b", subestacao.nome or "", re.IGNORECASE)
     if circuito:
         return f"{sigla_base}-C{circuito.group(1)}"

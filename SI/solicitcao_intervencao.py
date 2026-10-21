@@ -40,9 +40,6 @@ router = APIRouter(prefix="/si", tags=["Servi?o Interven??o"])
 _ESTRUTURA_SI_GARANTIDA = False
 _TABELA_LIBERACOES_SI_GARANTIDA = False
 
-SUBESTACOES_SIGLAS = ["BJD", "GOR", "JAB"]
-
-
 def garantir_colunas_si(db: Session):
     global _ESTRUTURA_SI_GARANTIDA
     if _ESTRUTURA_SI_GARANTIDA:
@@ -147,19 +144,19 @@ def set_valor_seguro(ws, celula, valor):
     ws[celula] = valor
 
 
-def sigla_por_subestacao(db: Session, id_subestacao: int | None):
+def sigla_por_subestacao(db: Session, id_subestacao: int | None) -> str:
     if not id_subestacao:
-        return "GERAL"
+        raise HTTPException(400, "Selecione a instalacao para gerar o numero da SI")
 
     subestacao = db.query(Subestacao).filter(
         Subestacao.id_subestacao == id_subestacao
     ).first()
     if not subestacao:
-        return "GERAL"
+        raise HTTPException(400, "Instalacao invalida para gerar o numero da SI")
 
     sigla = str(getattr(subestacao, "sigla", "") or "").strip().upper()
-    if not sigla:
-        return "GERAL"
+    if not sigla or sigla == "GERAL":
+        raise HTTPException(400, "Nao foi possivel definir a sigla da instalacao")
 
     circuito = re.search(
         r"\bC\s*[-_]?\s*(\d+)\b",
@@ -803,7 +800,48 @@ def editar_si(id_si: int, dados: SIUpdate, db: Session = Depends(get_db), usuari
     garantir_colunas_si(db)
     si = obter_si_ou_404(db, id_si)
 
-    for campo, valor in dados.dict(exclude_unset=True).items():
+    alteracoes = dados.dict(exclude_unset=True)
+
+    # Valida a selecao resultante antes de aplicar. Isso evita que uma edicao
+    # deixe id_subestacao, ativo, grupo e funcao apontando para instalacoes
+    # diferentes (por exemplo, ao trocar de ativo para funcao de transmissao).
+    id_subestacao = alteracoes.get("id_subestacao", si.id_subestacao)
+    id_ativo = alteracoes.get("id_ativo", si.id_ativo)
+    id_grupo_ativo = alteracoes.get("id_grupo_ativo", si.id_grupo_ativo)
+    id_funcao_operacao = alteracoes.get("id_funcao_operacao", si.id_funcao_operacao)
+    escopo_ativo = alteracoes.get("escopo_ativo", si.escopo_ativo)
+
+    sem_ativo = not id_ativo and not id_grupo_ativo
+    if sem_ativo:
+        subestacao = db.query(Subestacao).filter(
+            Subestacao.id_subestacao == id_subestacao
+        ).first() if id_subestacao else None
+        if not subestacao or subestacao.tipo_instalacao != "LINHA_TRANSMISSAO":
+            raise HTTPException(400, "Selecione um ativo para esta instalacao")
+        if not id_funcao_operacao:
+            raise HTTPException(400, "Selecione a funcao de transmissao da linha")
+        funcao = db.query(FuncaoOperacao).filter(
+            FuncaoOperacao.id_funcao_operacao == id_funcao_operacao,
+            FuncaoOperacao.id_subestacao == id_subestacao,
+        ).first()
+        if not funcao:
+            raise HTTPException(400, "Funcao de transmissao invalida para esta linha")
+
+        alteracoes["id_ativo"] = None
+        alteracoes["id_grupo_ativo"] = None
+        alteracoes["escopo_ativo"] = "FUNCAO"
+        alteracoes["especie"] = "LINHA DE TRANSMISSAO"
+    else:
+        validar_selecao_ativo(
+            db,
+            id_subestacao,
+            id_funcao_operacao,
+            id_grupo_ativo,
+            escopo_ativo,
+            id_ativo,
+        )
+
+    for campo, valor in alteracoes.items():
         if campo == "emissor":
             continue
         setattr(si, campo, valor)

@@ -58,6 +58,8 @@ class SolicitacaoServicoCreate(SolicitacaoServicoBase):
 # UPDATE (todos opcionais)
 class SolicitacaoServicoUpdate(BaseModel):
 
+    id_subestacao: Optional[int] = None
+
     numero_ss: Optional[str] = None
     numero_os: Optional[str] = None
 
