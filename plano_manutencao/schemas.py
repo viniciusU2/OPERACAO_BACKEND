@@ -260,6 +260,11 @@ class ResultadoItemInspecaoRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class FotoInspecaoUploadOut(BaseModel):
+    url: str
+    nome_arquivo: str
+
+
 class InspecaoRead(BaseModel):
     id_inspecao: int
     id_ativo: int

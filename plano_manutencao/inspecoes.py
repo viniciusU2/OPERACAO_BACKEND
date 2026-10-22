@@ -1,7 +1,14 @@
+import io
+import os
+import re
+import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
+from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import and_, or_, text as QueryText
 from sqlalchemy.orm import Session, joinedload
 
@@ -17,6 +24,7 @@ from models.plano_manutencao_models import (
 from models.Ativo import Ativo
 from models.OS_models import OrdemServico
 from plano_manutencao.schemas import (
+    FotoInspecaoUploadOut,
     InspecaoCreate,
     InspecaoRead,
     InspecaoReadFull,
@@ -26,6 +34,111 @@ from plano_manutencao.schemas import (
 )
 
 router = APIRouter(prefix="/inspecoes", tags=["inspecoes"])
+
+PREFIXO_FOTO_INSPECAO = "/inspecoes/fotos/"
+PASTA_FOTOS_PADRAO = "saida/inspecoes/fotos"
+NOME_FOTO_RE = re.compile(r"^[a-f0-9]{32}\.jpg$")
+
+
+def _pasta_fotos_inspecao() -> Path:
+    pasta = Path(os.getenv("INSPECAO_FOTO_DIR", PASTA_FOTOS_PADRAO)).resolve()
+    pasta.mkdir(parents=True, exist_ok=True)
+    return pasta
+
+
+def _limite_foto_bytes() -> int:
+    try:
+        limite_mb = float(os.getenv("INSPECAO_FOTO_MAX_MB", "20"))
+    except (TypeError, ValueError):
+        limite_mb = 20.0
+    return int(max(limite_mb, 1.0) * 1024 * 1024)
+
+
+def _lado_maximo_foto() -> int:
+    try:
+        return max(int(os.getenv("INSPECAO_FOTO_MAX_LADO", "1920")), 320)
+    except (TypeError, ValueError):
+        return 1920
+
+
+def _normalizar_foto(conteudo: bytes) -> bytes:
+    try:
+        with Image.open(io.BytesIO(conteudo)) as imagem:
+            imagem = ImageOps.exif_transpose(imagem)
+
+            if imagem.mode in ("RGBA", "LA") or (
+                imagem.mode == "P" and "transparency" in imagem.info
+            ):
+                rgba = imagem.convert("RGBA")
+                fundo = Image.new("RGB", rgba.size, (255, 255, 255))
+                fundo.paste(rgba, mask=rgba.split()[-1])
+                imagem = fundo
+            elif imagem.mode != "RGB":
+                imagem = imagem.convert("RGB")
+
+            lado = _lado_maximo_foto()
+            imagem.thumbnail((lado, lado), Image.Resampling.LANCZOS)
+
+            buffer = io.BytesIO()
+            imagem.save(buffer, format="JPEG", quality=85, optimize=True)
+            return buffer.getvalue()
+    except UnidentifiedImageError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="O arquivo enviado nao e uma imagem valida. Use JPG, PNG ou WEBP.",
+        ) from exc
+    except Image.DecompressionBombError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="A imagem enviada e grande demais para processamento.",
+        ) from exc
+    except OSError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Nao foi possivel processar a imagem enviada.",
+        ) from exc
+
+
+def _caminho_foto_inspecao(nome_arquivo: str) -> Optional[Path]:
+    if not NOME_FOTO_RE.fullmatch(nome_arquivo or ""):
+        return None
+
+    pasta = _pasta_fotos_inspecao()
+    caminho = (pasta / nome_arquivo).resolve()
+    if caminho.parent != pasta:
+        return None
+    return caminho
+
+
+def _fotos_informadas(resultados) -> set[str]:
+    return {
+        resultado.foto
+        for resultado in resultados
+        if resultado.foto and resultado.foto.startswith(PREFIXO_FOTO_INSPECAO)
+    }
+
+
+def _remover_fotos_orfaos(db: Session, urls: set[str]) -> None:
+    for url in urls:
+        nome = url[len(PREFIXO_FOTO_INSPECAO):]
+        if not NOME_FOTO_RE.fullmatch(nome):
+            continue
+
+        em_uso = (
+            db.query(ResultadoItemInspecao.id_resultado)
+            .filter(ResultadoItemInspecao.foto == url)
+            .first()
+        )
+        if em_uso:
+            continue
+
+        caminho = _caminho_foto_inspecao(nome)
+        if not caminho:
+            continue
+        try:
+            caminho.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def garantir_colunas_inspecao(db: Session):
@@ -100,6 +213,86 @@ def garantir_colunas_inspecao(db: Session):
         db.execute(QueryText("ALTER TABLE resultado_item_inspecao ADD COLUMN foto VARCHAR(500) NULL"))
     if "id_item_template" in colunas:
         db.execute(QueryText("ALTER TABLE resultado_item_inspecao MODIFY COLUMN id_item_template INT NULL"))
+
+
+@router.post("/fotos", response_model=FotoInspecaoUploadOut, status_code=201)
+async def enviar_foto_inspecao(arquivo: UploadFile = File(...)):
+    content_type = (arquivo.content_type or "").lower()
+    tipos_genericos = {"application/octet-stream", "binary/octet-stream"}
+    if (
+        content_type
+        and content_type not in tipos_genericos
+        and not content_type.startswith("image/")
+    ):
+        raise HTTPException(status_code=400, detail="Envie um arquivo de imagem.")
+
+    limite = _limite_foto_bytes()
+    if arquivo.size and arquivo.size > limite:
+        raise HTTPException(
+            status_code=413,
+            detail=f"A imagem excede o limite de {limite // (1024 * 1024)} MB.",
+        )
+
+    conteudo = await arquivo.read()
+    if not conteudo:
+        raise HTTPException(status_code=400, detail="A imagem esta vazia.")
+    if len(conteudo) > limite:
+        raise HTTPException(
+            status_code=413,
+            detail=f"A imagem excede o limite de {limite // (1024 * 1024)} MB.",
+        )
+
+    normalizado = _normalizar_foto(conteudo)
+    nome_arquivo = f"{uuid.uuid4().hex}.jpg"
+    destino = _pasta_fotos_inspecao() / nome_arquivo
+    destino.write_bytes(normalizado)
+
+    return FotoInspecaoUploadOut(
+        url=f"{PREFIXO_FOTO_INSPECAO}{nome_arquivo}",
+        nome_arquivo=nome_arquivo,
+    )
+
+
+@router.get("/fotos/{nome_arquivo}", response_class=FileResponse)
+def obter_foto_inspecao(nome_arquivo: str):
+    caminho = _caminho_foto_inspecao(nome_arquivo)
+    if not caminho or not caminho.is_file():
+        raise HTTPException(status_code=404, detail="Foto nao encontrada.")
+
+    return FileResponse(
+        caminho,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
+
+
+@router.delete("/fotos/{nome_arquivo}", status_code=204)
+def excluir_foto_inspecao(nome_arquivo: str, db: Session = Depends(get_db)):
+    caminho = _caminho_foto_inspecao(nome_arquivo)
+    if not caminho:
+        raise HTTPException(status_code=404, detail="Foto nao encontrada.")
+
+    url = f"{PREFIXO_FOTO_INSPECAO}{nome_arquivo}"
+    em_uso = (
+        db.query(ResultadoItemInspecao.id_resultado)
+        .filter(ResultadoItemInspecao.foto == url)
+        .first()
+    )
+    if em_uso:
+        raise HTTPException(
+            status_code=409,
+            detail="A foto esta vinculada a uma inspecao e nao pode ser removida.",
+        )
+
+    try:
+        caminho.unlink(missing_ok=True)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Nao foi possivel remover o arquivo da foto.",
+        ) from exc
+
+    return None
 
 
 def atualizar_resultados(db: Session, inspecao: Inspecao, resultados):
@@ -416,6 +609,7 @@ def atualizar_inspecao(
     db: Session = Depends(get_db),
 ):
     inspecao = carregar_inspecao(db, inspecao_id)
+    fotos_antigas = _fotos_informadas(inspecao.resultados)
     payload = dados.model_dump(exclude_unset=True)
     resultados = payload.pop("resultados", None)
 
@@ -426,12 +620,15 @@ def atualizar_inspecao(
         atualizar_resultados(db, inspecao, dados.resultados or [])
 
     db.commit()
+    _remover_fotos_orfaos(db, fotos_antigas)
     return carregar_inspecao(db, inspecao_id)
 
 
 @router.delete("/{inspecao_id}", status_code=204)
 def excluir_inspecao(inspecao_id: int, db: Session = Depends(get_db)):
     inspecao = carregar_inspecao(db, inspecao_id)
+    fotos = _fotos_informadas(inspecao.resultados)
     db.delete(inspecao)
     db.commit()
+    _remover_fotos_orfaos(db, fotos)
     return None
