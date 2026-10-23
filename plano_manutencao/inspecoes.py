@@ -421,6 +421,7 @@ def listar_todas(
     periodicidade: Optional[str] = Query(default=None),
     id_ativo: Optional[int] = Query(default=None),
     id_subestacao: Optional[int] = Query(default=None),
+    id_tipo_ativo: Optional[int] = Query(default=None),
     db: Session = Depends(get_db),
 ):
     query = db.query(Inspecao).options(
@@ -433,10 +434,12 @@ def listar_todas(
         query = query.filter(Inspecao.periodicidade == periodicidade)
     if id_ativo:
         query = query.filter(Inspecao.id_ativo == id_ativo)
-    if id_subestacao:
-        query = query.join(Ativo, Ativo.id_ativo == Inspecao.id_ativo).filter(
-            Ativo.id_subestacao == id_subestacao
-        )
+    if id_subestacao or id_tipo_ativo:
+        query = query.join(Ativo, Ativo.id_ativo == Inspecao.id_ativo)
+        if id_subestacao:
+            query = query.filter(Ativo.id_subestacao == id_subestacao)
+        if id_tipo_ativo:
+            query = query.filter(Ativo.id_tipo_ativo == id_tipo_ativo)
     return (
         query.order_by(Inspecao.data_inspecao.desc())
         .offset(skip)
