@@ -21,6 +21,7 @@ from funcao_operacao import funcao_operacao
 from auth import auth
 from analytics import analytics
 from problemas_tipicos import routes as problemas_tipicos_routes
+from problemas_tipicos import migracoes as problemas_tipicos_migracoes
 from relatorio_manutencao import routes as relatorio_manutencao_routes
 from relatorio_manutencao import analysis_routes as relatorio_manutencao_analysis_routes
 from relatorio_manutencao import models as relatorio_manutencao_models
@@ -83,6 +84,7 @@ try:
     funcao_operacao.service.garantir_estrutura_funcao_operacao(db)
     engenharia_protecao_routes.garantir_catalogo_funcoes_ansi(db)
     engenharia_protecao_migracoes.aplicar_migracoes(db)
+    problemas_tipicos_migracoes.aplicar_migracoes(db)
     inspecoes.garantir_colunas_inspecao(db)
     coluna_numero_ss_os = db.execute(
         text("SHOW COLUMNS FROM ordem_servico LIKE 'numero_ss'")
