@@ -2,6 +2,7 @@ import io
 import json
 import os
 import re
+import unicodedata
 import zipfile
 from datetime import date
 from pathlib import Path, PurePosixPath
@@ -44,6 +45,22 @@ def _normalizar_periodicidade(valor: str) -> str:
     if periodicidade not in PERIODICIDADES:
         raise HTTPException(400, f"Periodicidade invalida. Opcoes: {', '.join(sorted(PERIODICIDADES))}.")
     return periodicidade
+
+
+def _inteiro_do_payload(valor, rotulo: str) -> int:
+    """Converte identificadores recebidos na revisao, devolvendo 400 em vez de 500."""
+    try:
+        return int(valor)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(400, f"Valor invalido para {rotulo}.") from exc
+
+
+def _confianca_numerica(valor) -> float:
+    """Le a confianca gravada sem quebrar a revisao caso o valor nao seja numerico."""
+    try:
+        return float(valor)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _validar_contexto(db: Session, id_subestacao: int, id_tipo_ativo: int) -> None:
@@ -156,13 +173,13 @@ async def enviar_relatorio(
             raise HTTPException(400, f"Status invalido para {nome_foto}.")
         id_ativo = revisao.get("id_ativo")
         if id_ativo:
-            ativo = db.get(Ativo, int(id_ativo))
+            ativo = db.get(Ativo, _inteiro_do_payload(id_ativo, "ativo"))
             if not ativo or ativo.id_subestacao != id_subestacao or ativo.id_tipo_ativo != id_tipo_ativo:
                 raise HTTPException(400, f"Ativo invalido para {nome_foto}.")
         id_item = revisao.get("id_plano_item")
         if id_item:
             item = db.query(PlanoItem).join(PlanoManutencao).filter(
-                PlanoItem.id_plano_item == int(id_item),
+                PlanoItem.id_plano_item == _inteiro_do_payload(id_item, "item do plano"),
                 PlanoManutencao.id_tipo_ativo == id_tipo_ativo,
                 PlanoItem.periodicidade == periodicidade,
             ).first()
@@ -376,7 +393,7 @@ def obter_revisao(id_relatorio_manutencao: int, db: Session = Depends(get_db), _
         "tensao_inicio": relatorio.tensao_inicio or "", "tensao_fim": relatorio.tensao_fim or "",
         "ativos": [{"id_ativo": a.id_ativo, "codigo_ativo": a.codigo_ativo, "fase": a.fase, "bay": a.bay} for a in ativos],
         "itens": [{"id_plano_item": i.id_plano_item, "nome_item": i.nome_item, "unidade": i.unidade} for i in itens],
-        "fotos": [{"arquivo": f.nome_arquivo_zip.replace("\\", "/"), "miniatura": miniaturas.get(f.nome_arquivo_zip.replace("\\", "/")), "id_ativo": f.id_ativo, "id_plano_item": f.id_plano_item, "valor": f.valor_medido or "", "status": f.status_item, "observacao": f.observacao or "", "incluir": f.incluir, "confianca": float(f.confianca or 0)} for f in fotos],
+        "fotos": [{"arquivo": f.nome_arquivo_zip.replace("\\", "/"), "miniatura": miniaturas.get(f.nome_arquivo_zip.replace("\\", "/")), "id_ativo": f.id_ativo, "id_plano_item": f.id_plano_item, "valor": f.valor_medido or "", "status": f.status_item, "observacao": f.observacao or "", "incluir": f.incluir, "confianca": _confianca_numerica(f.confianca)} for f in fotos],
     }
 
 
@@ -412,12 +429,12 @@ def _validar_revisao_foto(db: Session, relatorio: RelatorioManutencao, revisao: 
     if revisao.get("status") not in {"OK", "NOK", "NA"}:
         raise HTTPException(400, f"Status invalido para {nome_foto}.")
     if revisao.get("id_ativo"):
-        ativo = db.get(Ativo, int(revisao["id_ativo"]))
+        ativo = db.get(Ativo, _inteiro_do_payload(revisao["id_ativo"], "ativo"))
         if not ativo or ativo.id_subestacao != relatorio.id_subestacao or ativo.id_tipo_ativo != relatorio.id_tipo_ativo:
             raise HTTPException(400, f"Ativo invalido para {nome_foto}.")
     if revisao.get("id_plano_item"):
         item = db.query(PlanoItem).join(PlanoManutencao).filter(
-            PlanoItem.id_plano_item == int(revisao["id_plano_item"]),
+            PlanoItem.id_plano_item == _inteiro_do_payload(revisao["id_plano_item"], "item do plano"),
             PlanoManutencao.id_tipo_ativo == relatorio.id_tipo_ativo,
             PlanoItem.periodicidade == relatorio.periodicidade,
         ).first()
@@ -608,11 +625,11 @@ def atualizar_revisao(id_relatorio_manutencao: int, payload: dict = Body(...), d
         if revisao.get("status") not in {"OK", "NOK", "NA"}:
             raise HTTPException(400, "Status da fotografia invalido.")
         if revisao.get("id_ativo"):
-            ativo = db.get(Ativo, int(revisao["id_ativo"]))
+            ativo = db.get(Ativo, _inteiro_do_payload(revisao["id_ativo"], "ativo"))
             if not ativo or ativo.id_subestacao != relatorio.id_subestacao or ativo.id_tipo_ativo != relatorio.id_tipo_ativo:
                 raise HTTPException(400, "Ativo invalido para a fotografia.")
         if revisao.get("id_plano_item"):
-            item = db.query(PlanoItem).join(PlanoManutencao).filter(PlanoItem.id_plano_item == int(revisao["id_plano_item"]), PlanoManutencao.id_tipo_ativo == relatorio.id_tipo_ativo, PlanoItem.periodicidade == relatorio.periodicidade).first()
+            item = db.query(PlanoItem).join(PlanoManutencao).filter(PlanoItem.id_plano_item == _inteiro_do_payload(revisao["id_plano_item"], "item do plano"), PlanoManutencao.id_tipo_ativo == relatorio.id_tipo_ativo, PlanoItem.periodicidade == relatorio.periodicidade).first()
             if not item:
                 raise HTTPException(400, "Item do plano invalido para a fotografia.")
         foto.id_ativo = int(revisao["id_ativo"]) if revisao.get("id_ativo") else None
