@@ -1,4 +1,5 @@
 import io
+import os
 import re
 import unicodedata
 import zipfile
@@ -32,6 +33,16 @@ except ImportError:  # OCR opcional: a análise continua usando o nome do arquiv
     IDIOMA_OCR = "eng"
 
 router = APIRouter(prefix="/relatorios-manutencao", tags=["Relatorios de manutencao"])
+
+
+def _ocr_ativo() -> bool:
+    """OCR fica desligado por padrão.
+
+    O Tesseract gasta segundos por foto e, em um ZIP com centenas de imagens,
+    prendia o worker inteiro — a API respondia 504/erro para todo mundo.
+    Reative apenas com CPU disponível: RELATORIO_OCR=1 no ambiente do serviço.
+    """
+    return os.getenv("RELATORIO_OCR", "0").strip().lower() in {"1", "true", "sim", "on"}
 
 
 def _normalizar(valor: str) -> str:
@@ -120,7 +131,7 @@ def _detectar_vista_geral_disjuntor(conteudo: bytes) -> bool:
 
 def _extrair_texto_seccionadora(conteudo: bytes) -> str:
     """OCR do código SC-35... usando somente os pixels da fotografia."""
-    if pytesseract is None:
+    if pytesseract is None or not _ocr_ativo():
         return ""
     try:
         with Image.open(io.BytesIO(conteudo)) as imagem:
@@ -165,7 +176,7 @@ def _classificar_imagem_seccionadora(conteudo: bytes) -> str:
         return ""
 
 def _extrair_texto_imagem(conteudo: bytes) -> str:
-    if pytesseract is None:
+    if pytesseract is None or not _ocr_ativo():
         return ""
     try:
         with Image.open(io.BytesIO(conteudo)) as imagem:
@@ -300,7 +311,7 @@ def _sugerir_item(texto_fonte: str, itens: list[PlanoItem], disjuntor: bool = Fa
     return melhor, pontuacao
 
 @router.post("/analisar")
-async def analisar_zip(
+def analisar_zip(
     id_subestacao: int = Form(...),
     id_tipo_ativo: int = Form(...),
     periodicidade: str = Form(...),
@@ -312,7 +323,7 @@ async def analisar_zip(
     periodicidade = _normalizar_periodicidade(periodicidade)
     if not (arquivo.filename or "").lower().endswith(".zip"):
         raise HTTPException(400, "Envie um arquivo .zip com as fotos.")
-    conteudo = await arquivo.read(MAX_ZIP_BYTES + 1)
+    conteudo = arquivo.file.read(MAX_ZIP_BYTES + 1)
     if len(conteudo) > MAX_ZIP_BYTES:
         raise HTTPException(413, "O ZIP excede o limite permitido.")
     _validar_zip(conteudo)
@@ -414,7 +425,7 @@ async def analisar_zip(
 
 
 @router.post("/analisar-imagem")
-async def analisar_imagem(
+def analisar_imagem(
     id_subestacao: int = Form(...),
     id_tipo_ativo: int = Form(...),
     periodicidade: str = Form(...),
@@ -423,7 +434,8 @@ async def analisar_imagem(
     usuario=Depends(get_current_user),
 ):
     nome_imagem = Path(arquivo.filename or "").name
-    conteudo_imagem = await arquivo.read(MAX_ZIP_BYTES + 1)
+    arquivo.file.seek(0)
+    conteudo_imagem = arquivo.file.read(MAX_ZIP_BYTES + 1)
     if not nome_imagem or not conteudo_imagem:
         raise HTTPException(400, "A imagem selecionada esta vazia ou sem nome.")
     if len(conteudo_imagem) > MAX_ZIP_BYTES:
@@ -433,7 +445,7 @@ async def analisar_imagem(
     with zipfile.ZipFile(pacote, "w", compression=zipfile.ZIP_DEFLATED) as arquivo_zip:
         arquivo_zip.writestr(nome_imagem, conteudo_imagem)
     arquivo_interno = UploadFile(filename="imagem.zip", file=io.BytesIO(pacote.getvalue()))
-    return await analisar_zip(
+    return analisar_zip(
         id_subestacao=id_subestacao,
         id_tipo_ativo=id_tipo_ativo,
         periodicidade=periodicidade,

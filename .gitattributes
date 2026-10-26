@@ -1,0 +1,2 @@
+# Scripts de deploy rodam em Linux: força LF mesmo com core.autocrlf=true.
+*.sh text eol=lf
