@@ -4,10 +4,15 @@ Cobrem funções puras usadas pelo download do ZIP, pela leitura da revisão e
 pela validação dos identificadores enviados pelo cliente. Não acessam o banco.
 """
 
+import tempfile
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from fastapi import HTTPException
 
+from relatorio_manutencao import routes
 from relatorio_manutencao.routes import (
     _confianca_numerica,
     _inteiro_do_payload,
@@ -54,6 +59,25 @@ class InteiroDoPayloadTests(unittest.TestCase):
             _inteiro_do_payload("abc", "ativo")
         self.assertEqual(contexto.exception.status_code, 400)
         self.assertIn("ativo", contexto.exception.detail)
+
+
+class CaminhoFonteTests(unittest.TestCase):
+    """O banco pode vir de outra máquina: o ZIP tem de ser achado localmente."""
+
+    def test_caminho_inexistente_cai_para_a_pasta_de_uploads(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            arquivo = Path(pasta) / "abc.zip"
+            arquivo.write_bytes(b"PK")
+            relatorio = SimpleNamespace(caminho_arquivo=str(Path("/root/saida") / "abc.zip"))
+            with patch.object(routes, "PASTA_UPLOADS", Path(pasta)):
+                self.assertEqual(routes._caminho_fonte(relatorio), arquivo)
+
+    def test_sem_arquivo_em_lugar_nenhum_mantem_o_caminho(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            original = Path("/root/saida") / "nao-existe.zip"
+            relatorio = SimpleNamespace(caminho_arquivo=str(original))
+            with patch.object(routes, "PASTA_UPLOADS", Path(pasta)):
+                self.assertEqual(routes._caminho_fonte(relatorio), original)
 
 
 if __name__ == "__main__":

@@ -1251,10 +1251,13 @@ def gerar_relatorio_word(
 
     # Logo
     caminho_logo=CAMINHO_LOGO,
+
+    # Caminho do ZIP fonte (quando o caminho gravado não vale nesta máquina)
+    caminho_arquivo=None,
 ) -> Path:
 
     caminho_zip = Path(
-        relatorio.caminho_arquivo
+        caminho_arquivo or relatorio.caminho_arquivo
     )
 
     destino = caminho_zip.with_suffix(

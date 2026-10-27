@@ -40,6 +40,20 @@ MAX_FOTOS = int(os.getenv("RELATORIO_MANUTENCAO_MAX_FOTOS", "500"))
 PASTA_UPLOADS = Path(os.getenv("RELATORIO_MANUTENCAO_UPLOAD_DIR", "saida/relatorios_manutencao")).resolve()
 
 
+def _caminho_fonte(relatorio: RelatorioManutencao) -> Path:
+    """Resolve o ZIP do relatório mesmo com caminho absoluto de outra máquina.
+
+    O caminho é gravado como absoluto. Se ele não existir (ex.: banco copiado
+    do VPS para o ambiente local), procura o arquivo com o mesmo nome dentro
+    da pasta de uploads configurada.
+    """
+    caminho = Path(relatorio.caminho_arquivo)
+    if caminho.is_file():
+        return caminho
+    alternativo = PASTA_UPLOADS / caminho.name
+    return alternativo if alternativo.is_file() else caminho
+
+
 def _normalizar_periodicidade(valor: str) -> str:
     periodicidade = re.sub(r"\s+", "_", valor.strip().upper())
     if periodicidade not in PERIODICIDADES:
@@ -263,7 +277,7 @@ def _slug_arquivo(valor: str, limite: int = 80) -> str:
 
 
 def _gerar_zip_fotos_renomeadas(relatorio: RelatorioManutencao, fotos: list[RelatorioManutencaoFoto]) -> Path:
-    origem = Path(relatorio.caminho_arquivo)
+    origem = _caminho_fonte(relatorio)
     destino = PASTA_UPLOADS / f".{uuid4().hex}-renomeado.zip"
     revisoes = {foto.nome_arquivo_zip.replace("\\", "/"): foto for foto in fotos}
     contadores: dict[str, int] = {}
@@ -291,7 +305,7 @@ def baixar_zip(id_relatorio_manutencao: int, db: Session = Depends(get_db), _usu
     relatorio = db.get(RelatorioManutencao, id_relatorio_manutencao)
     if not relatorio:
         raise HTTPException(404, "Relatorio de manutencao nao encontrado.")
-    caminho = Path(relatorio.caminho_arquivo)
+    caminho = _caminho_fonte(relatorio)
     if not caminho.is_file():
         raise HTTPException(404, "Arquivo do relatorio nao encontrado.")
     fotos = db.query(RelatorioManutencaoFoto).filter(
@@ -319,7 +333,8 @@ def baixar_word(
     relatorio = db.get(RelatorioManutencao, id_relatorio_manutencao)
     if not relatorio:
         raise HTTPException(404, "Relatorio de manutencao nao encontrado.")
-    if not Path(relatorio.caminho_arquivo).is_file():
+    caminho_fonte = _caminho_fonte(relatorio)
+    if not caminho_fonte.is_file():
         raise HTTPException(404, "Arquivo fonte do relatorio nao encontrado.")
     try:
         fotos_revisadas = (
@@ -350,6 +365,7 @@ def baixar_word(
             texto_introducao=relatorio.texto_introducao or "",
             fotos_por_pagina=fotos_por_pagina,
             tamanho_foto=tamanho_foto,
+            caminho_arquivo=caminho_fonte,
             parametros_inspecao={
                 "hora_inicio": relatorio.hora_inicio or "", "hora_fim": relatorio.hora_fim or "",
                 "temperatura_inicio": relatorio.temperatura_inicio or "", "temperatura_fim": relatorio.temperatura_fim or "",
@@ -377,7 +393,7 @@ def obter_revisao(id_relatorio_manutencao: int, db: Session = Depends(get_db), _
     itens = db.query(PlanoItem).filter(PlanoItem.id_plano_manutencao.in_(ids_planos), PlanoItem.periodicidade == relatorio.periodicidade).order_by(PlanoItem.ordem, PlanoItem.id_plano_item).all() if ids_planos else []
     miniaturas = {}
     try:
-        with zipfile.ZipFile(Path(relatorio.caminho_arquivo)) as pacote:
+        with zipfile.ZipFile(_caminho_fonte(relatorio)) as pacote:
             entradas = {i.filename.replace("\\", "/"): i for i in pacote.infolist() if not i.is_dir()}
             for foto in fotos:
                 nome = foto.nome_arquivo_zip.replace("\\", "/")
