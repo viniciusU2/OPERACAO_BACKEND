@@ -177,6 +177,10 @@ async def enviar_relatorio(
     vazios = [rotulo for rotulo, valor in obrigatorios.items() if not valor.strip()]
     if vazios:
         raise HTTPException(400, f"Preencha os campos obrigatorios: {', '.join(vazios)}.")
+    # A coluna aceita 500 caracteres; avisa antes de estourar no banco (500).
+    for rotulo, valor in (("Numero da OS", numero_os), ("Numero da APR", numero_apr)):
+        if len((valor or "").strip()) > 500:
+            raise HTTPException(400, f"{rotulo} excede o limite de 500 caracteres.")
     with zipfile.ZipFile(io.BytesIO(conteudo)) as pacote:
         nomes_zip = {item.filename.replace("\\", "/") for item in pacote.infolist() if not item.is_dir()}
     for revisao in revisoes:
