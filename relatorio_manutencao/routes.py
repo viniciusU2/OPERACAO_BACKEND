@@ -311,6 +311,8 @@ def baixar_zip(id_relatorio_manutencao: int, db: Session = Depends(get_db), _usu
 @router.get("/{id_relatorio_manutencao}/arquivo-word")
 def baixar_word(
     id_relatorio_manutencao: int,
+    fotos_por_pagina: int = Query(2, ge=1, le=4, description="Fotos por pagina: 1, 2, 3 ou 4"),
+    tamanho_foto: int = Query(100, ge=40, le=100, description="Tamanho da foto em % (40 a 100)"),
     db: Session = Depends(get_db),
     _usuario=Depends(get_current_user),
 ):
@@ -346,6 +348,8 @@ def baixar_word(
             numero_os=relatorio.numero_os or "", numero_apr=relatorio.numero_apr or "",
             periodo_capa=relatorio.periodo_capa or "", concessao=relatorio.concessao or "Rialma Transmissora de Energia - RTV",
             texto_introducao=relatorio.texto_introducao or "",
+            fotos_por_pagina=fotos_por_pagina,
+            tamanho_foto=tamanho_foto,
             parametros_inspecao={
                 "hora_inicio": relatorio.hora_inicio or "", "hora_fim": relatorio.hora_fim or "",
                 "temperatura_inicio": relatorio.temperatura_inicio or "", "temperatura_fim": relatorio.temperatura_fim or "",

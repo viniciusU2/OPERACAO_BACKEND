@@ -14,7 +14,20 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT, WD_TAB_LEADER
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Inches, Pt, RGBColor
-from PIL import Image, ImageOps
+from PIL import Image
+
+
+# Área útil da página A4 (21 x 29,7 cm) descontando as margens usadas no
+# conteúdo (1,8 cm nas laterais e ~2,6 cm no topo/rodapé).
+LARGURA_UTIL_CM = 17.4
+ALTURA_UTIL_CM = 24.5
+# (colunas, linhas) da grade para cada opção de fotos por página.
+GRADE_FOTOS = {
+    1: (1, 1),
+    2: (2, 1),
+    3: (2, 2),
+    4: (2, 2),
+}
 
 
 # ============================================================
@@ -759,7 +772,12 @@ def _nova_secao_conteudo(
 # SUMÁRIO
 # ============================================================
 
-def _adicionar_sumario(doc: Document, grupos_fotos: list | None = None, tipo_ativo: str = "ATIVOS") -> None:
+def _adicionar_sumario(
+    doc: Document,
+    grupos_fotos: list | None = None,
+    tipo_ativo: str = "ATIVOS",
+    fotos_por_pagina: int = 2,
+) -> None:
     """Gera um sumário estático, sem campos do Word ou LibreOffice."""
     grupos_fotos = grupos_fotos or []
     itens_por_pagina = 26
@@ -778,7 +796,7 @@ def _adicionar_sumario(doc: Document, grupos_fotos: list | None = None, tipo_ati
 
     total_paginas_fotos = 0
     for indice, (ativo, fotos_ativo) in enumerate(grupos_fotos, start=1):
-        paginas_ativo = max(1, (len(fotos_ativo) + 3) // 4)
+        paginas_ativo = max(1, (len(fotos_ativo) + fotos_por_pagina - 1) // fotos_por_pagina)
         entradas.append((f"3.{indice} - {ativo}", pagina_ativo, 1))
         pagina_ativo += paginas_ativo
         total_paginas_fotos += paginas_ativo
@@ -946,6 +964,8 @@ def _preencher_celula_foto(
     celula,
     conteudo: bytes,
     revisao: dict,
+    largura_max_cm: float = 8.0,
+    altura_max_cm: float = 10.0,
 ) -> None:
     celula.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
     _set_cell_margins(celula, top=40, start=40, bottom=40, end=40)
@@ -955,12 +975,24 @@ def _preencher_celula_foto(
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(2)
     try:
-        # Dimensões solicitadas: comprimento/largura 4,3 cm e altura 9,56 cm.
-        p.add_run().add_picture(
-            io.BytesIO(conteudo),
-            width=Cm(4.3),
-            height=Cm(9.56),
-        )
+        # Encaixa a foto na célula preservando a proporção original. Antes era
+        # forçada em 4,3 x 9,56 cm, o que distorcia qualquer imagem fora
+        # daquela proporção. Lê só o cabeçalho (largura, altura e orientação
+        # EXIF) para não decodificar cada foto do relatório.
+        with Image.open(io.BytesIO(conteudo)) as imagem:
+            largura_px, altura_px = imagem.size
+            orientacao = imagem.getexif().get(0x0112, 1)
+        if orientacao in (5, 6, 7, 8):
+            largura_px, altura_px = altura_px, largura_px
+        if largura_px and altura_px:
+            escala = min(largura_max_cm / largura_px, altura_max_cm / altura_px)
+            p.add_run().add_picture(
+                io.BytesIO(conteudo),
+                width=Cm(max(0.5, largura_px * escala)),
+                height=Cm(max(0.5, altura_px * escala)),
+            )
+        else:
+            p.add_run().add_picture(io.BytesIO(conteudo), width=Cm(largura_max_cm))
     except Exception:
         p.add_run("Imagem não suportada")
 
@@ -994,9 +1026,19 @@ def _grade_fotos(
     tipo_ativo: str,
     revisoes: dict | None = None,
     grupos_fotos: list | None = None,
+    fotos_por_pagina: int = 2,
+    tamanho_foto: int = 100,
 ) -> None:
     revisoes = revisoes or {}
     grupos_fotos = grupos_fotos if grupos_fotos is not None else _agrupar_fotos_por_ativo(fotos, revisoes)
+    fotos_por_pagina = min(4, max(1, int(fotos_por_pagina)))
+    fator_tamanho = min(100, max(40, int(tamanho_foto))) / 100
+    colunas, linhas = GRADE_FOTOS[fotos_por_pagina]
+    largura_celula = LARGURA_UTIL_CM / colunas
+    altura_celula = ALTURA_UTIL_CM / linhas
+    # Reserva ~1,5 cm para a legenda/observação dentro da célula.
+    largura_foto = max(1.0, (largura_celula - 0.5) * fator_tamanho)
+    altura_foto = max(1.0, (altura_celula - 1.5) * fator_tamanho)
 
     doc.add_page_break()
     titulo = doc.add_paragraph(style="Heading 1")
@@ -1008,8 +1050,8 @@ def _grade_fotos(
 
     primeira_grade = True
     for indice_ativo, (ativo, fotos_ativo) in enumerate(grupos_fotos, start=1):
-        for inicio in range(0, len(fotos_ativo), 4):
-            lote = fotos_ativo[inicio:inicio + 4]
+        for inicio in range(0, len(fotos_ativo), fotos_por_pagina):
+            lote = fotos_ativo[inicio:inicio + fotos_por_pagina]
             if not primeira_grade:
                 doc.add_page_break()
             primeira_grade = False
@@ -1019,7 +1061,7 @@ def _grade_fotos(
                 titulo_ativo = doc.add_paragraph(style="Heading 2")
                 titulo_ativo.add_run(f"{numero_secao}.{indice_ativo} - {ativo}")
 
-            tabela = doc.add_table(rows=2, cols=2)
+            tabela = doc.add_table(rows=linhas, cols=colunas)
             tabela.alignment = WD_TABLE_ALIGNMENT.CENTER
             tabela.style = "Table Grid"
             tabela.autofit = False
@@ -1028,13 +1070,19 @@ def _grade_fotos(
                 cant_split = OxmlElement("w:cantSplit")
                 tr_pr.append(cant_split)
                 for celula in linha.cells:
-                    celula.width = Cm(8.2)
+                    celula.width = Cm(largura_celula)
 
-            for posicao in range(4):
-                celula = tabela.cell(posicao // 2, posicao % 2)
+            for posicao in range(linhas * colunas):
+                celula = tabela.cell(posicao // colunas, posicao % colunas)
                 if posicao < len(lote):
                     nome, conteudo = lote[posicao]
-                    _preencher_celula_foto(celula, conteudo, revisoes.get(nome, {}))
+                    _preencher_celula_foto(
+                        celula,
+                        conteudo,
+                        revisoes.get(nome, {}),
+                        largura_foto,
+                        altura_foto,
+                    )
                 else:
                     celula.text = ""
 
@@ -1167,6 +1215,10 @@ def gerar_relatorio_word(
 
     # Parâmetros opcionais
     parametros_inspecao=None,
+
+    # Layout das fotografias
+    fotos_por_pagina=2,
+    tamanho_foto=100,
 
     # Logo
     caminho_logo=CAMINHO_LOGO,
@@ -1359,7 +1411,7 @@ def gerar_relatorio_word(
     # SUMÁRIO
     # ========================================================
 
-    _adicionar_sumario(doc, grupos_fotos, tipo_ativo)
+    _adicionar_sumario(doc, grupos_fotos, tipo_ativo, fotos_por_pagina)
 
     # ========================================================
     # 1. INTRODUÇÃO
@@ -1422,6 +1474,8 @@ def gerar_relatorio_word(
         tipo_ativo=tipo_ativo,
         revisoes=revisoes,
         grupos_fotos=grupos_fotos,
+        fotos_por_pagina=fotos_por_pagina,
+        tamanho_foto=tamanho_foto,
     )
 
     # ========================================================
