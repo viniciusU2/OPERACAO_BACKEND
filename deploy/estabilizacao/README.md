@@ -1,10 +1,74 @@
-# Estabilização do VPS — 503 / queda da API
+# VPS — processos, estabilização e causa raiz do travamento
 
-Pacote **somente de infraestrutura**: não altera código Python nem o frontend.
-Aplicado em `/root/OPERACAO_BACKEND` (host `v343407gjsqt.vpsn.in`).
+Servidor: `v343407gjsqt.vpsn.in` · aplicação em `/root/OPERACAO_BACKEND` (venv em `venv/`).
 
-> **Nada aqui foi executado.** Os comandos e arquivos foram preparados e revisados,
-> mas não há acesso ao VPS a partir deste ambiente. Aplique na ordem e valide cada passo.
+> Registro do incidente de 26/10/2026: API travando, `upstream timed out` no nginx,
+> 504/erro para todos e 413 nos uploads de relatório.
+> **Resolvido** — causa raiz e correção na seção 11.
+> As seções 1–10 são o histórico do diagnóstico e o pacote de infraestrutura;
+> os scripts (§3–§5) eu **não** executei — aplique na ordem e valide cada passo.
+
+## 0. Mapa da VPS (referência rápida)
+
+| Porta | Processo | Serviço systemd | Diretório | O que é |
+|---|---|---|---|---|
+| 80 / 443 | nginx | `nginx` | `/etc/nginx` | entrada pública, TLS Let's Encrypt de `engvi.com.br` |
+| 8001 | uvicorn | **`operacao.service`** | `/root/OPERACAO_BACKEND` | **API ENGVI — este repositório** |
+| 8000 | uvicorn | `api.service` | `/root/back_telhado_verde` | **outro projeto** (FastAPI Telhado Verde) |
+
+Sites nginx habilitados (`/etc/nginx/sites-enabled/`):
+
+| Site | Domínio / porta | Destino |
+|---|---|---|
+| `engvi` | `engvi.com.br` (443) | frontend `/var/www/engvi`; `/api/` → `127.0.0.1:8001` |
+| `operacao` | `192.99.140.211:8080` | `/` → `localhost:5173` (**Vite dev**); `/api/` → `127.0.0.1:8001` |
+| `api`, `atlas-rsu`, `telhado_verde` | outros projetos | — |
+
+`engvi.backup` existe em `sites-available` mas **não** está habilitado.
+
+### Fatos que já custaram tempo
+
+- `operacao.service` roda `uvicorn main:app --host 0.0.0.0 --port 8001` —
+  **sem** `--workers` e **sem** `--limit-concurrency`.
+- A porta **8000 é do Telhado Verde**, não da Operação.
+- O timer `operacao-gerar-os-diario.service` **não está instalado** → nenhuma OS
+  é gerada automaticamente.
+- **Não existe `limit_req`/`limit_conn`** no nginx: 503/504 vinham de upstream
+  travado, não de rate limit.
+- O banco guarda o caminho absoluto dos ZIPs
+  (`/root/OPERACAO_BACKEND/saida/relatorios_manutencao/...`). Banco restaurado
+  em outra máquina aponta para arquivos que não existem (404 ao baixar).
+- A API em `0.0.0.0:8001` aceita conexão direta da internet, fora do nginx
+  (endurecer para `127.0.0.1` quando possível).
+- OCR desligado por padrão; `RELATORIO_OCR=1` reativa (§11).
+
+### Inspeção
+
+```bash
+ss -ltnp                                   # portas e processos donos
+systemctl status operacao.service --no-pager
+systemctl cat operacao.service             # ExecStart real
+ls -l /etc/nginx/sites-enabled/
+nginx -T 2>/dev/null | grep -nE "server_name|listen |proxy_pass"
+systemctl list-units --type=service --state=running
+free -h && df -h
+```
+
+### Operação
+
+```bash
+systemctl restart operacao.service         # reiniciar a API
+journalctl -u operacao.service -f          # log da aplicação
+tail -f /var/log/nginx/error.log           # log do proxy
+```
+
+### Deploy
+
+```bash
+# Windows: commit + push
+# VPS:
+cd /root/OPERACAO_BACKEND && git pull && systemctl restart operacao.service
+```
 
 ## 1. O que está acontecendo
 
@@ -134,6 +198,9 @@ abrindo relatórios grandes ao mesmo tempo, a correção de fundo é reduzir o
 payload (endpoint por foto, paginação ou miniatura menor) — mudança de código
 que **não** foi feita aqui.
 
+> O **travamento** da API (upstream timed out em endpoints triviais) é outro
+> problema e foi resolvido — ver §11.
+
 Mitigações manuais até lá:
 
 - evitar abrir o mesmo relatório grande em várias abas/usuários ao mesmo tempo;
@@ -219,3 +286,55 @@ sudo nginx -t && sudo systemctl reload nginx
 
 `/etc/nginx/sites-available/engvi.backup` existe mas não está habilitado — pode
 ficar como histórico.
+
+## 11. Causa raiz do travamento (resolvida em 26/10/2026)
+
+### Sintoma
+
+`nginx/error.log` com `upstream timed out (110)` em endpoints **triviais**
+(`/tipo-ativo`, `/periodicidades`, `/subestacao/ativas`), sempre logo após um
+`POST /api/relatorios-manutencao/analisar`. Depois do restart manual:
+`104 Connection reset by peer` e `111 Connection refused`.
+
+### Causa
+
+`relatorio_manutencao/analysis_routes.py` declarava `async def analisar_zip` e
+executava **dentro do event loop**:
+
+- `zipfile.ZipFile(...).read()` de todas as fotos;
+- `pytesseract.image_to_string(...)` — até 2 passadas por foto, `timeout=4..6` cada;
+- `PIL` (miniatura + heurísticas visuais) de cada foto;
+- `SequenceMatcher` para sugerir ativo/item.
+
+Com **um único worker uvicorn**, um ZIP de 182 fotos prendia o loop por minutos:
+nenhuma outra requisição era sequer despachada, o nginx estourava o
+`proxy_read_timeout 60s` e todo mundo recebia 504.
+
+### Correção aplicada
+
+1. `async def` → `def` em `/analisar` e `/analisar-imagem`, lendo o upload por
+   `arquivo.file.read(...)`. O FastAPI passa a executar a rota na **threadpool**:
+   uma análise longa não bloqueia mais o resto da API.
+2. OCR **desligado por padrão** (`_ocr_ativo()`, env `RELATORIO_OCR`). O
+   Tesseract era o maior custo; a sugestão continua usando nome do arquivo e
+   heurísticas visuais.
+
+### Resultado medido
+
+ZIP com 30 fotos: **1,64 s** (antes: minutos com a API inteira parada).
+`/analisar-imagem` validado no mesmo teste.
+
+### Reativar o OCR
+
+```bash
+sudo systemctl edit operacao.service
+# [Service]
+# Environment=RELATORIO_OCR=1
+sudo systemctl daemon-reload && sudo systemctl restart operacao.service
+```
+
+### Pendências que continuam abertas
+
+- `GET /{id}/revisao` ainda devolve ~20 MB de JSON com as fotos em base64 (§8).
+- Upload de relatório acima de 1 MB depende do `client_max_body_size` no nginx (§10).
+
