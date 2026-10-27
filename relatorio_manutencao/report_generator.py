@@ -25,8 +25,14 @@ ALTURA_UTIL_CM = 24.5
 GRADE_FOTOS = {
     1: (1, 1),
     2: (2, 1),
-    3: (2, 2),
+    3: (3, 1),
     4: (2, 2),
+}
+# Tamanho fixo (largura, altura) em cm para opções com medida padronizada.
+# Em 3 fotos por página a foto sai exatamente em 4,3 x 9,56 cm, como no
+# relatório antigo (mesmo que a proporção original seja diferente).
+TAMANHO_FIXO_CM = {
+    3: (4.3, 9.56),
 }
 
 
@@ -966,6 +972,7 @@ def _preencher_celula_foto(
     revisao: dict,
     largura_max_cm: float = 8.0,
     altura_max_cm: float = 10.0,
+    forcar_tamanho: bool = False,
 ) -> None:
     celula.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
     _set_cell_margins(celula, top=40, start=40, bottom=40, end=40)
@@ -975,6 +982,17 @@ def _preencher_celula_foto(
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(2)
     try:
+        if forcar_tamanho:
+            # Opção com medida padronizada (ex.: 3 fotos por página em
+            # 4,3 x 9,56 cm): usa exatamente a largura e a altura pedidas.
+            p.add_run().add_picture(
+                io.BytesIO(conteudo),
+                width=Cm(largura_max_cm),
+                height=Cm(altura_max_cm),
+            )
+            _legenda_foto(celula, revisao)
+            return
+
         # Encaixa a foto na célula preservando a proporção original. Antes era
         # forçada em 4,3 x 9,56 cm, o que distorcia qualquer imagem fora
         # daquela proporção. Lê só o cabeçalho (largura, altura e orientação
@@ -996,6 +1014,10 @@ def _preencher_celula_foto(
     except Exception:
         p.add_run("Imagem não suportada")
 
+    _legenda_foto(celula, revisao)
+
+
+def _legenda_foto(celula, revisao: dict) -> None:
     fase_legenda = f"Fase: {revisao.get('fase')}" if revisao.get("fase") else None
     partes = [revisao.get("item"), fase_legenda, revisao.get("valor"), revisao.get("status")]
     legenda_texto = " | ".join(str(parte) for parte in partes if parte)
@@ -1036,9 +1058,15 @@ def _grade_fotos(
     colunas, linhas = GRADE_FOTOS[fotos_por_pagina]
     largura_celula = LARGURA_UTIL_CM / colunas
     altura_celula = ALTURA_UTIL_CM / linhas
-    # Reserva ~1,5 cm para a legenda/observação dentro da célula.
-    largura_foto = max(1.0, (largura_celula - 0.5) * fator_tamanho)
-    altura_foto = max(1.0, (altura_celula - 1.5) * fator_tamanho)
+    tamanho_fixo = TAMANHO_FIXO_CM.get(fotos_por_pagina)
+    if tamanho_fixo:
+        # Medida padronizada da opção (ex.: 3 fotos = 4,3 x 9,56 cm cada).
+        largura_foto = tamanho_fixo[0] * fator_tamanho
+        altura_foto = tamanho_fixo[1] * fator_tamanho
+    else:
+        # Reserva ~1,5 cm para a legenda/observação dentro da célula.
+        largura_foto = max(1.0, (largura_celula - 0.5) * fator_tamanho)
+        altura_foto = max(1.0, (altura_celula - 1.5) * fator_tamanho)
 
     doc.add_page_break()
     titulo = doc.add_paragraph(style="Heading 1")
@@ -1082,6 +1110,7 @@ def _grade_fotos(
                         revisoes.get(nome, {}),
                         largura_foto,
                         altura_foto,
+                        forcar_tamanho=bool(tamanho_fixo),
                     )
                 else:
                     celula.text = ""

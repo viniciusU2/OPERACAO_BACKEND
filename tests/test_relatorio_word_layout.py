@@ -79,7 +79,7 @@ class LayoutFotosWordTests(unittest.TestCase):
                 self.assertEqual(len(tabelas), math.ceil(FOTOS / por_pagina))
 
     def test_grade_de_cada_opcao(self):
-        esperado = {1: (1, 1), 2: (1, 2), 3: (2, 2), 4: (2, 2)}
+        esperado = {1: (1, 1), 2: (1, 2), 3: (1, 3), 4: (2, 2)}
         for por_pagina, (linhas, colunas) in esperado.items():
             with self.subTest(por_pagina=por_pagina):
                 documento = self._gerar(fotos_por_pagina=por_pagina)
@@ -91,6 +91,23 @@ class LayoutFotosWordTests(unittest.TestCase):
         # Uma foto por folha deve aproveitar a largura útil (17,4 cm).
         documento = self._gerar(fotos_por_pagina=1)
         self.assertGreater(documento.inline_shapes[0].width.cm, 16)
+
+    def test_tres_fotos_lado_a_lado_com_medida_padrao(self):
+        # Opção 3: 3 colunas e cada foto exatamente em 4,3 x 9,56 cm,
+        # a medida usada no relatório antigo.
+        documento = self._gerar(fotos_por_pagina=3)
+        tabela = next(t for t in documento.tables if _tem_foto(t))
+        self.assertEqual(len(tabela.rows), 1)
+        self.assertEqual(len(tabela.columns), 3)
+        for forma in documento.inline_shapes:
+            self.assertAlmostEqual(forma.width.cm, 4.3, places=1)
+            self.assertAlmostEqual(forma.height.cm, 9.56, places=1)
+
+    def test_medida_padrao_acompanha_o_percentual(self):
+        documento = self._gerar(fotos_por_pagina=3, tamanho_foto=50)
+        forma = documento.inline_shapes[0]
+        self.assertAlmostEqual(forma.width.cm, 2.15, places=1)
+        self.assertAlmostEqual(forma.height.cm, 4.78, places=1)
 
     def test_tamanho_reduz_a_foto_sem_distorcer(self):
         cheia = self._gerar(fotos_por_pagina=2, tamanho_foto=100).inline_shapes[0]
