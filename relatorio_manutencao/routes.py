@@ -325,7 +325,7 @@ def baixar_zip(id_relatorio_manutencao: int, db: Session = Depends(get_db), _usu
 @router.get("/{id_relatorio_manutencao}/arquivo-word")
 def baixar_word(
     id_relatorio_manutencao: int,
-    fotos_por_pagina: int = Query(2, ge=1, le=4, description="Fotos por pagina: 1, 2, 3 ou 4"),
+    fotos_por_pagina: int = Query(2, description="Fotos por pagina: 1, 2, 3, 4 ou 6"),
     tamanho_foto: int = Query(100, ge=40, le=100, description="Tamanho da foto em % (40 a 100)"),
     db: Session = Depends(get_db),
     _usuario=Depends(get_current_user),
@@ -336,6 +336,8 @@ def baixar_word(
     caminho_fonte = _caminho_fonte(relatorio)
     if not caminho_fonte.is_file():
         raise HTTPException(404, "Arquivo fonte do relatorio nao encontrado.")
+    if fotos_por_pagina not in (1, 2, 3, 4, 6):
+        raise HTTPException(422, "fotos_por_pagina deve ser 1, 2, 3, 4 ou 6.")
     try:
         fotos_revisadas = (
             db.query(RelatorioManutencaoFoto)

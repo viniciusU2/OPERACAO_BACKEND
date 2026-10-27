@@ -18,7 +18,7 @@ from docx import Document
 from docx.oxml.ns import qn
 from PIL import Image
 
-from relatorio_manutencao.report_generator import gerar_relatorio_word
+from relatorio_manutencao.report_generator import _montar_linhas_fotos, gerar_relatorio_word
 
 LARGURA_PX, ALTURA_PX = 300, 200  # 3:2 (paisagem)
 FOTOS = 5
@@ -71,7 +71,7 @@ class LayoutFotosWordTests(unittest.TestCase):
         return Document(str(caminho))
 
     def test_todas_as_fotos_entram_no_documento(self):
-        for por_pagina in (1, 2, 3, 4):
+        for por_pagina in (1, 2, 3, 4, 6):
             with self.subTest(por_pagina=por_pagina):
                 documento = self._gerar(fotos_por_pagina=por_pagina)
                 self.assertEqual(len(documento.inline_shapes), FOTOS)
@@ -79,7 +79,7 @@ class LayoutFotosWordTests(unittest.TestCase):
                 self.assertEqual(len(tabelas), math.ceil(FOTOS / por_pagina))
 
     def test_grade_de_cada_opcao(self):
-        esperado = {1: (1, 1), 2: (1, 2), 3: (1, 3), 4: (2, 2)}
+        esperado = {1: (1, 1), 2: (1, 2), 3: (1, 3), 4: (2, 2), 6: (2, 3)}
         for por_pagina, (linhas, colunas) in esperado.items():
             with self.subTest(por_pagina=por_pagina):
                 documento = self._gerar(fotos_por_pagina=por_pagina)
@@ -108,6 +108,38 @@ class LayoutFotosWordTests(unittest.TestCase):
         forma = documento.inline_shapes[0]
         self.assertAlmostEqual(forma.width.cm, 2.15, places=1)
         self.assertAlmostEqual(forma.height.cm, 4.78, places=1)
+
+    def test_seis_por_pagina_em_duas_linhas_de_tres(self):
+        documento = self._gerar(fotos_por_pagina=6)
+        tabelas = [t for t in documento.tables if _tem_foto(t)]
+        self.assertEqual(len(tabelas), 1)
+        self.assertEqual(len(tabelas[0].columns), 3)
+        self.assertEqual(len(tabelas[0].rows), 2)
+        for forma in documento.inline_shapes:
+            self.assertAlmostEqual(forma.width.cm, 4.3, places=1)
+            self.assertAlmostEqual(forma.height.cm, 9.56, places=1)
+
+    def test_fotos_do_mesmo_item_ficam_na_mesma_linha(self):
+        fotos = [(f"foto{i}", b"") for i in range(7)]
+        revisoes = {
+            "foto0": {"item": "Contador de operacoes 15C2"},
+            "foto1": {"item": "Contador de operacoes 15C2"},
+            "foto2": {"item": "Contador de operacoes 15C2"},
+            "foto3": {"item": "Nivel de oleo"},
+            "foto4": {"item": "Nivel de oleo"},
+            "foto5": {"item": "Bateria"},
+        }
+        linhas = _montar_linhas_fotos(fotos, revisoes, 3)
+        self.assertEqual([nome for nome, _ in linhas[0]], ["foto0", "foto1", "foto2"])
+        self.assertTrue(all(len(linha) <= 3 for linha in linhas))
+        self.assertEqual(sum(len(linha) for linha in linhas), len(fotos))
+
+    def test_item_com_tres_fotos_nao_e_dividido_para_preencher_vao(self):
+        fotos = [(f"a{i}", b"") for i in range(2)] + [(f"b{i}", b"") for i in range(3)]
+        revisoes = {f"a{i}": {"item": "Item A"} for i in range(2)}
+        revisoes.update({f"b{i}": {"item": "Item B"} for i in range(3)})
+        linhas = _montar_linhas_fotos(fotos, revisoes, 3)
+        self.assertEqual([nome for nome, _ in linhas[-1]], ["b0", "b1", "b2"])
 
     def test_tamanho_reduz_a_foto_sem_distorcer(self):
         cheia = self._gerar(fotos_por_pagina=2, tamanho_foto=100).inline_shapes[0]

@@ -27,12 +27,14 @@ GRADE_FOTOS = {
     2: (2, 1),
     3: (3, 1),
     4: (2, 2),
+    6: (3, 2),
 }
 # Tamanho fixo (largura, altura) em cm para opções com medida padronizada.
-# Em 3 fotos por página a foto sai exatamente em 4,3 x 9,56 cm, como no
+# Nas opções de 3 colunas a foto sai exatamente em 4,3 x 9,56 cm, como no
 # relatório antigo (mesmo que a proporção original seja diferente).
 TAMANHO_FIXO_CM = {
     3: (4.3, 9.56),
+    6: (4.3, 9.56),
 }
 
 
@@ -783,6 +785,7 @@ def _adicionar_sumario(
     grupos_fotos: list | None = None,
     tipo_ativo: str = "ATIVOS",
     fotos_por_pagina: int = 2,
+    revisoes: dict | None = None,
 ) -> None:
     """Gera um sumário estático, sem campos do Word ou LibreOffice."""
     grupos_fotos = grupos_fotos or []
@@ -801,8 +804,13 @@ def _adicionar_sumario(
     ]
 
     total_paginas_fotos = 0
+    fotos_por_pagina = int(fotos_por_pagina)
+    if fotos_por_pagina not in GRADE_FOTOS:
+        fotos_por_pagina = 2
+    colunas, linhas_pagina = GRADE_FOTOS[fotos_por_pagina]
     for indice, (ativo, fotos_ativo) in enumerate(grupos_fotos, start=1):
-        paginas_ativo = max(1, (len(fotos_ativo) + fotos_por_pagina - 1) // fotos_por_pagina)
+        linhas_ativo = _montar_linhas_fotos(fotos_ativo, revisoes or {}, colunas)
+        paginas_ativo = max(1, -(-len(linhas_ativo) // linhas_pagina))
         entradas.append((f"3.{indice} - {ativo}", pagina_ativo, 1))
         pagina_ativo += paginas_ativo
         total_paginas_fotos += paginas_ativo
@@ -1041,6 +1049,56 @@ def _legenda_foto(celula, revisao: dict) -> None:
             run.font.size = Pt(7)
 
 
+def _montar_linhas_fotos(
+    fotos: list[tuple[str, bytes]],
+    revisoes: dict,
+    colunas: int,
+) -> list[list[tuple[str, bytes]]]:
+    """Distribui as fotos em linhas de `colunas`, mantendo junto o mesmo item.
+
+    As três fases de um mesmo item (ex.: contador de operações do 15C2) ficam
+    lado a lado na mesma linha quando a grade tem colunas suficientes. Itens
+    com menos fotos que isso compartilham a linha com o item seguinte, para
+    não abrir vãos desnecessários.
+    """
+    colunas = max(1, int(colunas))
+
+    # Agrupa fotos consecutivas do mesmo item (o plano já vem ordenado).
+    grupos: list[list[tuple[str, bytes]]] = []
+    chave_atual = None
+    for nome, conteudo in fotos:
+        chave = str(revisoes.get(nome, {}).get("item") or nome)
+        if grupos and chave == chave_atual:
+            grupos[-1].append((nome, conteudo))
+        else:
+            grupos.append([(nome, conteudo)])
+            chave_atual = chave
+
+    linhas: list[list[tuple[str, bytes]]] = []
+    aberta: list[tuple[str, bytes]] = []
+    for fotos_item in grupos:
+        if len(fotos_item) >= colunas:
+            # Grupo completo: linha só para ele (prioridade de ficarem juntos).
+            if aberta:
+                linhas.append(aberta)
+                aberta = []
+            for inicio in range(0, len(fotos_item), colunas):
+                lote = fotos_item[inicio:inicio + colunas]
+                if len(lote) == colunas:
+                    linhas.append(lote)
+                else:
+                    aberta = list(lote)
+        else:
+            for foto in fotos_item:
+                if len(aberta) == colunas:
+                    linhas.append(aberta)
+                    aberta = []
+                aberta.append(foto)
+    if aberta:
+        linhas.append(aberta)
+    return linhas
+
+
 def _grade_fotos(
     doc: Document,
     fotos: list[tuple[str, bytes]],
@@ -1053,7 +1111,9 @@ def _grade_fotos(
 ) -> None:
     revisoes = revisoes or {}
     grupos_fotos = grupos_fotos if grupos_fotos is not None else _agrupar_fotos_por_ativo(fotos, revisoes)
-    fotos_por_pagina = min(4, max(1, int(fotos_por_pagina)))
+    fotos_por_pagina = int(fotos_por_pagina)
+    if fotos_por_pagina not in GRADE_FOTOS:
+        fotos_por_pagina = 2
     fator_tamanho = min(100, max(40, int(tamanho_foto))) / 100
     colunas, linhas = GRADE_FOTOS[fotos_por_pagina]
     largura_celula = LARGURA_UTIL_CM / colunas
@@ -1078,8 +1138,9 @@ def _grade_fotos(
 
     primeira_grade = True
     for indice_ativo, (ativo, fotos_ativo) in enumerate(grupos_fotos, start=1):
-        for inicio in range(0, len(fotos_ativo), fotos_por_pagina):
-            lote = fotos_ativo[inicio:inicio + fotos_por_pagina]
+        linhas_ativo = _montar_linhas_fotos(fotos_ativo, revisoes, colunas)
+        for inicio in range(0, len(linhas_ativo), linhas):
+            lote_linhas = linhas_ativo[inicio:inicio + linhas]
             if not primeira_grade:
                 doc.add_page_break()
             primeira_grade = False
@@ -1089,7 +1150,7 @@ def _grade_fotos(
                 titulo_ativo = doc.add_paragraph(style="Heading 2")
                 titulo_ativo.add_run(f"{numero_secao}.{indice_ativo} - {ativo}")
 
-            tabela = doc.add_table(rows=linhas, cols=colunas)
+            tabela = doc.add_table(rows=len(lote_linhas), cols=colunas)
             tabela.alignment = WD_TABLE_ALIGNMENT.CENTER
             tabela.style = "Table Grid"
             tabela.autofit = False
@@ -1100,20 +1161,21 @@ def _grade_fotos(
                 for celula in linha.cells:
                     celula.width = Cm(largura_celula)
 
-            for posicao in range(linhas * colunas):
-                celula = tabela.cell(posicao // colunas, posicao % colunas)
-                if posicao < len(lote):
-                    nome, conteudo = lote[posicao]
-                    _preencher_celula_foto(
-                        celula,
-                        conteudo,
-                        revisoes.get(nome, {}),
-                        largura_foto,
-                        altura_foto,
-                        forcar_tamanho=bool(tamanho_fixo),
-                    )
-                else:
-                    celula.text = ""
+            for indice_linha, linha_fotos in enumerate(lote_linhas):
+                for indice_coluna in range(colunas):
+                    celula = tabela.cell(indice_linha, indice_coluna)
+                    if indice_coluna < len(linha_fotos):
+                        nome, conteudo = linha_fotos[indice_coluna]
+                        _preencher_celula_foto(
+                            celula,
+                            conteudo,
+                            revisoes.get(nome, {}),
+                            largura_foto,
+                            altura_foto,
+                            forcar_tamanho=bool(tamanho_fixo),
+                        )
+                    else:
+                        celula.text = ""
 
 # ============================================================
 # PARÂMETROS DA INSPEÇÃO
@@ -1443,7 +1505,7 @@ def gerar_relatorio_word(
     # SUMÁRIO
     # ========================================================
 
-    _adicionar_sumario(doc, grupos_fotos, tipo_ativo, fotos_por_pagina)
+    _adicionar_sumario(doc, grupos_fotos, tipo_ativo, fotos_por_pagina, revisoes)
 
     # ========================================================
     # 1. INTRODUÇÃO
