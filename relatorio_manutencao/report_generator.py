@@ -30,10 +30,11 @@ GRADE_FOTOS = {
     6: (3, 2),
 }
 # Tamanho fixo (largura, altura) em cm para opções com medida padronizada.
-# Nas opções de 3 colunas a foto sai exatamente em 4,3 x 9,56 cm, como no
+# Nas opções 3, 4 e 6 a foto sai exatamente em 4,3 x 9,56 cm, como no
 # relatório antigo (mesmo que a proporção original seja diferente).
 TAMANHO_FIXO_CM = {
     3: (4.3, 9.56),
+    4: (4.3, 9.56),
     6: (4.3, 9.56),
 }
 

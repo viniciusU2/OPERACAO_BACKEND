@@ -109,6 +109,12 @@ class LayoutFotosWordTests(unittest.TestCase):
         self.assertAlmostEqual(forma.width.cm, 2.15, places=1)
         self.assertAlmostEqual(forma.height.cm, 4.78, places=1)
 
+    def test_quatro_por_pagina_usa_a_medida_padrao(self):
+        documento = self._gerar(fotos_por_pagina=4)
+        for forma in documento.inline_shapes:
+            self.assertAlmostEqual(forma.width.cm, 4.3, places=1)
+            self.assertAlmostEqual(forma.height.cm, 9.56, places=1)
+
     def test_seis_por_pagina_em_duas_linhas_de_tres(self):
         documento = self._gerar(fotos_por_pagina=6)
         tabelas = [t for t in documento.tables if _tem_foto(t)]
