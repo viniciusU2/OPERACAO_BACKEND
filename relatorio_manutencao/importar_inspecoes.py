@@ -71,7 +71,7 @@ def _slug(texto: str, limite: int = 80) -> str:
 
 def _nome_foto(sequencia: int, codigo_ativo: str, nome_item: str) -> str:
     nome = re.sub(r'[\\/:*?"<>|]+', " ", nome_item or "Item")
-    nome = re.sub(r"\s+", " ", nome).strip()[:70]
+    nome = re.sub(r"\s+", " ", nome).strip().rstrip(". ")[:70]
     return f"{codigo_ativo}/{sequencia:03d} - {nome}.jpg"
 
 
