@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from database import get_db
-from plano_manutencao.inspecoes import PREFIXO_FOTO_INSPECAO, router
+from plano_manutencao.inspecoes import PREFIXO_FOTO_INSPECAO, _fotos_informadas, router
 
 
 class _FakeQuery:
@@ -95,6 +95,22 @@ class InspecaoFotoUploadTest(unittest.TestCase):
     def test_recusa_caminho_fora_da_pasta(self):
         resposta = self.client.get("/inspecoes/fotos/..%2F..%2Fmain.py")
         self.assertEqual(resposta.status_code, 404)
+
+    def test_link_externo_e_preservado_nao_entra_na_limpeza(self):
+        # Foto por link (Drive/SharePoint) é um texto livre no banco e não
+        # deve ser tratada como arquivo interno na remoção de órfãos.
+        from types import SimpleNamespace
+
+        url_interna = f"{PREFIXO_FOTO_INSPECAO}{'a' * 32}.jpg"
+        resultados = [
+            SimpleNamespace(foto="https://drive.google.com/file/d/1AbCdEf/view"),
+            SimpleNamespace(foto="https://empresa.sharepoint.com/foto.jpg"),
+            SimpleNamespace(foto=url_interna),
+            SimpleNamespace(foto=None),
+            SimpleNamespace(foto=""),
+        ]
+
+        self.assertEqual(_fotos_informadas(resultados), {url_interna})
 
 
 if __name__ == "__main__":
