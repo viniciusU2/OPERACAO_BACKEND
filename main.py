@@ -62,13 +62,32 @@ if inspect(engine).has_table("relatorio_manutencao"):
         "frequencia_inicio": "VARCHAR(20) NULL", "frequencia_fim": "VARCHAR(20) NULL",
         "tensao_inicio": "VARCHAR(20) NULL", "tensao_fim": "VARCHAR(20) NULL",
         "texto_introducao": "TEXT NULL", "corpo_tecnico_json": "TEXT NULL",
-        "numero_os": "VARCHAR(100) NULL", "numero_apr": "VARCHAR(100) NULL",
+        "numero_os": "VARCHAR(500) NULL", "numero_apr": "VARCHAR(500) NULL",
         "periodo_capa": "VARCHAR(100) NULL", "concessao": "VARCHAR(255) NULL",
     }
     with engine.begin() as conexao:
         for nome_coluna, definicao in colunas_pendentes.items():
             if nome_coluna not in colunas_relatorio:
                 conexao.execute(text(f"ALTER TABLE relatorio_manutencao ADD COLUMN {nome_coluna} {definicao}"))
+        # Um relatorio pode reunir dezenas de OS/APR; bases antigas criaram
+        # essas colunas como VARCHAR(100) e o upload falhava com
+        # "Data too long for column 'numero_os'". Amplia para 500 (idempotente).
+        for nome_coluna in ("numero_os", "numero_apr"):
+            tamanho = conexao.execute(
+                text(
+                    "SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns "
+                    "WHERE table_schema = database() AND table_name = 'relatorio_manutencao' "
+                    "AND column_name = :nome"
+                ),
+                {"nome": nome_coluna},
+            ).scalar()
+            if tamanho is not None and int(tamanho) < 500:
+                conexao.execute(
+                    text(
+                        f"ALTER TABLE relatorio_manutencao "
+                        f"MODIFY COLUMN {nome_coluna} VARCHAR(500) NULL"
+                    )
+                )
 
 db = SessionLocal()
 try:
