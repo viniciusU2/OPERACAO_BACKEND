@@ -21,7 +21,12 @@ from models.instalacao_models import Subestacao
 from models.plano_manutencao_models import PlanoItem, PlanoManutencao
 from relatorio_manutencao.models import RelatorioManutencao
 from relatorio_manutencao.photo_models import RelatorioManutencaoFoto
-from relatorio_manutencao.schemas import RelatorioManutencaoPaginadoResponse, RelatorioManutencaoResponse
+from relatorio_manutencao.schemas import (
+    RelatorioDeInspecoesRequest,
+    RelatorioManutencaoPaginadoResponse,
+    RelatorioManutencaoResponse,
+)
+from relatorio_manutencao import importar_inspecoes
 from relatorio_manutencao.report_generator import gerar_relatorio_word
 from relatorio_manutencao.review_enrichment import criar_miniatura_data_url
 
@@ -264,6 +269,225 @@ def listar_relatorios(
     total = query.count()
     items = query.order_by(RelatorioManutencao.criado_em.desc()).offset((page - 1) * page_size).limit(page_size).all()
     return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+def _juntar_unicos(valores) -> str | None:
+    unicos: list[str] = []
+    for valor in valores:
+        texto = (valor or "").strip() if isinstance(valor, str) else ""
+        if texto and texto not in unicos:
+            unicos.append(texto)
+    return ", ".join(unicos) or None
+
+
+def _sugestoes_importacao(db: Session, inspecoes) -> dict | None:
+    if not inspecoes:
+        return None
+    datas = [inspecao.data_inspecao for inspecao in inspecoes if inspecao.data_inspecao]
+    data_referencia = max(datas).date() if datas else date.today()
+    primeiro = inspecoes[0]
+    subestacao = db.get(Subestacao, primeiro.ativo.id_subestacao) if primeiro.ativo else None
+    tipo_ativo = db.get(TipoAtivo, primeiro.ativo.id_tipo_ativo) if primeiro.ativo else None
+    responsaveis: list[str] = []
+    for inspecao in inspecoes:
+        nome = (inspecao.responsavel or "").strip()
+        if nome and nome not in responsaveis:
+            responsaveis.append(nome)
+    return {
+        "data_referencia": data_referencia.isoformat(),
+        "periodo_capa": importar_inspecoes.periodo_capa(data_referencia),
+        "texto_introducao": importar_inspecoes.texto_introducao_padrao(
+            data_referencia,
+            subestacao.nome if subestacao else "",
+            tipo_ativo.nome if tipo_ativo else "",
+        ),
+        "responsaveis": responsaveis,
+        "numero_os": _juntar_unicos(
+            inspecao.ordem_servico.numero_os for inspecao in inspecoes if inspecao.ordem_servico
+        ),
+        "numero_apr": _juntar_unicos(
+            inspecao.ordem_servico.numero_apr for inspecao in inspecoes if inspecao.ordem_servico
+        ),
+        "id_subestacao": primeiro.ativo.id_subestacao if primeiro.ativo else None,
+        "id_tipo_ativo": primeiro.ativo.id_tipo_ativo if primeiro.ativo else None,
+        "periodicidade": (
+            primeiro.periodicidade.value
+            if hasattr(primeiro.periodicidade, "value")
+            else str(primeiro.periodicidade)
+        ),
+    }
+
+
+@router.get("/inspecoes-disponiveis")
+def listar_inspecoes_para_relatorio(
+    id_subestacao: int | None = Query(None),
+    id_tipo_ativo: int | None = Query(None),
+    periodicidade: str | None = Query(None),
+    data_inicio: date | None = Query(None),
+    data_fim: date | None = Query(None),
+    limite: int = Query(200, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    _usuario=Depends(get_current_user),
+):
+    """Lista as inspecoes que podem virar relatorio, com a contagem de fotos do backend."""
+    periodicidade_normalizada = _normalizar_periodicidade(periodicidade) if periodicidade else None
+    inspecoes = importar_inspecoes.listar_disponiveis(
+        db, id_subestacao, id_tipo_ativo, periodicidade_normalizada, data_inicio, data_fim
+    )[:limite]
+    itens = [importar_inspecoes.resumo_inspecao(inspecao) for inspecao in inspecoes]
+    return {
+        "inspecoes": itens,
+        "total_inspecoes": len(itens),
+        "total_fotos_backend": sum(item["fotos_backend"] for item in itens),
+        "total_fotos_link": sum(item["fotos_link"] for item in itens),
+        "sugestoes": _sugestoes_importacao(db, inspecoes),
+    }
+
+
+@router.post("/de-inspecoes", response_model=RelatorioManutencaoResponse, status_code=status.HTTP_201_CREATED)
+def criar_relatorio_de_inspecoes(
+    dados: RelatorioDeInspecoesRequest,
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    """Cria o relatorio a partir das inspecoes, usando apenas fotos do backend."""
+    ids = list(dict.fromkeys(dados.ids_inspecao))
+    if not ids:
+        raise HTTPException(400, "Selecione ao menos uma inspecao.")
+    inspecoes = importar_inspecoes.carregar_inspecoes(db, ids)
+    encontradas = {inspecao.id_inspecao for inspecao in inspecoes}
+    faltando = sorted(set(ids) - encontradas)
+    if faltando:
+        raise HTTPException(
+            404, f"Inspecao(oes) nao encontrada(s): {', '.join(map(str, faltando))}."
+        )
+    if any(inspecao.ativo is None for inspecao in inspecoes):
+        raise HTTPException(400, "Uma das inspecoes selecionadas nao possui ativo vinculado.")
+
+    contextos = {(inspecao.ativo.id_subestacao, inspecao.ativo.id_tipo_ativo) for inspecao in inspecoes}
+    if len(contextos) > 1:
+        raise HTTPException(400, "As inspecoes selecionadas sao de subestacoes ou tipos de ativo diferentes.")
+    periodicidades = {
+        inspecao.periodicidade.value if hasattr(inspecao.periodicidade, "value") else str(inspecao.periodicidade)
+        for inspecao in inspecoes
+    }
+    if len(periodicidades) > 1:
+        raise HTTPException(400, "As inspecoes selecionadas possuem periodicidades diferentes.")
+
+    fotos, _sem_foto = importar_inspecoes.montar_fotos(inspecoes)
+    if not fotos:
+        raise HTTPException(
+            400,
+            "Nenhuma foto encontrada no backend para as inspecoes selecionadas. "
+            "As fotos salvas apenas como link externo (SharePoint/Drive) nao sao importadas.",
+        )
+    if len(fotos) > MAX_FOTOS:
+        raise HTTPException(400, f"A selecao gera mais de {MAX_FOTOS} fotos para o relatorio.")
+
+    corpo_tecnico = [
+        {"nome": pessoa.nome.strip(), "funcao": pessoa.funcao.strip()}
+        for pessoa in dados.corpo_tecnico
+        if pessoa.nome.strip() or pessoa.funcao.strip()
+    ]
+    if not corpo_tecnico or any(not pessoa["nome"] or not pessoa["funcao"] for pessoa in corpo_tecnico):
+        raise HTTPException(400, "Informe nome e funcao de todo o corpo tecnico.")
+
+    obrigatorios = {
+        "horario inicial": dados.hora_inicio,
+        "horario final": dados.hora_fim,
+        "temperatura inicial": dados.temperatura_inicio,
+        "temperatura final": dados.temperatura_fim,
+        "frequencia inicial": dados.frequencia_inicio,
+        "frequencia final": dados.frequencia_fim,
+        "tensao inicial": dados.tensao_inicio,
+        "tensao final": dados.tensao_fim,
+    }
+    vazios = [rotulo for rotulo, valor in obrigatorios.items() if not (valor or "").strip()]
+    if vazios:
+        raise HTTPException(400, f"Preencha os campos obrigatorios: {', '.join(vazios)}.")
+
+    id_subestacao, id_tipo_ativo = next(iter(contextos))
+    periodo_inspecao = next(iter(periodicidades))
+    subestacao = db.get(Subestacao, id_subestacao)
+    tipo_ativo = db.get(TipoAtivo, id_tipo_ativo)
+    if not subestacao or not tipo_ativo:
+        raise HTTPException(400, "Subestacao ou tipo de ativo invalido.")
+
+    datas = [inspecao.data_inspecao for inspecao in inspecoes if inspecao.data_inspecao]
+    data_referencia = dados.data_referencia or (max(datas).date() if datas else date.today())
+    periodo_capa = (dados.periodo_capa or "").strip() or importar_inspecoes.periodo_capa(data_referencia)
+    texto_introducao = (dados.texto_introducao or "").strip() or importar_inspecoes.texto_introducao_padrao(
+        data_referencia, subestacao.nome, tipo_ativo.nome
+    )
+    numero_os = (dados.numero_os or "").strip() or _juntar_unicos(
+        inspecao.ordem_servico.numero_os for inspecao in inspecoes if inspecao.ordem_servico
+    )
+    numero_apr = (dados.numero_apr or "").strip() or _juntar_unicos(
+        inspecao.ordem_servico.numero_apr for inspecao in inspecoes if inspecao.ordem_servico
+    )
+    if numero_os and len(numero_os) > 500:
+        numero_os = numero_os[:500]
+    if numero_apr and len(numero_apr) > 500:
+        numero_apr = numero_apr[:500]
+
+    pacote = importar_inspecoes.montar_zip(fotos)
+    destino = None
+    try:
+        nome_armazenado, destino = importar_inspecoes.salvar_zip(pacote, PASTA_UPLOADS)
+        relatorio = RelatorioManutencao(
+            id_subestacao=id_subestacao,
+            id_tipo_ativo=id_tipo_ativo,
+            periodicidade=periodo_inspecao,
+            data_referencia=data_referencia,
+            observacao=(dados.observacao or "").strip() or None,
+            texto_introducao=texto_introducao,
+            corpo_tecnico_json=json.dumps(corpo_tecnico, ensure_ascii=False),
+            numero_os=numero_os,
+            numero_apr=numero_apr,
+            periodo_capa=periodo_capa,
+            concessao=(dados.concessao or "").strip()
+            or "Rialma Transmissora de Energia - RTV",
+            hora_inicio=dados.hora_inicio.strip(),
+            hora_fim=dados.hora_fim.strip(),
+            temperatura_inicio=dados.temperatura_inicio.strip(),
+            temperatura_fim=dados.temperatura_fim.strip(),
+            frequencia_inicio=dados.frequencia_inicio.strip(),
+            frequencia_fim=dados.frequencia_fim.strip(),
+            tensao_inicio=dados.tensao_inicio.strip(),
+            tensao_fim=dados.tensao_fim.strip(),
+            nome_arquivo_original=importar_inspecoes.nome_arquivo_original(
+                periodo_inspecao, subestacao.nome, tipo_ativo.nome, data_referencia
+            ),
+            nome_arquivo_armazenado=nome_armazenado,
+            caminho_arquivo=str(destino),
+            tamanho_bytes=len(pacote),
+            quantidade_fotos=len(fotos),
+            status="RECEBIDO",
+            id_usuario_envio=usuario.id,
+        )
+        db.add(relatorio)
+        db.flush()
+        for foto in fotos:
+            db.add(
+                RelatorioManutencaoFoto(
+                    id_relatorio_manutencao=relatorio.id_relatorio_manutencao,
+                    id_ativo=foto.id_ativo,
+                    id_plano_item=foto.id_plano_item,
+                    nome_arquivo_zip=foto.nome_zip,
+                    valor_medido=foto.valor,
+                    status_item=foto.status,
+                    observacao=foto.observacao,
+                    incluir=True,
+                )
+            )
+        db.commit()
+        db.refresh(relatorio)
+        return relatorio
+    except Exception:
+        db.rollback()
+        if destino is not None:
+            destino.unlink(missing_ok=True)
+        raise
 
 
 @router.get("/{id_relatorio_manutencao}", response_model=RelatorioManutencaoResponse)
