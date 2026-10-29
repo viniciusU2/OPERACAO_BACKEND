@@ -153,6 +153,19 @@ def garantir_estrutura_fluxo_si(db: Session):
         )
     """))
 
+    # Numeros devolvidos por exclusao de SI: o proximo cadastro da sigla
+    # reaproveita o menor numero livre em vez de pular para o final.
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS si_numero_liberado (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            sigla VARCHAR(30) NOT NULL,
+            ano INT NOT NULL,
+            numero INT NOT NULL,
+            liberado_em DATETIME NOT NULL,
+            UNIQUE KEY uq_si_numero_liberado (sigla, ano, numero)
+        )
+    """))
+
     # Migra o status dos registros antigos (somente onde a coluna esta vazia).
     db.execute(text("""
         UPDATE solicitacao_intervencao
@@ -264,8 +277,57 @@ def gerar_numero_si(db: Session, sigla: str):
         if match:
             numeros.append(int(match.group(1)))
 
+    # Reaproveita o menor numero devolvido por exclusao de SI, para o numero
+    # da SI cancelada/excluida nao ficar pulado na sequencia.
+    liberados = db.execute(
+        text("""
+            SELECT numero FROM si_numero_liberado
+             WHERE sigla = :sigla AND ano = :ano
+             ORDER BY numero ASC
+        """),
+        {"sigla": sigla, "ano": ano_atual},
+    ).scalars().all()
+    for numero_liberado in liberados:
+        if numero_liberado in numeros:
+            # numero voltou a existir por outra via; descarta da fila
+            db.execute(
+                text("""
+                    DELETE FROM si_numero_liberado
+                     WHERE sigla = :sigla AND ano = :ano AND numero = :numero
+                """),
+                {"sigla": sigla, "ano": ano_atual, "numero": numero_liberado},
+            )
+            continue
+        db.execute(
+            text("""
+                DELETE FROM si_numero_liberado
+                 WHERE sigla = :sigla AND ano = :ano AND numero = :numero
+            """),
+            {"sigla": sigla, "ano": ano_atual, "numero": numero_liberado},
+        )
+        return f"SI-{sigla}-{str(numero_liberado).zfill(4)}-{ano_atual}"
+
     proximo = max(numeros) + 1 if numeros else 1
     return f"SI-{sigla}-{str(proximo).zfill(4)}-{ano_atual}"
+
+
+def liberar_numero_si(db: Session, si):
+    """Devolve o numero da SI excluida para o proximo cadastro reaproveitar."""
+    numero_si = (getattr(si, "numero_si", "") or "").strip()
+    match = re.fullmatch(r"SI-(.+)-(\d+)-(\d{4})", numero_si)
+    if not match:
+        return
+    db.execute(
+        text("""
+            INSERT IGNORE INTO si_numero_liberado (sigla, ano, numero, liberado_em)
+            VALUES (:sigla, :ano, :numero, NOW())
+        """),
+        {
+            "sigla": match.group(1),
+            "ano": int(match.group(3)),
+            "numero": int(match.group(2)),
+        },
+    )
 
 
 def obter_si_ou_404(db: Session, id_si: int):
@@ -1233,14 +1295,23 @@ def deletar_si(id_si: int, db: Session = Depends(get_db), usuario=Depends(get_cu
     if workflow.normalizar(getattr(usuario, "role", None)) != "ADMIN":
         raise HTTPException(403, "Permissao insuficiente")
 
-    # Depois de enviada a SI faz parte da trilha de auditoria e nao pode sumir.
+    # Depois de enviada a SI faz parte da trilha de auditoria e nao pode
+    # sumir. Rascunho, rejeitada e cancelada podem ser excluidas pelo admin;
+    # ao excluir, o numero volta para a fila e o proximo cadastro reaproveita.
     if not workflow.pode_excluir(si, usuario):
+        atual = workflow.status_atual(si)
+        if atual == workflow.APROVADA:
+            raise HTTPException(
+                403,
+                "Uma SI aprovada nao pode ser excluida. Cancele-a antes "
+                "(com justificativa) e entao exclua.",
+            )
         raise HTTPException(
             403,
-            f"Uma SI no status {workflow.rotulo(workflow.status_atual(si))} "
-            "nao pode ser excluida. Cancele a SI para preservar o historico.",
+            f"Uma SI no status {workflow.rotulo(atual)} nao pode ser excluida.",
         )
 
+    liberar_numero_si(db, si)
     db.delete(si)
     db.commit()
     return {"message": "SI deletada com sucesso"}

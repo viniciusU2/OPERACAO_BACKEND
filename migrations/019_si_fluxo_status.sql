@@ -32,6 +32,17 @@ CREATE TABLE IF NOT EXISTS si_historico (
         ON DELETE SET NULL
 );
 
+-- Números devolvidos por exclusão de SI: o próximo cadastro da sigla
+-- reaproveita o menor número livre em vez de pular para o final.
+CREATE TABLE IF NOT EXISTS si_numero_liberado (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sigla VARCHAR(30) NOT NULL,
+    ano INT NOT NULL,
+    numero INT NOT NULL,
+    liberado_em DATETIME NOT NULL,
+    UNIQUE KEY uq_si_numero_liberado (sigla, ano, numero)
+);
+
 -- Migra o status das SIs que já existiam.
 UPDATE solicitacao_intervencao
    SET status = CASE

@@ -139,10 +139,16 @@ def pode_criar(usuario) -> bool:
 
 
 def pode_excluir(si, usuario) -> bool:
-    """Exclusao so e permitida antes de a SI entrar no fluxo."""
+    """Exclusao pelo admin: rascunho, rejeitada ou cancelada.
+
+    Enviada e aprovada fazem parte da trilha de auditoria e nao podem sumir.
+    Uma aprovada pode ser cancelada antes (com justificativa) e entao
+    excluida. Ao excluir, o numero da SI volta para a fila e o proximo
+    cadastro reaproveita o mesmo numero.
+    """
     return (
         normalizar(getattr(usuario, "role", None)) == "ADMIN"
-        and status_atual(si) in (RASCUNHO, REJEITADA)
+        and status_atual(si) in (RASCUNHO, REJEITADA, CANCELADA)
     )
 
 

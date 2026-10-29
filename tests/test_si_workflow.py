@@ -155,15 +155,18 @@ class CriacaoEExclusaoTests(unittest.TestCase):
         self.assertFalse(workflow.pode_criar(OPERACAO))
         self.assertFalse(workflow.pode_criar(LEITOR))
 
-    def test_admin_exclui_somente_antes_do_envio(self):
+    def test_admin_exclui_rascunho_rejeitada_e_cancelada(self):
         self.assertTrue(workflow.pode_excluir(si("RASCUNHO"), OPERACAO))
         self.assertTrue(workflow.pode_excluir(si("REJEITADA"), OPERACAO))
-        for status in ("ENVIADA", "APROVADA", "CANCELADA", "CONCLUIDA"):
+        self.assertTrue(workflow.pode_excluir(si("CANCELADA"), OPERACAO))
+        for status in ("ENVIADA", "APROVADA", "CONCLUIDA"):
             with self.subTest(status=status):
                 self.assertFalse(workflow.pode_excluir(si(status), OPERACAO))
 
-    def test_manutencao_nao_exclui(self):
+    def test_manutencao_e_operador_nao_excluem(self):
         self.assertFalse(workflow.pode_excluir(si("RASCUNHO"), MANUTENCAO))
+        self.assertFalse(workflow.pode_excluir(si("CANCELADA"), MANUTENCAO))
+        self.assertFalse(workflow.pode_excluir(si("CANCELADA"), usuario("operador")))
 
 
 class ObservacaoTests(unittest.TestCase):
