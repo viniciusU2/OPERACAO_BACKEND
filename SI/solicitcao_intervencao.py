@@ -1,5 +1,5 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import String, cast, or_, text
+from sqlalchemy import String, cast, or_, text, func
 from fastapi import Query
 from sqlalchemy.orm import Session, selectinload
 from auth.dependencies import get_current_user, require_roles
@@ -792,6 +792,53 @@ def listar_si(db: Session = Depends(get_db), usuario=Depends(get_current_user)):
             )
         )
     return [resposta_si(si, usuario) for si in query.all()]
+
+
+@router.get("/resumo-status")
+def resumo_status_si(
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    """Contagem de SI por status, para o painel de pendencias da lista.
+
+    Respeita a mesma visibilidade da lista: a Operacao nao ve rascunhos.
+    """
+    garantir_colunas_si(db)
+    garantir_estrutura_fluxo_si(db)
+
+    filtro_rascunho = None
+    if workflow.perfil(usuario) == workflow.PERFIL_OPERACAO:
+        filtro_rascunho = or_(
+            solicitacao_intervencao.status.is_(None),
+            solicitacao_intervencao.status != workflow.RASCUNHO,
+        )
+
+    contagens = {status: 0 for status in workflow.STATUS_VALIDOS}
+    linhas = (
+        db.query(solicitacao_intervencao.status, func.count(solicitacao_intervencao.id_si))
+        .filter(filtro_rascunho)
+        .group_by(solicitacao_intervencao.status)
+        .all()
+    )
+    for status, total in linhas:
+        chave = (status or "").strip().upper()
+        if chave not in workflow.STATUS_VALIDOS:
+            chave = workflow.RASCUNHO
+        contagens[chave] = contagens.get(chave, 0) + (total or 0)
+
+    # Sempre mostra os status que pedem atencao (mesmo zerados), para a
+    # Manutencao Local enxergar os rascunhos e a Operacao as enviadas.
+    sempre_exibir = [workflow.ENVIADA, workflow.REJEITADA]
+    if workflow.perfil(usuario) != workflow.PERFIL_OPERACAO:
+        sempre_exibir.append(workflow.RASCUNHO)
+
+    return {
+        "items": [
+            {"status": status, "total": contagens.get(status, 0)}
+            for status in workflow.STATUS_VALIDOS
+            if status in sempre_exibir or contagens.get(status, 0) > 0
+        ]
+    }
 
 
 @router.get("/paginado", response_model=SIPaginadaResponse)
