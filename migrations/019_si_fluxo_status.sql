@@ -51,7 +51,7 @@ INSERT INTO si_historico
     (id_si, acao, status_anterior, status_novo, observacao,
      usuario_id, usuario_nome, usuario_perfil, criado_em)
 SELECT s.id_si, 'MIGRACAO', NULL, s.status,
-       'SI importada do fluxo anterior de status.',
+       'SI registrada no sistema.',
        NULL, COALESCE(NULLIF(s.emissor, ''), 'Sistema'), NULL, COALESCE(s.criado_em, NOW())
   FROM solicitacao_intervencao s
  WHERE NOT EXISTS (SELECT 1 FROM si_historico h WHERE h.id_si = s.id_si);

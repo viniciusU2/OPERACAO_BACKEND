@@ -172,6 +172,13 @@ class RotulosTests(unittest.TestCase):
         self.assertEqual(workflow.rotulo("APROVADA"), "Aprovada")
         self.assertEqual(workflow.rotulo("CANCELADA"), "Cancelada")
 
+    def test_rotulos_sem_sufixo_de_origem(self):
+        # O usuario nao precisa saber que o fluxo mudou: os status antigos
+        # aparecem com o mesmo nome de sempre.
+        self.assertEqual(workflow.rotulo("PROGRAMADA"), "Programada")
+        self.assertEqual(workflow.rotulo("CONCLUIDA"), "Concluida")
+        self.assertEqual(workflow.rotulo("ENCERRADA"), "Encerrada")
+
     def test_rotulo_de_valor_desconhecido_nao_quebra(self):
         self.assertEqual(workflow.rotulo("EM_ANALISE"), "Em Analise")
 

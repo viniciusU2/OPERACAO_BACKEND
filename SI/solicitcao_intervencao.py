@@ -175,7 +175,7 @@ def garantir_estrutura_fluxo_si(db: Session):
             (id_si, acao, status_anterior, status_novo, observacao,
              usuario_id, usuario_nome, usuario_perfil, criado_em)
         SELECT s.id_si, 'MIGRACAO', NULL, s.status,
-               'SI importada do fluxo anterior de status.',
+               'SI registrada no sistema.',
                NULL, COALESCE(NULLIF(s.emissor, ''), 'Sistema'), NULL, COALESCE(s.criado_em, NOW())
           FROM solicitacao_intervencao s
          WHERE NOT EXISTS (
@@ -712,6 +712,11 @@ def criar_si(
 
     data = dados.dict()
     data.pop("status", None)  # status nunca vem do cliente
+    # Os status por lado (manutencao/operacao) fazem parte do fluxo antigo e
+    # nao podem ser alterados: o status oficial e a coluna `status`, mudada
+    # somente pelas acoes de fluxo.
+    data.pop("status_manutencao", None)
+    data.pop("status_operacao", None)
     sem_ativo = not data.get("id_ativo") and not data.get("id_grupo_ativo")
     if sem_ativo:
         subestacao = db.query(Subestacao).filter(
@@ -1104,12 +1109,15 @@ def editar_si(id_si: int, dados: SIUpdate, db: Session = Depends(get_db), usuari
         raise HTTPException(404, "SI nao encontrada")
 
     # Bloqueio de edicao do rito: so a Manutencao Local edita e somente em
-    # Rascunho / Rejeitada (ou Programada, herdada do fluxo anterior).
+    # Rascunho / Rejeitada / Programada.
     if not workflow.pode_editar(si, usuario):
         raise HTTPException(403, workflow.motivo_bloqueio_edicao(si))
 
     alteracoes = dados.dict(exclude_unset=True)
+    # Status nunca vem do cliente: muda somente pelas acoes de fluxo.
     alteracoes.pop("status", None)
+    alteracoes.pop("status_manutencao", None)
+    alteracoes.pop("status_operacao", None)
 
     # Valida a selecao resultante antes de aplicar. Isso evita que uma edicao
     # deixe id_subestacao, ativo, grupo e funcao apontando para instalacoes

@@ -43,9 +43,9 @@ ROTULOS = {
     REJEITADA: "Rejeitada",
     APROVADA: "Aprovada",
     CANCELADA: "Cancelada",
-    PROGRAMADA: "Programada (legado)",
-    CONCLUIDA: "Concluida (legado)",
-    ENCERRADA: "Encerrada (legado)",
+    PROGRAMADA: "Programada",
+    CONCLUIDA: "Concluida",
+    ENCERRADA: "Encerrada",
 }
 
 # Estados em que a Manutencao Local pode alterar o documento.
