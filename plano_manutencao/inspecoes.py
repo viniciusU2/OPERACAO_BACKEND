@@ -581,6 +581,14 @@ def preparar_inspecoes_os_em_execucao(
 @router.post("", response_model=InspecaoReadFull, status_code=201)
 @router.post("/", response_model=InspecaoReadFull, status_code=201)
 def criar_inspecao(inspecao_in: InspecaoCreate, db: Session = Depends(get_db)):
+    if inspecao_in.id_os is not None:
+        ordem = db.query(OrdemServico).filter(OrdemServico.id_os == inspecao_in.id_os).first()
+        if ordem is None or ordem.status != "EM_EXECUCAO":
+            raise HTTPException(
+                status_code=400,
+                detail="Inspeção só pode ser vinculada a uma OS em execução.",
+            )
+
     db_inspecao = Inspecao(
         id_ativo=inspecao_in.id_ativo,
         id_os=inspecao_in.id_os,
@@ -615,6 +623,14 @@ def atualizar_inspecao(
     fotos_antigas = _fotos_informadas(inspecao.resultados)
     payload = dados.model_dump(exclude_unset=True)
     resultados = payload.pop("resultados", None)
+
+    if "id_os" in payload and payload["id_os"] is not None:
+        ordem = db.query(OrdemServico).filter(OrdemServico.id_os == payload["id_os"]).first()
+        if ordem is None or ordem.status != "EM_EXECUCAO":
+            raise HTTPException(
+                status_code=400,
+                detail="Inspeção só pode ser vinculada a uma OS em execução.",
+            )
 
     for campo, valor in payload.items():
         setattr(inspecao, campo, valor)
