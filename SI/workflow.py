@@ -4,16 +4,19 @@ Fluxo novo
 ----------
 ::
 
-    RASCUNHO --enviar--> ENVIADA --aprovar--> APROVADA --cancelar--> CANCELADA
-                            |                     (final)
+    RASCUNHO --enviar--> ENVIADA --aprovar--> APROVADA --concluir--> CONCLUIDA
+                            |                     |             (final)
+                            |                     +--cancelar--> CANCELADA (final)
                             +--rejeitar--> REJEITADA --enviar--> ENVIADA
                             +--cancelar--> CANCELADA (final)
 
 - Somente a Manutencao Local (papel ``mantenedor``) cria, edita e envia.
-- Somente o Centro de Operacoes (papeis ``admin`` e ``operador``) aprova,
-  rejeita e cancela.
+- O Centro de Operacoes (papeis ``admin`` e ``operador``) aprova, rejeita e
+  cancela.
+- Concluir e permitido aos dois perfis (Manutencao e Operacao) quando a SI
+  esta aprovada e a intervencao foi executada.
 - Rascunho nao aparece para a Operacao.
-- APROVADA e CANCELADA nunca voltam para RASCUNHO/ENVIADA.
+- APROVADA, CANCELADA e CONCLUIDA nunca voltam para RASCUNHO/ENVIADA.
 
 Status herdados do fluxo anterior (``PROGRAMADA``, ``CONCLUIDA``,
 ``ENCERRADA``) continuam existindo para nao perder o historico. Eles sao
@@ -52,13 +55,18 @@ ROTULOS = {
 # Estados em que a Manutencao Local pode alterar o documento.
 EDITAVEIS = frozenset({RASCUNHO, REJEITADA, PROGRAMADA})
 
+# Estados em que os campos de liberacao podem ser alterados. Alem da edicao
+# normal, a SI aprovada continua aceitando liberacoes enquanto a intervencao
+# acontece.
+EDITAVEIS_LIBERACAO = frozenset(EDITAVEIS | {APROVADA})
+
 # Transicoes permitidas a partir de cada status.
 TRANSICOES = {
     RASCUNHO: (ENVIADA,),
     REJEITADA: (ENVIADA,),
     PROGRAMADA: (ENVIADA,),
     ENVIADA: (APROVADA, REJEITADA, CANCELADA),
-    APROVADA: (CANCELADA,),
+    APROVADA: (CONCLUIDA, CANCELADA),
     CANCELADA: (),
     CONCLUIDA: (),
     ENCERRADA: (),
@@ -68,11 +76,12 @@ ACOES = {
     "enviar": ENVIADA,
     "aprovar": APROVADA,
     "rejeitar": REJEITADA,
+    "concluir": CONCLUIDA,
     "cancelar": CANCELADA,
 }
 
-ACOES_MANUTENCAO = frozenset({"enviar"})
-ACOES_OPERACAO = frozenset({"aprovar", "rejeitar", "cancelar"})
+ACOES_MANUTENCAO = frozenset({"enviar", "concluir"})
+ACOES_OPERACAO = frozenset({"aprovar", "rejeitar", "concluir", "cancelar"})
 
 # Acoes que exigem justificativa.
 ACOES_COM_OBSERVACAO = frozenset({"rejeitar", "cancelar"})
@@ -81,6 +90,7 @@ ROTULOS_ACAO = {
     "enviar": "Enviar para o Centro de Operacoes",
     "aprovar": "Aprovar",
     "rejeitar": "Rejeitar",
+    "concluir": "Concluir SI",
     "cancelar": "Cancelar SI",
 }
 
@@ -88,6 +98,7 @@ VERBOS_ACAO = {
     "enviar": "enviar",
     "aprovar": "aprovar",
     "rejeitar": "rejeitar",
+    "concluir": "concluir",
     "cancelar": "cancelar",
 }
 
@@ -134,6 +145,13 @@ def pode_editar(si, usuario) -> bool:
     return perfil(usuario) == PERFIL_MANUTENCAO and status_atual(si) in EDITAVEIS
 
 
+def pode_editar_liberacoes(si, usuario) -> bool:
+    """Campos de liberacao: editaveis no rascunho/rejeitada/programada e
+    tambem enquanto a SI esta aprovada (a intervencao acontece nesse periodo).
+    """
+    return perfil(usuario) is not None and status_atual(si) in EDITAVEIS_LIBERACAO
+
+
 def pode_criar(usuario) -> bool:
     return perfil(usuario) == PERFIL_MANUTENCAO
 
@@ -174,7 +192,7 @@ def acoes_disponiveis(si, usuario) -> list[str]:
         return []
     return [
         acao
-        for acao in ("enviar", "aprovar", "rejeitar", "cancelar")
+        for acao in ("enviar", "aprovar", "rejeitar", "concluir", "cancelar")
         if acao in candidatas and ACOES[acao] in permitidas
     ]
 
@@ -198,9 +216,14 @@ def motivo_bloqueio_edicao(si) -> str:
     if atual == ENVIADA:
         return "A SI esta em analise pelo Centro de Operacoes e nao pode ser editada."
     if atual == APROVADA:
-        return "A SI foi aprovada e nao pode mais ser editada."
+        return (
+            "A SI foi aprovada: o documento fica somente leitura, mas os campos "
+            "de liberacao continuam editaveis. Conclua a SI quando a intervencao terminar."
+        )
     if atual == CANCELADA:
         return "A SI foi cancelada e nao pode mais ser editada."
-    if atual in (CONCLUIDA, ENCERRADA):
-        return f"A SI esta {rotulo(atual).lower()} e e somente leitura."
+    if atual == CONCLUIDA:
+        return "A SI foi concluida e e somente leitura."
+    if atual == ENCERRADA:
+        return "A SI esta encerrada e e somente leitura."
     return "Seu perfil nao tem permissao para editar esta SI."

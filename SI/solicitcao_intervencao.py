@@ -349,6 +349,7 @@ def resposta_si(si, usuario) -> SIResponse:
     dados.status = workflow.status_atual(si)
     dados.status_rotulo = workflow.rotulo(dados.status)
     dados.pode_editar = workflow.pode_editar(si, usuario)
+    dados.pode_editar_liberacoes = workflow.pode_editar_liberacoes(si, usuario)
     dados.pode_excluir = workflow.pode_excluir(si, usuario)
     dados.acoes = workflow.acoes_disponiveis(si, usuario)
     return dados
@@ -1061,6 +1062,16 @@ def aprovar_si(
     return _executar_acao(id_si, "aprovar", dados, db, usuario)
 
 
+@router.post("/{id_si}/concluir", response_model=SIResponse)
+def concluir_si(
+    id_si: int,
+    dados: SIAcaoRequest | None = None,
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    return _executar_acao(id_si, "concluir", dados, db, usuario)
+
+
 @router.post("/{id_si}/rejeitar", response_model=SIResponse)
 def rejeitar_si(
     id_si: int,
@@ -1107,7 +1118,16 @@ def liberar_si_para_manutencao(
     usuario=Depends(get_current_user),
 ):
     garantir_tabela_liberacoes_si(db)
-    obter_si_ou_404(db, id_si)
+    garantir_estrutura_fluxo_si(db)
+    si = obter_si_ou_404(db, id_si)
+    if not workflow.pode_visualizar(si, usuario):
+        raise HTTPException(404, "SI nao encontrada")
+    if not workflow.pode_editar_liberacoes(si, usuario):
+        raise HTTPException(
+            403,
+            "As liberações só podem ser registradas enquanto a SI estiver "
+            "em edição ou aprovada.",
+        )
 
     liberacao_aberta = (
         db.query(SILiberacao)
@@ -1146,7 +1166,16 @@ def liberar_si_para_operacao(
     usuario=Depends(get_current_user),
 ):
     garantir_tabela_liberacoes_si(db)
-    obter_si_ou_404(db, id_si)
+    garantir_estrutura_fluxo_si(db)
+    si = obter_si_ou_404(db, id_si)
+    if not workflow.pode_visualizar(si, usuario):
+        raise HTTPException(404, "SI nao encontrada")
+    if not workflow.pode_editar_liberacoes(si, usuario):
+        raise HTTPException(
+            403,
+            "As liberações só podem ser registradas enquanto a SI estiver "
+            "em edição ou aprovada.",
+        )
 
     liberacao = (
         db.query(SILiberacao)
@@ -1182,7 +1211,16 @@ def cancelar_liberacao_si(
     usuario=Depends(get_current_user),
 ):
     garantir_tabela_liberacoes_si(db)
-    obter_si_ou_404(db, id_si)
+    garantir_estrutura_fluxo_si(db)
+    si = obter_si_ou_404(db, id_si)
+    if not workflow.pode_visualizar(si, usuario):
+        raise HTTPException(404, "SI nao encontrada")
+    if not workflow.pode_editar_liberacoes(si, usuario):
+        raise HTTPException(
+            403,
+            "As liberações só podem ser registradas enquanto a SI estiver "
+            "em edição ou aprovada.",
+        )
 
     liberacao = (
         db.query(SILiberacao)

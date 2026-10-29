@@ -115,6 +115,7 @@ class SIResponse(SIBase):
     status: Optional[str] = None
     status_rotulo: Optional[str] = None
     pode_editar: bool = False
+    pode_editar_liberacoes: bool = False
     pode_excluir: bool = False
     acoes: list[str] = []
 

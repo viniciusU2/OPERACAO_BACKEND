@@ -116,8 +116,28 @@ class FluxoTests(unittest.TestCase):
         self.assertEqual(workflow.acoes_disponiveis(si("REJEITADA"), OPERACAO), [])
 
     def test_aprovada_so_pode_ser_cancelada_pela_operacao(self):
-        self.assertEqual(workflow.acoes_disponiveis(si("APROVADA"), OPERACAO), ["cancelar"])
-        self.assertEqual(workflow.acoes_disponiveis(si("APROVADA"), MANUTENCAO), [])
+        self.assertEqual(
+            workflow.acoes_disponiveis(si("APROVADA"), OPERACAO),
+            ["concluir", "cancelar"],
+        )
+        self.assertEqual(workflow.acoes_disponiveis(si("APROVADA"), MANUTENCAO), ["concluir"])
+
+    def test_concluir_e_possivel_aos_dois_perfis_na_aprovada(self):
+        for usuario_ in (MANUTENCAO, OPERACAO):
+            with self.subTest(role=usuario_.role):
+                self.assertTrue(workflow.pode_executar(si("APROVADA"), usuario_, "concluir"))
+
+    def test_concluir_nao_existe_fora_da_aprovada(self):
+        for status in ("RASCUNHO", "ENVIADA", "REJEITADA", "CANCELADA", "PROGRAMADA", "CONCLUIDA"):
+            with self.subTest(status=status):
+                self.assertFalse(workflow.pode_executar(si(status), MANUTENCAO, "concluir"))
+                self.assertFalse(workflow.pode_executar(si(status), OPERACAO, "concluir"))
+
+    def test_concluida_e_final(self):
+        for papel in (MANUTENCAO, OPERACAO, LEITOR):
+            with self.subTest(role=papel.role):
+                self.assertEqual(workflow.acoes_disponiveis(si("CONCLUIDA"), papel), [])
+        self.assertFalse(workflow.pode_excluir(si("CONCLUIDA"), OPERACAO))
 
     def test_cancelada_e_final(self):
         for papel in (MANUTENCAO, OPERACAO, LEITOR):
@@ -134,6 +154,30 @@ class FluxoTests(unittest.TestCase):
                 self.assertEqual(workflow.acoes_disponiveis(si(status), MANUTENCAO), [])
                 self.assertEqual(workflow.acoes_disponiveis(si(status), OPERACAO), [])
                 self.assertFalse(workflow.pode_editar(si(status), MANUTENCAO))
+
+
+class LiberacoesTests(unittest.TestCase):
+    def test_liberacoes_editaveis_no_rascunho_rejeitada_programada(self):
+        for status in ("RASCUNHO", "REJEITADA", "PROGRAMADA"):
+            with self.subTest(status=status):
+                self.assertTrue(workflow.pode_editar_liberacoes(si(status), MANUTENCAO))
+                self.assertTrue(workflow.pode_editar_liberacoes(si(status), OPERACAO))
+
+    def test_liberacoes_editaveis_na_aprovada(self):
+        # Depois de aprovada a intervencao acontece: liberacao continua aberta.
+        self.assertTrue(workflow.pode_editar_liberacoes(si("APROVADA"), MANUTENCAO))
+        self.assertTrue(workflow.pode_editar_liberacoes(si("APROVADA"), OPERACAO))
+
+    def test_liberacoes_fechadas_em_analise_e_finais(self):
+        for status in ("ENVIADA", "CANCELADA", "CONCLUIDA", "ENCERRADA"):
+            with self.subTest(status=status):
+                self.assertFalse(workflow.pode_editar_liberacoes(si(status), MANUTENCAO))
+                self.assertFalse(workflow.pode_editar_liberacoes(si(status), OPERACAO))
+
+    def test_leitor_nao_edita_liberacoes(self):
+        for status in workflow.STATUS_VALIDOS:
+            with self.subTest(status=status):
+                self.assertFalse(workflow.pode_editar_liberacoes(si(status), LEITOR))
 
 
 class VisibilidadeTests(unittest.TestCase):
