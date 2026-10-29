@@ -10,7 +10,8 @@ Fluxo novo
                             +--cancelar--> CANCELADA (final)
 
 - Somente a Manutencao Local (papel ``mantenedor``) cria, edita e envia.
-- Somente o Centro de Operacoes (papel ``admin``) aprova, rejeita e cancela.
+- Somente o Centro de Operacoes (papeis ``admin`` e ``operador``) aprova,
+  rejeita e cancela.
 - Rascunho nao aparece para a Operacao.
 - APROVADA e CANCELADA nunca voltam para RASCUNHO/ENVIADA.
 
@@ -116,11 +117,15 @@ def rotulo(status) -> str:
 
 
 def perfil(usuario) -> str | None:
-    """Traduz o papel do usuario no papel do fluxo de SI."""
+    """Traduz o papel do usuario no papel do fluxo de SI.
+
+    ``admin`` e ``operador`` sao o Centro de Operacoes; ``mantenedor`` e a
+    Manutencao Local. Exclusao de SI continua sendo restrita ao ``admin``.
+    """
     role = normalizar(getattr(usuario, "role", None))
     if role == "MANTENEDOR":
         return PERFIL_MANUTENCAO
-    if role == "ADMIN":
+    if role in ("ADMIN", "OPERADOR"):
         return PERFIL_OPERACAO
     return None
 

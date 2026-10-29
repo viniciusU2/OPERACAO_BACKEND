@@ -34,6 +34,18 @@ class PerfilTests(unittest.TestCase):
         self.assertEqual(workflow.perfil(OPERACAO), workflow.PERFIL_OPERACAO)
         self.assertIsNone(workflow.perfil(LEITOR))
 
+    def test_operador_tambem_e_centro_de_operacoes(self):
+        operador = usuario("operador")
+        self.assertEqual(workflow.perfil(operador), workflow.PERFIL_OPERACAO)
+        self.assertEqual(
+            workflow.acoes_disponiveis(si("ENVIADA"), operador),
+            ["aprovar", "rejeitar", "cancelar"],
+        )
+        self.assertFalse(workflow.pode_visualizar(si("RASCUNHO"), operador))
+        self.assertFalse(workflow.pode_editar(si("RASCUNHO"), operador))
+        self.assertFalse(workflow.pode_criar(operador))
+        self.assertFalse(workflow.pode_excluir(si("RASCUNHO"), operador))
+
     def test_tolera_maiusculas_e_espacos(self):
         self.assertEqual(
             workflow.perfil(SimpleNamespace(role="  Mantenedor ")),
