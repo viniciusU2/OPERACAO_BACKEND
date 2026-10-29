@@ -5,13 +5,16 @@ from sqlalchemy.orm import Session, selectinload
 from auth.dependencies import get_current_user, require_roles
 from database import get_db
 from utils.busca_inteligente import condicoes_textuais, termos_busca_inteligente
-from models.SI_models import SILiberacao, solicitacao_intervencao
+from models.SI_models import SIHistorico, SILiberacao, solicitacao_intervencao
 from models.instalacao_models import Subestacao
 from models.Ativo import Ativo, GrupoAtivo
 from models.fo import FuncaoOperacao
 from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
+from SI import workflow
 from SI.schemas import (
+    SIAcaoRequest,
     SICreate,
+    SIHistoricoResponse,
     SILiberacaoCancelarUpdate,
     SILiberacaoManutencaoCreate,
     SILiberacaoOperacaoUpdate,
@@ -39,6 +42,7 @@ from openpyxl.utils import range_boundaries
 router = APIRouter(prefix="/si", tags=["Servi?o Interven??o"])
 _ESTRUTURA_SI_GARANTIDA = False
 _TABELA_LIBERACOES_SI_GARANTIDA = False
+_ESTRUTURA_FLUXO_SI_GARANTIDA = False
 
 def garantir_colunas_si(db: Session):
     global _ESTRUTURA_SI_GARANTIDA
@@ -106,6 +110,81 @@ def garantir_tabela_liberacoes_si(db: Session):
     """))
     db.commit()
     _TABELA_LIBERACOES_SI_GARANTIDA = True
+
+
+def garantir_estrutura_fluxo_si(db: Session):
+    """Cria a coluna de status e a trilha de auditoria, migrando as SIs antigas.
+
+    As SIs que ja existiam continuam com o status que tinham
+    (``PROGRAMADA``/``CONCLUIDA``/``ENCERRADA``); nenhuma vira rascunho.
+    """
+    global _ESTRUTURA_FLUXO_SI_GARANTIDA
+    if _ESTRUTURA_FLUXO_SI_GARANTIDA:
+        return
+
+    coluna = db.execute(
+        text("SHOW COLUMNS FROM solicitacao_intervencao LIKE 'status'")
+    ).first()
+    if not coluna:
+        db.execute(
+            text("ALTER TABLE solicitacao_intervencao ADD COLUMN status VARCHAR(30) NULL")
+        )
+        db.execute(text("ALTER TABLE solicitacao_intervencao ADD INDEX ix_si_status (status)"))
+
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS si_historico (
+            id_historico INT AUTO_INCREMENT PRIMARY KEY,
+            id_si INT NOT NULL,
+            acao VARCHAR(30) NOT NULL,
+            status_anterior VARCHAR(30) NULL,
+            status_novo VARCHAR(30) NOT NULL,
+            observacao TEXT NULL,
+            usuario_id INT NULL,
+            usuario_nome VARCHAR(200) NOT NULL,
+            usuario_perfil VARCHAR(30) NULL,
+            criado_em DATETIME NOT NULL,
+            INDEX idx_si_historico_si (id_si),
+            CONSTRAINT fk_si_historico_si
+                FOREIGN KEY (id_si) REFERENCES solicitacao_intervencao(id_si)
+                ON DELETE CASCADE,
+            CONSTRAINT fk_si_historico_usuario
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                ON DELETE SET NULL
+        )
+    """))
+
+    # Migra o status dos registros antigos (somente onde a coluna esta vazia).
+    db.execute(text("""
+        UPDATE solicitacao_intervencao
+           SET status = CASE
+                 WHEN UPPER(COALESCE(status_operacao, '')) IN ('CONCLUIDA', 'ENCERRADA')
+                      THEN UPPER(status_operacao)
+                 WHEN UPPER(COALESCE(status_manutencao, '')) IN ('CONCLUIDA', 'ENCERRADA')
+                      THEN UPPER(status_manutencao)
+                 WHEN UPPER(COALESCE(status_operacao, '')) = 'PROGRAMADA'
+                      OR UPPER(COALESCE(status_manutencao, '')) = 'PROGRAMADA'
+                      THEN 'PROGRAMADA'
+                 ELSE 'RASCUNHO'
+               END
+         WHERE status IS NULL OR TRIM(status) = ''
+    """))
+
+    # Registra a origem das SIs migradas que ainda nao tem historico.
+    db.execute(text("""
+        INSERT INTO si_historico
+            (id_si, acao, status_anterior, status_novo, observacao,
+             usuario_id, usuario_nome, usuario_perfil, criado_em)
+        SELECT s.id_si, 'MIGRACAO', NULL, s.status,
+               'SI importada do fluxo anterior de status.',
+               NULL, COALESCE(NULLIF(s.emissor, ''), 'Sistema'), NULL, COALESCE(s.criado_em, NOW())
+          FROM solicitacao_intervencao s
+         WHERE NOT EXISTS (
+               SELECT 1 FROM si_historico h WHERE h.id_si = s.id_si
+         )
+    """))
+
+    db.commit()
+    _ESTRUTURA_FLUXO_SI_GARANTIDA = True
 
 
 def nome_arquivo_seguro(texto: str):
@@ -200,6 +279,84 @@ def obter_si_ou_404(db: Session, id_si: int):
 
 def nome_usuario(usuario):
     return getattr(usuario, "nome", None) or getattr(usuario, "email", None) or "Usu?rio"
+
+
+def resposta_si(si, usuario) -> SIResponse:
+    """Serializa a SI com as permissoes calculadas para este usuario."""
+    dados = SIResponse.model_validate(si)
+    dados.status = workflow.status_atual(si)
+    dados.status_rotulo = workflow.rotulo(dados.status)
+    dados.pode_editar = workflow.pode_editar(si, usuario)
+    dados.pode_excluir = workflow.pode_excluir(si, usuario)
+    dados.acoes = workflow.acoes_disponiveis(si, usuario)
+    return dados
+
+
+def registrar_historico(
+    db: Session,
+    si,
+    *,
+    acao: str,
+    status_anterior: str | None,
+    status_novo: str,
+    usuario,
+    observacao: str | None = None,
+):
+    db.add(
+        SIHistorico(
+            id_si=si.id_si,
+            acao=acao,
+            status_anterior=status_anterior,
+            status_novo=status_novo,
+            observacao=(observacao or "").strip() or None,
+            usuario_id=getattr(usuario, "id", None),
+            usuario_nome=nome_usuario(usuario),
+            usuario_perfil=workflow.perfil(usuario),
+        )
+    )
+
+
+def executar_acao_si(db: Session, si, usuario, acao: str, observacao: str | None = None):
+    """Valida e aplica uma transicao de status, gravando o historico."""
+    if acao not in workflow.ACOES:
+        raise HTTPException(400, f"Acao invalida: {acao}.")
+
+    atual = workflow.status_atual(si)
+    if not workflow.pode_executar(si, usuario, acao):
+        perfil_usuario = workflow.perfil(usuario)
+        if perfil_usuario is None:
+            raise HTTPException(
+                403,
+                "Seu perfil nao tem permissao para alterar o status de uma SI. "
+                "Somente a Manutencao Local e o Centro de Operacoes podem fazer isso.",
+            )
+        raise HTTPException(
+            403,
+            f"Nao e possivel {workflow.VERBOS_ACAO[acao]} uma SI no status "
+            f"{workflow.rotulo(atual)} com o seu perfil.",
+        )
+
+    texto = (observacao or "").strip()
+    if workflow.observacao_obrigatoria(acao) and not texto:
+        raise HTTPException(
+            400,
+            f"Informe a observacao para {workflow.VERBOS_ACAO[acao]} a SI.",
+        )
+
+    novo = workflow.proximo_status(acao)
+    si.status = novo
+    registrar_historico(
+        db,
+        si,
+        acao=acao,
+        status_anterior=atual,
+        status_novo=novo,
+        usuario=usuario,
+        observacao=texto,
+    )
+    db.commit()
+    db.refresh(si)
+    return si
 
 
 MAPEAMENTO_CELULAS = {
@@ -527,12 +684,34 @@ def montar_contexto_si(si, ativo=None, sub=None, grupo=None):
         "DATA_OPERACAO": limpar(primeiro(si.responsavel_data_se_operacao, si.responsavel_data_cot_operacao, si.responsavel_data_ons_operacao)),
     }
 
+    # No fluxo novo os status antigos ficam vazios; mostra o status atual da SI
+    # para o documento exportado nao sair sem situacao.
+    status_fluxo = workflow.status_atual(si)
+    if status_fluxo not in workflow.LEGADOS:
+        label = workflow.rotulo(status_fluxo)
+        contexto["STATUS_MANUTENCAO"] = label
+        contexto["STATUS_OPERACAO"] = label
 
-@router.post("", response_model=SIResponse)
-def criar_si(dados: SICreate, db: Session = Depends(get_db)):
+    return contexto
+
+
+@router.post("", response_model=SIResponse, status_code=201)
+def criar_si(
+    dados: SICreate,
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
     garantir_colunas_si(db)
+    garantir_estrutura_fluxo_si(db)
+
+    if not workflow.pode_criar(usuario):
+        raise HTTPException(
+            403,
+            "Somente a Manutencao Local pode criar uma SI.",
+        )
 
     data = dados.dict()
+    data.pop("status", None)  # status nunca vem do cliente
     sem_ativo = not data.get("id_ativo") and not data.get("id_grupo_ativo")
     if sem_ativo:
         subestacao = db.query(Subestacao).filter(
@@ -572,21 +751,42 @@ def criar_si(dados: SICreate, db: Session = Depends(get_db)):
         data["numero_si"] = gerar_numero_si(db, sigla_por_subestacao(db, data.get("id_subestacao")))
 
     nova_si = solicitacao_intervencao(**data)
+    nova_si.status = workflow.RASCUNHO
+    nova_si.emissor = nova_si.emissor or nome_usuario(usuario)
     db.add(nova_si)
+    db.flush()
+    registrar_historico(
+        db,
+        nova_si,
+        acao="criar",
+        status_anterior=None,
+        status_novo=workflow.RASCUNHO,
+        usuario=usuario,
+        observacao="SI criada como rascunho.",
+    )
     db.commit()
     db.refresh(nova_si)
-    return nova_si
+    return resposta_si(nova_si, usuario)
 
 
 @router.get("", response_model=list[SIResponse])
-def listar_si(db: Session = Depends(get_db)):
+def listar_si(db: Session = Depends(get_db), usuario=Depends(get_current_user)):
     garantir_colunas_si(db)
-    return (
+    garantir_estrutura_fluxo_si(db)
+    query = (
         db.query(solicitacao_intervencao)
         .options(selectinload(solicitacao_intervencao.ativo))
         .order_by(solicitacao_intervencao.id_si.desc())
-        .all()
     )
+    # A Operacao nao visualiza rascunhos.
+    if workflow.perfil(usuario) == workflow.PERFIL_OPERACAO:
+        query = query.filter(
+            or_(
+                solicitacao_intervencao.status.is_(None),
+                solicitacao_intervencao.status != workflow.RASCUNHO,
+            )
+        )
+    return [resposta_si(si, usuario) for si in query.all()]
 
 
 @router.get("/paginado", response_model=SIPaginadaResponse)
@@ -600,11 +800,22 @@ def listar_si_paginado(
     filter_field: list[str] = Query(default=[]),
     filter_value: list[str] = Query(default=[]),
     db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
 ):
     page = max(1, page)
     page_size = min(100, max(1, page_size))
     garantir_colunas_si(db)
+    garantir_estrutura_fluxo_si(db)
     query = db.query(solicitacao_intervencao)
+
+    # A Operacao nao visualiza rascunhos.
+    if workflow.perfil(usuario) == workflow.PERFIL_OPERACAO:
+        query = query.filter(
+            or_(
+                solicitacao_intervencao.status.is_(None),
+                solicitacao_intervencao.status != workflow.RASCUNHO,
+            )
+        )
 
     if search and search.strip():
         query = query.outerjoin(
@@ -623,16 +834,25 @@ def listar_si_paginado(
             ))
 
     if status:
-        query = query.filter(
-            or_(
-                solicitacao_intervencao.status_operacao == status,
-                solicitacao_intervencao.status_manutencao == status,
+        status_normalizado = workflow.normalizar(status)
+        if status_normalizado == workflow.RASCUNHO:
+            # valor exato; rascunhos antigos com status nulo tambem entram
+            query = query.filter(or_(
+                solicitacao_intervencao.status == workflow.RASCUNHO,
+                solicitacao_intervencao.status.is_(None),
+            ))
+        elif status_normalizado in workflow.STATUS_VALIDOS:
+            query = query.filter(solicitacao_intervencao.status == status_normalizado)
+        else:
+            query = query.filter(
+                or_(
+                    solicitacao_intervencao.status_operacao == status,
+                    solicitacao_intervencao.status_manutencao == status,
+                )
             )
-        )
 
     if id_subestacao:
         query = query.filter(solicitacao_intervencao.id_subestacao == id_subestacao)
-
     if id_tipo_ativo:
         query = query.filter(or_(
             solicitacao_intervencao.id_ativo.in_(
@@ -660,7 +880,7 @@ def listar_si_paginado(
     )
 
     return {
-        "items": items,
+        "items": [resposta_si(si, usuario) for si in items],
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -669,15 +889,94 @@ def listar_si_paginado(
 
 
 @router.get("/{id_si}", response_model=SIResponse)
-def buscar_si(id_si: int, db: Session = Depends(get_db)):
+def buscar_si(id_si: int, db: Session = Depends(get_db), usuario=Depends(get_current_user)):
     garantir_colunas_si(db)
-    return obter_si_ou_404(db, id_si)
+    garantir_estrutura_fluxo_si(db)
+    si = obter_si_ou_404(db, id_si)
+    if not workflow.pode_visualizar(si, usuario):
+        raise HTTPException(404, "SI nao encontrada")
+    return resposta_si(si, usuario)
+
+
+@router.get("/{id_si}/historico", response_model=list[SIHistoricoResponse])
+def listar_historico_si(
+    id_si: int,
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    garantir_colunas_si(db)
+    garantir_estrutura_fluxo_si(db)
+    si = obter_si_ou_404(db, id_si)
+    if not workflow.pode_visualizar(si, usuario):
+        raise HTTPException(404, "SI nao encontrada")
+    return (
+        db.query(SIHistorico)
+        .filter(SIHistorico.id_si == id_si)
+        .order_by(SIHistorico.id_historico.asc())
+        .all()
+    )
+
+
+def _executar_acao(id_si: int, acao: str, dados, db: Session, usuario) -> SIResponse:
+    garantir_colunas_si(db)
+    garantir_estrutura_fluxo_si(db)
+    si = obter_si_ou_404(db, id_si)
+    if not workflow.pode_visualizar(si, usuario):
+        raise HTTPException(404, "SI nao encontrada")
+    si = executar_acao_si(db, si, usuario, acao, dados.observacao if dados else None)
+    return resposta_si(si, usuario)
+
+
+@router.post("/{id_si}/enviar", response_model=SIResponse)
+def enviar_si(
+    id_si: int,
+    dados: SIAcaoRequest | None = None,
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    return _executar_acao(id_si, "enviar", dados, db, usuario)
+
+
+@router.post("/{id_si}/aprovar", response_model=SIResponse)
+def aprovar_si(
+    id_si: int,
+    dados: SIAcaoRequest | None = None,
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    return _executar_acao(id_si, "aprovar", dados, db, usuario)
+
+
+@router.post("/{id_si}/rejeitar", response_model=SIResponse)
+def rejeitar_si(
+    id_si: int,
+    dados: SIAcaoRequest,
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    return _executar_acao(id_si, "rejeitar", dados, db, usuario)
+
+
+@router.post("/{id_si}/cancelar", response_model=SIResponse)
+def cancelar_si(
+    id_si: int,
+    dados: SIAcaoRequest,
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
+    return _executar_acao(id_si, "cancelar", dados, db, usuario)
 
 
 @router.get("/{id_si}/liberacoes", response_model=list[SILiberacaoResponse])
-def listar_liberacoes_si(id_si: int, db: Session = Depends(get_db)):
+def listar_liberacoes_si(
+    id_si: int,
+    db: Session = Depends(get_db),
+    usuario=Depends(get_current_user),
+):
     garantir_tabela_liberacoes_si(db)
-    obter_si_ou_404(db, id_si)
+    si = obter_si_ou_404(db, id_si)
+    if not workflow.pode_visualizar(si, usuario):
+        raise HTTPException(404, "SI nao encontrada")
     return (
         db.query(SILiberacao)
         .filter(SILiberacao.id_si == id_si)
@@ -798,9 +1097,19 @@ def cancelar_liberacao_si(
 @router.put("/{id_si}", response_model=SIResponse)
 def editar_si(id_si: int, dados: SIUpdate, db: Session = Depends(get_db), usuario=Depends(get_current_user)):
     garantir_colunas_si(db)
+    garantir_estrutura_fluxo_si(db)
     si = obter_si_ou_404(db, id_si)
 
+    if not workflow.pode_visualizar(si, usuario):
+        raise HTTPException(404, "SI nao encontrada")
+
+    # Bloqueio de edicao do rito: so a Manutencao Local edita e somente em
+    # Rascunho / Rejeitada (ou Programada, herdada do fluxo anterior).
+    if not workflow.pode_editar(si, usuario):
+        raise HTTPException(403, workflow.motivo_bloqueio_edicao(si))
+
     alteracoes = dados.dict(exclude_unset=True)
+    alteracoes.pop("status", None)
 
     # Valida a selecao resultante antes de aplicar. Isso evita que uma edicao
     # deixe id_subestacao, ativo, grupo e funcao apontando para instalacoes
@@ -856,14 +1165,26 @@ def editar_si(id_si: int, dados: SIUpdate, db: Session = Depends(get_db), usuari
     si.prioridade = normalizar_prioridade_operacao(si.prioridade)
     db.commit()
     db.refresh(si)
-    return si
+    return resposta_si(si, usuario)
 
 
 @router.delete("/{id_si}")
-def deletar_si(id_si: int, db: Session = Depends(get_db), _usuario=Depends(require_roles("admin"))):
+def deletar_si(id_si: int, db: Session = Depends(get_db), usuario=Depends(get_current_user)):
+    garantir_estrutura_fluxo_si(db)
     si = db.query(solicitacao_intervencao).filter(solicitacao_intervencao.id_si == id_si).first()
     if not si:
         raise HTTPException(404, "SI n?o encontrada")
+
+    if workflow.normalizar(getattr(usuario, "role", None)) != "ADMIN":
+        raise HTTPException(403, "Permissao insuficiente")
+
+    # Depois de enviada a SI faz parte da trilha de auditoria e nao pode sumir.
+    if not workflow.pode_excluir(si, usuario):
+        raise HTTPException(
+            403,
+            f"Uma SI no status {workflow.rotulo(workflow.status_atual(si))} "
+            "nao pode ser excluida. Cancele a SI para preservar o historico.",
+        )
 
     db.delete(si)
     db.commit()
@@ -871,10 +1192,13 @@ def deletar_si(id_si: int, db: Session = Depends(get_db), _usuario=Depends(requi
 
 
 @router.get("/{id_si}/download")
-def download_si(id_si: int, db: Session = Depends(get_db)):
+def download_si(id_si: int, db: Session = Depends(get_db), usuario=Depends(get_current_user)):
     garantir_colunas_si(db)
     garantir_tabela_liberacoes_si(db)
+    garantir_estrutura_fluxo_si(db)
     si = obter_si_ou_404(db, id_si)
+    if not workflow.pode_visualizar(si, usuario):
+        raise HTTPException(404, "SI nao encontrada")
 
     ativo = db.query(Ativo).filter(Ativo.id_ativo == si.id_ativo).first() if si.id_ativo else None
     grupo = (

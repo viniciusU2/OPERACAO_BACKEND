@@ -1,0 +1,195 @@
+"""Regras de status e permissao das Solicitacoes de Intervencao (SI).
+
+Fluxo novo
+----------
+::
+
+    RASCUNHO --enviar--> ENVIADA --aprovar--> APROVADA --cancelar--> CANCELADA
+                            |                     (final)
+                            +--rejeitar--> REJEITADA --enviar--> ENVIADA
+                            +--cancelar--> CANCELADA (final)
+
+- Somente a Manutencao Local (papel ``mantenedor``) cria, edita e envia.
+- Somente o Centro de Operacoes (papel ``admin``) aprova, rejeita e cancela.
+- Rascunho nao aparece para a Operacao.
+- APROVADA e CANCELADA nunca voltam para RASCUNHO/ENVIADA.
+
+Status herdados do fluxo anterior (``PROGRAMADA``, ``CONCLUIDA``,
+``ENCERRADA``) continuam existindo para nao perder o historico. Eles sao
+somente leitura, exceto ``PROGRAMADA``, que ainda pode ser editada e enviada
+para entrar no fluxo novo.
+"""
+
+from __future__ import annotations
+
+RASCUNHO = "RASCUNHO"
+ENVIADA = "ENVIADA"
+REJEITADA = "REJEITADA"
+APROVADA = "APROVADA"
+CANCELADA = "CANCELADA"
+
+# Status do fluxo anterior, preservados.
+PROGRAMADA = "PROGRAMADA"
+CONCLUIDA = "CONCLUIDA"
+ENCERRADA = "ENCERRADA"
+
+LEGADOS = (PROGRAMADA, CONCLUIDA, ENCERRADA)
+
+STATUS_VALIDOS = (RASCUNHO, ENVIADA, REJEITADA, APROVADA, CANCELADA) + LEGADOS
+
+ROTULOS = {
+    RASCUNHO: "Rascunho",
+    ENVIADA: "Enviada / Em analise",
+    REJEITADA: "Rejeitada",
+    APROVADA: "Aprovada",
+    CANCELADA: "Cancelada",
+    PROGRAMADA: "Programada (legado)",
+    CONCLUIDA: "Concluida (legado)",
+    ENCERRADA: "Encerrada (legado)",
+}
+
+# Estados em que a Manutencao Local pode alterar o documento.
+EDITAVEIS = frozenset({RASCUNHO, REJEITADA, PROGRAMADA})
+
+# Transicoes permitidas a partir de cada status.
+TRANSICOES = {
+    RASCUNHO: (ENVIADA,),
+    REJEITADA: (ENVIADA,),
+    PROGRAMADA: (ENVIADA,),
+    ENVIADA: (APROVADA, REJEITADA, CANCELADA),
+    APROVADA: (CANCELADA,),
+    CANCELADA: (),
+    CONCLUIDA: (),
+    ENCERRADA: (),
+}
+
+ACOES = {
+    "enviar": ENVIADA,
+    "aprovar": APROVADA,
+    "rejeitar": REJEITADA,
+    "cancelar": CANCELADA,
+}
+
+ACOES_MANUTENCAO = frozenset({"enviar"})
+ACOES_OPERACAO = frozenset({"aprovar", "rejeitar", "cancelar"})
+
+# Acoes que exigem justificativa.
+ACOES_COM_OBSERVACAO = frozenset({"rejeitar", "cancelar"})
+
+ROTULOS_ACAO = {
+    "enviar": "Enviar para o Centro de Operacoes",
+    "aprovar": "Aprovar",
+    "rejeitar": "Rejeitar",
+    "cancelar": "Cancelar SI",
+}
+
+VERBOS_ACAO = {
+    "enviar": "enviar",
+    "aprovar": "aprovar",
+    "rejeitar": "rejeitar",
+    "cancelar": "cancelar",
+}
+
+PERFIL_MANUTENCAO = "MANUTENCAO"
+PERFIL_OPERACAO = "OPERACAO"
+
+
+def normalizar(valor) -> str:
+    return (valor or "").strip().upper() if isinstance(valor, str) else ""
+
+
+def status_atual(si) -> str:
+    """Status efetivo da SI, com fallback para registros ainda nao migrados."""
+    valor = normalizar(getattr(si, "status", None))
+    if valor in STATUS_VALIDOS:
+        return valor
+    for campo in ("status_operacao", "status_manutencao"):
+        legado = normalizar(getattr(si, campo, None))
+        if legado in (CONCLUIDA, ENCERRADA, PROGRAMADA):
+            return legado
+    return RASCUNHO
+
+
+def rotulo(status) -> str:
+    valor = normalizar(status) or RASCUNHO
+    return ROTULOS.get(valor, valor.replace("_", " ").title())
+
+
+def perfil(usuario) -> str | None:
+    """Traduz o papel do usuario no papel do fluxo de SI."""
+    role = normalizar(getattr(usuario, "role", None))
+    if role == "MANTENEDOR":
+        return PERFIL_MANUTENCAO
+    if role == "ADMIN":
+        return PERFIL_OPERACAO
+    return None
+
+
+def pode_editar(si, usuario) -> bool:
+    return perfil(usuario) == PERFIL_MANUTENCAO and status_atual(si) in EDITAVEIS
+
+
+def pode_criar(usuario) -> bool:
+    return perfil(usuario) == PERFIL_MANUTENCAO
+
+
+def pode_excluir(si, usuario) -> bool:
+    """Exclusao so e permitida antes de a SI entrar no fluxo."""
+    return (
+        normalizar(getattr(usuario, "role", None)) == "ADMIN"
+        and status_atual(si) in (RASCUNHO, REJEITADA)
+    )
+
+
+def pode_visualizar(si, usuario) -> bool:
+    # A Operacao nao visualiza rascunhos.
+    if perfil(usuario) == PERFIL_OPERACAO and status_atual(si) == RASCUNHO:
+        return False
+    return True
+
+
+def acoes_disponiveis(si, usuario) -> list[str]:
+    """Acoes de status que este usuario pode executar nesta SI."""
+    atual = status_atual(si)
+    permitidas = TRANSICOES.get(atual, ())
+    if not permitidas:
+        return []
+    perfil_usuario = perfil(usuario)
+    if perfil_usuario == PERFIL_MANUTENCAO:
+        candidatas = ACOES_MANUTENCAO
+    elif perfil_usuario == PERFIL_OPERACAO:
+        candidatas = ACOES_OPERACAO
+    else:
+        return []
+    return [
+        acao
+        for acao in ("enviar", "aprovar", "rejeitar", "cancelar")
+        if acao in candidatas and ACOES[acao] in permitidas
+    ]
+
+
+def pode_executar(si, usuario, acao: str) -> bool:
+    return acao in acoes_disponiveis(si, usuario)
+
+
+def proximo_status(acao: str) -> str:
+    if acao not in ACOES:
+        raise KeyError(f"Acao de SI desconhecida: {acao}")
+    return ACOES[acao]
+
+
+def observacao_obrigatoria(acao: str) -> bool:
+    return acao in ACOES_COM_OBSERVACAO
+
+
+def motivo_bloqueio_edicao(si) -> str:
+    atual = status_atual(si)
+    if atual == ENVIADA:
+        return "A SI esta em analise pelo Centro de Operacoes e nao pode ser editada."
+    if atual == APROVADA:
+        return "A SI foi aprovada e nao pode mais ser editada."
+    if atual == CANCELADA:
+        return "A SI foi cancelada e nao pode mais ser editada."
+    if atual in (CONCLUIDA, ENCERRADA):
+        return f"A SI esta {rotulo(atual).lower()} e e somente leitura."
+    return "Seu perfil nao tem permissao para editar esta SI."

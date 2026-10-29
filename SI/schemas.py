@@ -112,6 +112,11 @@ class SIResponse(SIBase):
     id_si: int
     criado_em: datetime
     codigo_ativo: Optional[str] = None
+    status: Optional[str] = None
+    status_rotulo: Optional[str] = None
+    pode_editar: bool = False
+    pode_excluir: bool = False
+    acoes: list[str] = []
 
     class Config:
         from_attributes = True
@@ -140,6 +145,28 @@ class SILiberacaoOperacaoUpdate(BaseModel):
 
 class SILiberacaoCancelarUpdate(BaseModel):
     observacoes: Optional[str] = None
+
+
+class SIAcaoRequest(BaseModel):
+    """Corpo das acoes de fluxo (enviar, aprovar, rejeitar, cancelar)."""
+
+    observacao: Optional[str] = None
+
+
+class SIHistoricoResponse(BaseModel):
+    id_historico: int
+    id_si: int
+    acao: str
+    status_anterior: Optional[str] = None
+    status_novo: str
+    observacao: Optional[str] = None
+    usuario_id: Optional[int] = None
+    usuario_nome: str
+    usuario_perfil: Optional[str] = None
+    criado_em: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class SILiberacaoResponse(BaseModel):

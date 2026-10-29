@@ -99,6 +99,7 @@ try:
     solicitacao_servico.garantir_colunas_ss(db)
     solicitcao_intervencao.garantir_colunas_si(db)
     solicitcao_intervencao.garantir_tabela_liberacoes_si(db)
+    solicitcao_intervencao.garantir_estrutura_fluxo_si(db)
     ativos.garantir_colunas_torre(db)
     funcao_operacao.service.garantir_estrutura_funcao_operacao(db)
     engenharia_protecao_routes.garantir_catalogo_funcoes_ansi(db)

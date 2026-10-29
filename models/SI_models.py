@@ -70,7 +70,10 @@ class solicitacao_intervencao(Base):
     responsavel_data_se_operacao = Column(DateTime)
 
     status_operacao = Column(String(30), default="ABERTA")
-   
+
+    # Status do fluxo novo (RASCUNHO, ENVIADA, REJEITADA, APROVADA, CANCELADA)
+    # ou herdado (PROGRAMADA, CONCLUIDA, ENCERRADA). Ver SI/workflow.py.
+    status = Column(String(30), nullable=True, default="RASCUNHO", index=True)
 
     criado_em = Column(DateTime, default=datetime.utcnow)
     emissor = Column(Text)
@@ -80,6 +83,12 @@ class solicitacao_intervencao(Base):
     subestacao = relationship("Subestacao", back_populates="solicitacao_intervencao")
     ativo = relationship("Ativo")
     liberacoes = relationship("SILiberacao", back_populates="si", cascade="all, delete-orphan")
+    historico = relationship(
+        "SIHistorico",
+        back_populates="si",
+        cascade="all, delete-orphan",
+        order_by="SIHistorico.id_historico",
+    )
 
     @property
     def codigo_ativo(self):
@@ -111,4 +120,28 @@ class SILiberacao(Base):
     si = relationship("solicitacao_intervencao", back_populates="liberacoes")
     usuario_solicitou_rel = relationship("Usuario", foreign_keys=[usuario_solicitou_id])
     usuario_devolveu_rel = relationship("Usuario", foreign_keys=[usuario_devolveu_id])
+
+
+class SIHistorico(Base):
+    """Trilha de auditoria das mudancas de status da SI."""
+
+    __tablename__ = "si_historico"
+
+    id_historico = Column(Integer, primary_key=True, index=True)
+    id_si = Column(
+        Integer,
+        ForeignKey("solicitacao_intervencao.id_si", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    acao = Column(String(30), nullable=False)
+    status_anterior = Column(String(30), nullable=True)
+    status_novo = Column(String(30), nullable=False)
+    observacao = Column(Text, nullable=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    usuario_nome = Column(String(200), nullable=False)
+    usuario_perfil = Column(String(30), nullable=True)
+    criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    si = relationship("solicitacao_intervencao", back_populates="historico")
 
