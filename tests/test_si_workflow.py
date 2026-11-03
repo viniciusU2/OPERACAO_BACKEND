@@ -32,7 +32,21 @@ class PerfilTests(unittest.TestCase):
     def test_mapeia_papeis(self):
         self.assertEqual(workflow.perfil(MANUTENCAO), workflow.PERFIL_MANUTENCAO)
         self.assertEqual(workflow.perfil(OPERACAO), workflow.PERFIL_OPERACAO)
+        self.assertEqual(workflow.perfil(usuario("operador")), workflow.PERFIL_OPERACAO)
         self.assertIsNone(workflow.perfil(LEITOR))
+
+    def test_admin_tem_acesso_total(self):
+        # Admin cria, edita e envia como a Manutencao, e mantem as acoes do
+        # Centro de Operacoes.
+        self.assertTrue(workflow.pode_criar(OPERACAO))
+        self.assertTrue(workflow.pode_editar(si("RASCUNHO"), OPERACAO))
+        self.assertTrue(workflow.pode_editar(si("REJEITADA"), OPERACAO))
+        self.assertTrue(workflow.pode_executar(si("RASCUNHO"), OPERACAO, "enviar"))
+        self.assertTrue(workflow.pode_visualizar(si("RASCUNHO"), OPERACAO))
+        self.assertEqual(
+            workflow.acoes_disponiveis(si("ENVIADA"), OPERACAO),
+            ["aprovar", "rejeitar", "cancelar"],
+        )
 
     def test_operador_tambem_e_centro_de_operacoes(self):
         operador = usuario("operador")
@@ -80,10 +94,12 @@ class EdicaoTests(unittest.TestCase):
             with self.subTest(status=status):
                 self.assertFalse(workflow.pode_editar(si(status), MANUTENCAO))
 
-    def test_operacao_nunca_edita(self):
+    def test_operador_nunca_edita(self):
+        # O operador e Centro de Operacoes puro: nao edita documento.
+        operador = usuario("operador")
         for status in workflow.STATUS_VALIDOS:
             with self.subTest(status=status):
-                self.assertFalse(workflow.pode_editar(si(status), OPERACAO))
+                self.assertFalse(workflow.pode_editar(si(status), operador))
 
     def test_leitor_nunca_edita(self):
         for status in workflow.STATUS_VALIDOS:
@@ -102,7 +118,8 @@ class EdicaoTests(unittest.TestCase):
 class FluxoTests(unittest.TestCase):
     def test_rascunho_so_pode_enviar(self):
         self.assertEqual(workflow.acoes_disponiveis(si("RASCUNHO"), MANUTENCAO), ["enviar"])
-        self.assertEqual(workflow.acoes_disponiveis(si("RASCUNHO"), OPERACAO), [])
+        self.assertEqual(workflow.acoes_disponiveis(si("RASCUNHO"), OPERACAO), ["enviar"])
+        self.assertEqual(workflow.acoes_disponiveis(si("RASCUNHO"), usuario("operador")), [])
 
     def test_enviada_da_as_tres_acoes_para_operacao(self):
         self.assertEqual(
@@ -113,7 +130,8 @@ class FluxoTests(unittest.TestCase):
 
     def test_rejeitada_volta_para_manutencao_reenviar(self):
         self.assertEqual(workflow.acoes_disponiveis(si("REJEITADA"), MANUTENCAO), ["enviar"])
-        self.assertEqual(workflow.acoes_disponiveis(si("REJEITADA"), OPERACAO), [])
+        self.assertEqual(workflow.acoes_disponiveis(si("REJEITADA"), OPERACAO), ["enviar"])
+        self.assertEqual(workflow.acoes_disponiveis(si("REJEITADA"), usuario("operador")), [])
 
     def test_aprovada_so_pode_ser_cancelada_pela_operacao(self):
         self.assertEqual(
@@ -181,10 +199,14 @@ class LiberacoesTests(unittest.TestCase):
 
 
 class VisibilidadeTests(unittest.TestCase):
-    def test_operacao_nao_ve_rascunho(self):
-        self.assertFalse(workflow.pode_visualizar(si("RASCUNHO"), OPERACAO))
+    def test_operador_nao_ve_rascunho(self):
+        self.assertFalse(workflow.pode_visualizar(si("RASCUNHO"), usuario("operador")))
 
-    def test_operacao_ve_todos_os_outros(self):
+    def test_admin_ve_rascunho(self):
+        # Admin tem acesso total: enxerga inclusive rascunhos.
+        self.assertTrue(workflow.pode_visualizar(si("RASCUNHO"), OPERACAO))
+
+    def test_operador_ve_todos_os_outros(self):
         for status in ("ENVIADA", "REJEITADA", "APROVADA", "CANCELADA", "PROGRAMADA"):
             with self.subTest(status=status):
                 self.assertTrue(workflow.pode_visualizar(si(status), OPERACAO))
@@ -194,9 +216,10 @@ class VisibilidadeTests(unittest.TestCase):
 
 
 class CriacaoEExclusaoTests(unittest.TestCase):
-    def test_somente_manutencao_cria(self):
+    def test_manutencao_e_admin_criam(self):
         self.assertTrue(workflow.pode_criar(MANUTENCAO))
-        self.assertFalse(workflow.pode_criar(OPERACAO))
+        self.assertTrue(workflow.pode_criar(OPERACAO))
+        self.assertFalse(workflow.pode_criar(usuario("operador")))
         self.assertFalse(workflow.pode_criar(LEITOR))
 
     def test_admin_exclui_rascunho_rejeitada_e_cancelada(self):

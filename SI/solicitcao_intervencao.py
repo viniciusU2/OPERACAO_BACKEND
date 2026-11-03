@@ -770,7 +770,7 @@ def criar_si(
     if not workflow.pode_criar(usuario):
         raise HTTPException(
             403,
-            "Somente a Manutencao Local pode criar uma SI.",
+            "Somente a Manutenção Local e administradores criam SI.",
         )
 
     data = dados.dict()
@@ -846,8 +846,8 @@ def listar_si(db: Session = Depends(get_db), usuario=Depends(get_current_user)):
         .options(selectinload(solicitacao_intervencao.ativo))
         .order_by(solicitacao_intervencao.id_si.desc())
     )
-    # A Operacao nao visualiza rascunhos.
-    if workflow.perfil(usuario) == workflow.PERFIL_OPERACAO:
+    # O operador do Centro de Operacoes nao visualiza rascunhos; o admin ve tudo.
+    if workflow.oculta_rascunhos(usuario):
         query = query.filter(
             or_(
                 solicitacao_intervencao.status.is_(None),
@@ -864,13 +864,14 @@ def resumo_status_si(
 ):
     """Contagem de SI por status, para o painel de pendencias da lista.
 
-    Respeita a mesma visibilidade da lista: a Operacao nao ve rascunhos.
+    Respeita a mesma visibilidade da lista: o operador do Centro de
+    Operacoes nao ve rascunhos; o admin ve tudo.
     """
     garantir_colunas_si(db)
     garantir_estrutura_fluxo_si(db)
 
     filtro_rascunho = None
-    if workflow.perfil(usuario) == workflow.PERFIL_OPERACAO:
+    if workflow.oculta_rascunhos(usuario):
         filtro_rascunho = or_(
             solicitacao_intervencao.status.is_(None),
             solicitacao_intervencao.status != workflow.RASCUNHO,
@@ -890,9 +891,10 @@ def resumo_status_si(
         contagens[chave] = contagens.get(chave, 0) + (total or 0)
 
     # Sempre mostra os status que pedem atencao (mesmo zerados), para a
-    # Manutencao Local enxergar os rascunhos e a Operacao as enviadas.
+    # Manutencao Local e o admin enxergarem os rascunhos e a Operacao as
+    # enviadas.
     sempre_exibir = [workflow.ENVIADA, workflow.REJEITADA]
-    if workflow.perfil(usuario) != workflow.PERFIL_OPERACAO:
+    if not workflow.oculta_rascunhos(usuario):
         sempre_exibir.append(workflow.RASCUNHO)
 
     return {
@@ -923,8 +925,8 @@ def listar_si_paginado(
     garantir_estrutura_fluxo_si(db)
     query = db.query(solicitacao_intervencao)
 
-    # A Operacao nao visualiza rascunhos.
-    if workflow.perfil(usuario) == workflow.PERFIL_OPERACAO:
+    # O operador do Centro de Operacoes nao visualiza rascunhos; o admin ve tudo.
+    if workflow.oculta_rascunhos(usuario):
         query = query.filter(
             or_(
                 solicitacao_intervencao.status.is_(None),

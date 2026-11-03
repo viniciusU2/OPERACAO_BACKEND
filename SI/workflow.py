@@ -82,6 +82,8 @@ ACOES = {
 
 ACOES_MANUTENCAO = frozenset({"enviar", "concluir"})
 ACOES_OPERACAO = frozenset({"aprovar", "rejeitar", "concluir", "cancelar"})
+# Admin tem acesso total: age como Manutencao e como Centro de Operacoes.
+ACOES_ADMIN = ACOES_MANUTENCAO | ACOES_OPERACAO
 
 # Acoes que exigem justificativa.
 ACOES_COM_OBSERVACAO = frozenset({"rejeitar", "cancelar"})
@@ -127,22 +129,33 @@ def rotulo(status) -> str:
     return ROTULOS.get(valor, valor.replace("_", " ").title())
 
 
+def eh_mantenedor(usuario) -> bool:
+    return normalizar(getattr(usuario, "role", None)) == "MANTENEDOR"
+
+
+def eh_admin(usuario) -> bool:
+    return normalizar(getattr(usuario, "role", None)) == "ADMIN"
+
+
 def perfil(usuario) -> str | None:
     """Traduz o papel do usuario no papel do fluxo de SI.
 
     ``admin`` e ``operador`` sao o Centro de Operacoes; ``mantenedor`` e a
-    Manutencao Local. Exclusao de SI continua sendo restrita ao ``admin``.
+    Manutencao Local. O admin, alem disso, tem acesso total: cria, edita e
+    envia SI como a Manutencao Local. Exclusao segue restrita ao ``admin``.
     """
-    role = normalizar(getattr(usuario, "role", None))
-    if role == "MANTENEDOR":
+    if eh_mantenedor(usuario):
         return PERFIL_MANUTENCAO
-    if role in ("ADMIN", "OPERADOR"):
+    if eh_admin(usuario) or normalizar(getattr(usuario, "role", None)) == "OPERADOR":
         return PERFIL_OPERACAO
     return None
 
 
 def pode_editar(si, usuario) -> bool:
-    return perfil(usuario) == PERFIL_MANUTENCAO and status_atual(si) in EDITAVEIS
+    """Edicao do documento: Manutencao Local em rascunho/rejeitada/programada.
+    O admin, com acesso total, edita nesses mesmos status.
+    """
+    return (eh_mantenedor(usuario) or eh_admin(usuario)) and status_atual(si) in EDITAVEIS
 
 
 def pode_editar_liberacoes(si, usuario) -> bool:
@@ -153,7 +166,8 @@ def pode_editar_liberacoes(si, usuario) -> bool:
 
 
 def pode_criar(usuario) -> bool:
-    return perfil(usuario) == PERFIL_MANUTENCAO
+    """A Manutencao Local cria SI; o admin, com acesso total, tambem cria."""
+    return eh_mantenedor(usuario) or eh_admin(usuario)
 
 
 def pode_excluir(si, usuario) -> bool:
@@ -170,9 +184,17 @@ def pode_excluir(si, usuario) -> bool:
     )
 
 
+def oculta_rascunhos(usuario) -> bool:
+    """Somente o operador do Centro de Operacoes nao ve rascunhos.
+
+    O admin tem acesso total e enxerga tudo; a Manutencao Local trabalha
+    nos proprios rascunhos.
+    """
+    return normalizar(getattr(usuario, "role", None)) == "OPERADOR"
+
+
 def pode_visualizar(si, usuario) -> bool:
-    # A Operacao nao visualiza rascunhos.
-    if perfil(usuario) == PERFIL_OPERACAO and status_atual(si) == RASCUNHO:
+    if oculta_rascunhos(usuario) and status_atual(si) == RASCUNHO:
         return False
     return True
 
@@ -183,10 +205,12 @@ def acoes_disponiveis(si, usuario) -> list[str]:
     permitidas = TRANSICOES.get(atual, ())
     if not permitidas:
         return []
-    perfil_usuario = perfil(usuario)
-    if perfil_usuario == PERFIL_MANUTENCAO:
+    if eh_mantenedor(usuario):
         candidatas = ACOES_MANUTENCAO
-    elif perfil_usuario == PERFIL_OPERACAO:
+    elif eh_admin(usuario):
+        # Acesso total: age como Manutencao e como Centro de Operacoes.
+        candidatas = ACOES_ADMIN
+    elif normalizar(getattr(usuario, "role", None)) == "OPERADOR":
         candidatas = ACOES_OPERACAO
     else:
         return []
