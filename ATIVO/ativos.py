@@ -40,7 +40,19 @@ def listar_grupos_ativos(id_funcao_operacao: int, db: Session = Depends(get_db))
 @router.get("/grupos-ativos/{id_grupo_ativo}/componentes")
 def listar_componentes_grupo(id_grupo_ativo: int, db: Session = Depends(get_db)):
     from models.Ativo import Ativo
-    componentes = db.query(Ativo).filter(Ativo.id_grupo_ativo == id_grupo_ativo).order_by(Ativo.fase, Ativo.id_ativo).all()
+    from sqlalchemy import func
+
+    # Ativos desativados/sucata nao aparecem na selecao de novos documentos;
+    # continuam existindo no cadastro e no historico das OS antigas.
+    componentes = (
+        db.query(Ativo)
+        .filter(
+            Ativo.id_grupo_ativo == id_grupo_ativo,
+            func.upper(Ativo.status).notin_(("DESATIVADO", "SUCATA")),
+        )
+        .order_by(Ativo.fase, Ativo.id_ativo)
+        .all()
+    )
     if not componentes:
         raise HTTPException(404, "Grupo de ativo nao encontrado")
     return [{"id_ativo": a.id_ativo, "fase": a.fase, "codigo_ativo": a.codigo_ativo, "bay": a.bay} for a in componentes]
