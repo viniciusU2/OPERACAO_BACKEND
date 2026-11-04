@@ -11,6 +11,7 @@ from models.Ativo import Ativo, GrupoAtivo
 from models.fo import FuncaoOperacao
 from ATIVO.grupos_ativos import garantir_estrutura_grupo_ativo, sincronizar_grupos_ativos, validar_selecao_ativo
 from SI import workflow
+from SI.notificacoes import notificar_si
 from SI.schemas import (
     SIAcaoRequest,
     SICreate,
@@ -419,6 +420,9 @@ def executar_acao_si(db: Session, si, usuario, acao: str, observacao: str | None
     )
     db.commit()
     db.refresh(si)
+    # Notificacao por e-mail em segundo plano: nunca derruba a acao e fica
+    # desligada enquanto o SMTP nao estiver configurado no .env.
+    notificar_si(db, si, acao=acao, usuario=usuario, observacao=texto)
     return si
 
 
