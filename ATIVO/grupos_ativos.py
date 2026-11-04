@@ -109,7 +109,17 @@ def grupos_por_funcao(db: Session, id_funcao_operacao: int):
     )
     resultado = []
     for grupo in grupos:
-        itens = sorted(grupo.ativos, key=lambda item: ((item.fase or ""), item.id_ativo))
+        # Ativos desativados/sucata nao aparecem no seletor de documentos
+        # novos (OS/SI); continuam apenas no historico das ordens antigas.
+        elegiveis = [
+            item
+            for item in grupo.ativos
+            if (item.status or "EM_OPERACAO").strip().upper() not in ("DESATIVADO", "SUCATA")
+        ]
+        itens = sorted(elegiveis, key=lambda item: ((item.fase or ""), item.id_ativo))
+        if not itens:
+            # grupo inteiro desativado: some da selecao
+            continue
         tipo = itens[0].tipo_ativo.nome if itens and itens[0].tipo_ativo else None
         sem_fase = [item for item in itens if not (item.fase or "").strip()]
         resultado.append({
