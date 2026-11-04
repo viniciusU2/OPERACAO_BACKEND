@@ -1209,8 +1209,11 @@ def criar_os_lote_por_tipo_ativo(
         )
 
     # ====================== 2. BUSCAR ATIVOS ======================
+    # Ativos desativados/sucata nao recebem OS: continuam apenas no
+    # historico das ordens antigas.
     query_ativos = db.query(Ativo).filter(
         Ativo.id_subestacao == payload.id_subestacao,
+        func.upper(func.coalesce(Ativo.status, "EM_OPERACAO")).notin_(("DESATIVADO", "SUCATA")),
     )
 
     if payload.id_tipo_ativo:
@@ -1622,9 +1625,13 @@ def gerar_os_por_planos_manutencao(
             if not itens_plano:
                 continue
 
+            # Ativos desativados/sucata nao entram na geracao por planos.
             ativos = (
                 db.query(Ativo)
-                .filter(Ativo.id_tipo_ativo == tipo.id_tipo_ativo)
+                .filter(
+                    Ativo.id_tipo_ativo == tipo.id_tipo_ativo,
+                    func.upper(func.coalesce(Ativo.status, "EM_OPERACAO")).notin_(("DESATIVADO", "SUCATA")),
+                )
                 .all()
             )
             ativos.sort(key=chave_ordenacao_ativo)

@@ -48,7 +48,7 @@ def listar_componentes_grupo(id_grupo_ativo: int, db: Session = Depends(get_db))
         db.query(Ativo)
         .filter(
             Ativo.id_grupo_ativo == id_grupo_ativo,
-            func.upper(Ativo.status).notin_(("DESATIVADO", "SUCATA")),
+            func.upper(func.coalesce(Ativo.status, "EM_OPERACAO")).notin_(("DESATIVADO", "SUCATA")),
         )
         .order_by(Ativo.fase, Ativo.id_ativo)
         .all()
