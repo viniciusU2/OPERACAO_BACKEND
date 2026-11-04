@@ -158,6 +158,12 @@ def _enviar(dados: dict) -> None:
                 if dados["usuario"]:
                     smtp.login(dados["usuario"], dados["senha"])
                 smtp.send_message(mensagem)
+        logger.info(
+            "Notificacao da SI %s (%s) enviada para %s",
+            dados.get("numero"),
+            dados.get("acao"),
+            dados.get("destinatarios"),
+        )
     except Exception:
         logger.exception("Falha ao enviar notificacao da SI %s", dados.get("numero"))
 
