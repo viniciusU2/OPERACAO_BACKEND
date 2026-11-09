@@ -40,6 +40,8 @@ from csd_monitor.database.models import Base as CsdBase
 from csd_monitor import routes as csd_monitor_routes
 from engenharia_protecao import routes as engenharia_protecao_routes
 from engenharia_protecao import migracoes as engenharia_protecao_migracoes
+from UNIFILAR import routes as unifilar_routes
+from UNIFILAR import migracoes as unifilar_migracoes
 from engenharia_protecao.audit import EngenhariaProtecaoAuditMiddleware
 
 
@@ -105,6 +107,7 @@ try:
     engenharia_protecao_routes.garantir_catalogo_funcoes_ansi(db)
     engenharia_protecao_migracoes.aplicar_migracoes(db)
     problemas_tipicos_migracoes.aplicar_migracoes(db)
+    unifilar_migracoes.aplicar_migracoes(db)
     inspecoes.garantir_colunas_inspecao(db)
     coluna_numero_ss_os = db.execute(
         text("SHOW COLUMNS FROM ordem_servico LIKE 'numero_ss'")
@@ -182,6 +185,7 @@ app.include_router(relatorio_manutencao_analysis_routes.router)
 app.include_router(relatorio_manutencao_routes.router)
 app.include_router(csd_monitor_routes.router)
 app.include_router(engenharia_protecao_routes.router)
+app.include_router(unifilar_routes.router)
 
 
 
