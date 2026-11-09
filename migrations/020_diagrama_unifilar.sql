@@ -19,7 +19,7 @@ VALUES
   ('DISJUNTOR', 'Disjuntor', 'equipamento', 1, 1, 44, 72),
   ('SECCIONADORA', 'Seccionadora', 'equipamento', 1, 1, 40, 72),
   ('SECCIONADORA_ATERRAMENTO', 'Seccionadora de aterramento', 'equipamento', 1, 1, 40, 96),
-  ('TC', 'Transformador de corrente (TC)', 'instrumento', 1, 1, 40, 72),
+  ('TC', 'Transformador de corrente (TC)', 'instrumento', 1, 1, 32, 108),
   ('TP', 'Transformador de potencial (TP)', 'instrumento', 1, 1, 44, 88),
   ('TPC', 'Transformador de potencial capacitivo (TPC)', 'instrumento', 1, 1, 44, 104),
   ('PARA_RAIOS', 'Para-raios', 'instrumento', 1, 1, 40, 96),
