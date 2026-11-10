@@ -22,6 +22,7 @@ TIPO_POR_CADASTRO = {
     "Disjuntor": "DISJUNTOR",
     "Seccionadora": "SECCIONADORA",
     "Reator Derivação": "REATOR",
+    "Reator de Neutro": "REATOR",
     "Transformador de Corrente": "TC",
     "Transformador de Potencial Capacitivo": "TPC",
     "Para-Raios": "PARA_RAIOS",
@@ -32,24 +33,23 @@ DIMS = {
     "CONEXAO": (16, 16), "ETIQUETA_VAO": (110, 26),
 }
 TERM_BARRA = ("B1", "B2", "B3", "B4")
+BUS_Y = 420
 TERM_EQ = ("T1", "T2")
 
 # Sequencias de cada vao, de cima para baixo. ("eq", codigo) ou
 # ("cx", id_junção, codigo_para_raios) para um ponto de conexao com aterramento.
 VAO_G = [
-    ("eq", "35E7-4"), ("eq", "15E7"), ("eq", "05E7"), ("eq", "35E7-5"),
-    ("cx", "J_E7", "75E7-1"),
+    ("eq", "35E7-4"), ("eq", "15E7"), ("eq", "95E7"), ("eq", "35E7-5"),
     ("eq", "35D7-1"), ("eq", "15D7"), ("eq", "95D7"), ("eq", "35D7-2"),
     ("eq", "35C2-5"), ("eq", "95C2"), ("eq", "15C2"), ("eq", "35C2-4"),
 ]
 VAO_H = [
-    ("eq", "35E9-4"), ("eq", "15E9"), ("eq", "05E9"), ("eq", "35E9-5"),
-    ("cx", "J_E9", "75E9-1"),
+    ("eq", "35E9-4"), ("eq", "15E9"), ("eq", "95E9"), ("eq", "35E9-5"),
     ("eq", "35D8-1"), ("eq", "15D8"), ("eq", "95D8"), ("eq", "35D8-2"),
     ("eq", "35C4-5"), ("eq", "95C4"), ("eq", "15C4"), ("eq", "35C4-4"),
 ]
-RAMO_C2 = dict(sec="35C2-7", junc="J_C2", pr_junc="75C2", reator_seq=["35E6-8", "05E6"], pr_fim="75E6-2", tpc="85C2")
-RAMO_C4 = dict(sec="35C4-7", junc="J_C4", pr_junc="75C4", reator_seq=["35E8-8", "05E8"], pr_fim="75E8-2", tpc="85C4")
+RAMO_C2 = dict(sec="35C2-7", junc="J_C2", pr_junc="75C2", reator_seq=["35E6-8", "05E6"], neutro="05E6-N", pr_fim="75E6-2", tpc="85C2")
+RAMO_C4 = dict(sec="35C4-7", junc="J_C4", pr_junc="75C4", reator_seq=["35E8-8", "05E8"], neutro="05E8-N", pr_fim="75E8-2", tpc="85C4")
 
 
 def login():
@@ -76,7 +76,7 @@ def construir(cadastro):
     nodes, edges, erros = [], [], []
     usados = set()
 
-    def no_ativo(codigo, x, y):
+    def no_ativo(codigo, x, y, nome=""):
         a = cadastro.get(codigo)
         if a is None:
             erros.append(f"ativo {codigo} nao existe na SE GOR")
@@ -89,7 +89,7 @@ def construir(cadastro):
             erros.append(f"ativo {codigo} usado mais de uma vez")
             return None
         usados.add(a["id_ativo"])
-        return no(tipo, codigo, x, y, "",
+        return no(tipo, codigo, x, y, nome,
                   id_ativo=a["id_ativo"], vao=a.get("bay") or "")
 
     def no(tipo, codigo, x, y, nome="", id_ativo=None, vao=""):
@@ -132,12 +132,38 @@ def construir(cadastro):
                 y += 30
         return anterior, y
 
-    barra_a = no("BARRAMENTO", "BAR500A", 60, 40, "Barramento 500 kV A")
+    barra_a = no("BARRAMENTO", "BAR500A", 60, BUS_Y, "Barramento 500 kV A")
     no("ETIQUETA_VAO", "VAO_G", 150, 12, "Vao G", vao="GX")
     no("ETIQUETA_VAO", "VAO_H", 600, 12, "Vao H", vao="HX")
 
-    fim_g, y_g = cadeia(180, 110, VAO_G, barra_a)
-    fim_h, y_h = cadeia(600, 110, VAO_H, barra_a)
+    def topo(x, vao, sec, cx_id, pr, rea, pr_topo):
+        """Trecho acima do barramento A: seccionadora, juncao com para-raios, reator e topo."""
+        y1 = BUS_Y - 112
+        s = no_ativo(sec, x, y1)
+        if s is None:
+            return
+        lig(barra_a, "B3", s, "T2")
+        j = no("CONEXAO", cx_id, x + 12, y1 - 50, f"Juncao {cx_id}")
+        lig(s, "T1", j, "B4")
+        p = no_ativo(pr, x + 150, y1 - 62)
+        if p:
+            lig(j, "B1", p, "T1")
+        r = no_ativo(rea, x, y1 - 200)
+        if r is None:
+            return
+        lig(j, "B3", r, "T2")
+        if pr_topo and pr_topo in cadastro:
+            t = no_ativo(pr_topo, x + 150, y1 - 240)
+            if t:
+                lig(r, "T1", t, "T2")
+        else:
+            print(f"aviso: topo do vao {vao} sem para-raios (codigo nao cadastrado na SE GOR)")
+
+    topo(180, "G", "35E7-8", "JT_E7", "75E7-1", "05E7", None)
+    topo(600, "H", "35E9-8", "JT_E9", "75E9-1", "05E9", None)
+
+    fim_g, y_g = cadeia(180, BUS_Y + 40, VAO_G, barra_a)
+    fim_h, y_h = cadeia(600, BUS_Y + 40, VAO_H, barra_a)
     y_base = max(y_g, y_h) + 80
 
     barra_b = no("BARRAMENTO", "BAR500B", 60, y_base, "Barramento 500 kV B")
@@ -154,10 +180,10 @@ def construir(cadastro):
         lig(barra_b, "B4", sec, "T1")
         cx = no("CONEXAO", r["junc"], x + 12, y + 90, f"Juncao {r['junc']}")
         lig(sec, "T2", cx, "B1")
-        pr = no_ativo(r["pr_junc"], x + 70, y + 84)
+        pr = no_ativo(r["pr_junc"], x + 150, y + 84)
         if pr:
             lig(cx, "B3", pr, "T1")
-        tpc = no_ativo(r["tpc"], x + 70, y + 130)
+        tpc = no_ativo(r["tpc"], x + 150, y + 130)
         if tpc:
             lig(cx, "B4", tpc, "T1")
         anterior = (cx, "B2")
@@ -169,7 +195,13 @@ def construir(cadastro):
             lig(anterior[0], anterior[1], cid, "T1")
             anterior = (cid, "T2")
             yy += 130
-        fim = no_ativo(r["pr_fim"], x + 70, yy - 40)
+        if r.get("neutro"):
+            cid = no_ativo(r["neutro"], x, yy, nome="Reator de neutro")
+            if cid is not None:
+                lig(anterior[0], anterior[1], cid, "T1")
+                anterior = (cid, "T2")
+                yy += 130
+        fim = no_ativo(r["pr_fim"], x + 150, yy - 40)
         if fim:
             lig(anterior[0], anterior[1], fim, "T1")
 
