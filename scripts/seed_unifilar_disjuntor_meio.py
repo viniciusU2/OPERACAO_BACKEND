@@ -49,7 +49,7 @@ def construir_diagrama():
     nodes = []
     edges = []
 
-    def add(tipo, codigo, x, y, nome="", vao="", rotacao=0):
+    def add(tipo, codigo, x, y, nome="", vao="", rotacao=0, largura=None):
         dims = {
             "BARRAMENTO": (200, 10), "DISJUNTOR": (44, 72),
             "SECCIONADORA": (40, 72), "TC": (32, 108),
@@ -58,6 +58,8 @@ def construir_diagrama():
             "PARA_RAIOS": (40, 96),
         }
         w, h = dims.get(tipo, (40, 72))
+        if largura is not None:
+            w = largura
         nodes.append({
             "id": codigo.lower(),
             "type": "noUnifilar",
@@ -90,8 +92,8 @@ def construir_diagrama():
     # ------------------------------------------------------------------ #
     # Barramentos principais
     # ------------------------------------------------------------------ #
-    add("BARRAMENTO", "BAR1", 60, 50, nome="Barramento 1 - 138 kV")
-    add("BARRAMENTO", "BAR2", 60, 560, nome="Barramento 2 - 138 kV")
+    add("BARRAMENTO", "BAR1", 60, 50, nome="Barramento 1 - 138 kV", largura=800)
+    add("BARRAMENTO", "BAR2", 60, 560, nome="Barramento 2 - 138 kV", largura=800)
 
     # Etiquetas de vao
     add("ETIQUETA_VAO", "VAO_A", 80, 10, nome="Linha A")
