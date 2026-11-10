@@ -27,6 +27,15 @@ def listar_tipos(
     return service.catalogo(db)
 
 
+@router.get("/diagramas", response_model=list[schemas.ResumoDiagramaSaida])
+def listar_diagramas(
+    db: Session = Depends(get_db),
+    _usuario: Usuario = Depends(get_current_user),
+):
+    """Indice dos diagramas salvos (navegacao pelo unifilar)."""
+    return service.listar_diagramas(db)
+
+
 @router.get("/diagrama/{id_subestacao}", response_model=schemas.DiagramaSaida)
 def carregar_diagrama(
     id_subestacao: int,

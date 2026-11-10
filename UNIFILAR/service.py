@@ -85,6 +85,41 @@ def catalogo(db: Session) -> list[schemas.TipoComponenteSaida]:
     ]
 
 
+def listar_diagramas(db: Session) -> list[schemas.ResumoDiagramaSaida]:
+    """Indice dos diagramas salvos, do mais recente para o mais antigo.
+
+    Alimenta a rota de navegacao ``/unifilar`` (lista de subestacoes com
+    diagrama). Diagramas sem nenhum componente ficam de fora.
+    """
+    linhas = db.execute(
+        text(
+            "SELECT d.id_subestacao, s.nome, d.atualizado_em, "
+            "(SELECT COUNT(*) FROM unifilar_componente c "
+            " WHERE c.id_diagrama = d.id_diagrama) AS total_componentes, "
+            "(SELECT COUNT(*) FROM unifilar_conexao l "
+            " WHERE l.id_diagrama = d.id_diagrama) AS total_ligacoes "
+            "FROM unifilar_diagrama d "
+            "JOIN subestacao s ON s.id_subestacao = d.id_subestacao "
+            "ORDER BY d.atualizado_em DESC, s.nome"
+        )
+    )
+    resumos: list[schemas.ResumoDiagramaSaida] = []
+    for l in linhas:
+        componentes = int(l.total_componentes or 0)
+        if componentes <= 0:
+            continue
+        resumos.append(
+            schemas.ResumoDiagramaSaida(
+                id_subestacao=int(l.id_subestacao),
+                nome=l.nome,
+                total_componentes=componentes,
+                total_ligacoes=int(l.total_ligacoes or 0),
+                atualizado_em=l.atualizado_em,
+            )
+        )
+    return resumos
+
+
 def _id_diagrama_de(db: Session, id_subestacao: int) -> int | None:
     linha = db.execute(
         text("SELECT id_diagrama FROM unifilar_diagrama WHERE id_subestacao = :s"),

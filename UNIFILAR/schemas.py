@@ -84,3 +84,13 @@ class TipoComponenteSaida(SchemaUnifilar):
     max_por_terminal: int
     largura: float
     altura: float
+
+
+class ResumoDiagramaSaida(SchemaUnifilar):
+    """Linha do indice de diagramas: usado pela rota de navegacao."""
+
+    id_subestacao: int
+    nome: str
+    total_componentes: int
+    total_ligacoes: int
+    atualizado_em: datetime | None = None
