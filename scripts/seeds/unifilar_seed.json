@@ -1,0 +1,1518 @@
+{
+  "gerado_em": "2026-11-10T15:51:43",
+  "diagramas": [
+    {
+      "subestacao": "SE GOR",
+      "tipo_instalacao": "SUBESTACAO",
+      "atualizado_em": "2026-11-10T15:51:41",
+      "nodes": [
+        {
+          "id": "bar500a",
+          "type": "noUnifilar",
+          "position": {
+            "x": 60.0,
+            "y": 420.0
+          },
+          "data": {
+            "tipo": "BARRAMENTO",
+            "codigo": "BAR500A",
+            "nome": "Barramento 500 kV A",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 900.0,
+            "altura": 10.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "35e7-8",
+          "type": "noUnifilar",
+          "position": {
+            "x": 130.0,
+            "y": 320.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35E7-8",
+            "nome": "",
+            "vao": "GX",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35E7-8",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "jt_e7",
+          "type": "noUnifilar",
+          "position": {
+            "x": 192.0,
+            "y": 258.0
+          },
+          "data": {
+            "tipo": "CONEXAO",
+            "codigo": "JT_E7",
+            "nome": "Juncao JT_E7",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 16.0,
+            "altura": 16.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "75e7-1",
+          "type": "noUnifilar",
+          "position": {
+            "x": 350.0,
+            "y": 270.0
+          },
+          "data": {
+            "tipo": "PARA_RAIOS",
+            "codigo": "75E7-1",
+            "nome": "",
+            "vao": "GX",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 96.0,
+            "ativo_codigo": "75E7-1",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "05e7",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 108.0
+          },
+          "data": {
+            "tipo": "REATOR",
+            "codigo": "05E7",
+            "nome": "",
+            "vao": "GX",
+            "rotacao": 0,
+            "largura": 44.0,
+            "altura": 110.0,
+            "ativo_codigo": "05E7",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35e9-8",
+          "type": "noUnifilar",
+          "position": {
+            "x": 530.0,
+            "y": 310.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35E9-8",
+            "nome": "",
+            "vao": "HX",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35E9-8",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "jt_e9",
+          "type": "noUnifilar",
+          "position": {
+            "x": 612.0,
+            "y": 258.0
+          },
+          "data": {
+            "tipo": "CONEXAO",
+            "codigo": "JT_E9",
+            "nome": "Juncao JT_E9",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 16.0,
+            "altura": 16.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "75e9-1",
+          "type": "noUnifilar",
+          "position": {
+            "x": 750.0,
+            "y": 246.0
+          },
+          "data": {
+            "tipo": "PARA_RAIOS",
+            "codigo": "75E9-1",
+            "nome": "",
+            "vao": "HX",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 96.0,
+            "ativo_codigo": "75E9-1",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "05e9",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 108.0
+          },
+          "data": {
+            "tipo": "REATOR",
+            "codigo": "05E9",
+            "nome": "",
+            "vao": "HX",
+            "rotacao": 0,
+            "largura": 44.0,
+            "altura": 110.0,
+            "ativo_codigo": "05E9",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35e7-4",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 460.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35E7-4",
+            "nome": "",
+            "vao": "GX",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35E7-4",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "15e7",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 546.0
+          },
+          "data": {
+            "tipo": "DISJUNTOR",
+            "codigo": "15E7",
+            "nome": "",
+            "vao": "GX",
+            "rotacao": 0,
+            "largura": 44.0,
+            "altura": 72.0,
+            "ativo_codigo": "15E7",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "95e7",
+          "type": "noUnifilar",
+          "position": {
+            "x": 190.0,
+            "y": 630.0
+          },
+          "data": {
+            "tipo": "TC",
+            "codigo": "95E7",
+            "nome": "",
+            "vao": "GX",
+            "rotacao": 0,
+            "largura": 32.0,
+            "altura": 108.0,
+            "ativo_codigo": "95E7",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35e7-5",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 754.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35E7-5",
+            "nome": "",
+            "vao": "GX",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35E7-5",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35d7-1",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 860.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35D7-1",
+            "nome": "",
+            "vao": "GY",
+            "rotacao": 180,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35D7-1",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "15d7",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 940.0
+          },
+          "data": {
+            "tipo": "DISJUNTOR",
+            "codigo": "15D7",
+            "nome": "",
+            "vao": "GY",
+            "rotacao": 0,
+            "largura": 44.0,
+            "altura": 72.0,
+            "ativo_codigo": "15D7",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "95d7",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 1030.0
+          },
+          "data": {
+            "tipo": "TC",
+            "codigo": "95D7",
+            "nome": "",
+            "vao": "GY",
+            "rotacao": 0,
+            "largura": 32.0,
+            "altura": 108.0,
+            "ativo_codigo": "95D7",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35d7-2",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 1134.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35D7-2",
+            "nome": "",
+            "vao": "GY",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35D7-2",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35c2-5",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 1220.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35C2-5",
+            "nome": "",
+            "vao": "GZ",
+            "rotacao": 180,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35C2-5",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "95c2",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 1306.0
+          },
+          "data": {
+            "tipo": "TC",
+            "codigo": "95C2",
+            "nome": "",
+            "vao": "GZ",
+            "rotacao": 0,
+            "largura": 32.0,
+            "altura": 108.0,
+            "ativo_codigo": "95C2",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "15c2",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 1428.0
+          },
+          "data": {
+            "tipo": "DISJUNTOR",
+            "codigo": "15C2",
+            "nome": "",
+            "vao": "GZ",
+            "rotacao": 0,
+            "largura": 44.0,
+            "altura": 72.0,
+            "ativo_codigo": "15C2",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35c2-4",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 1514.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35C2-4",
+            "nome": "",
+            "vao": "GZ",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35C2-4",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35e9-4",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 480.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35E9-4",
+            "nome": "",
+            "vao": "HX",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35E9-4",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "15e9",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 546.0
+          },
+          "data": {
+            "tipo": "DISJUNTOR",
+            "codigo": "15E9",
+            "nome": "",
+            "vao": "HX",
+            "rotacao": 0,
+            "largura": 44.0,
+            "altura": 72.0,
+            "ativo_codigo": "15E9",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "95e9",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 632.0
+          },
+          "data": {
+            "tipo": "TC",
+            "codigo": "95E9",
+            "nome": "",
+            "vao": "HX",
+            "rotacao": 0,
+            "largura": 32.0,
+            "altura": 108.0,
+            "ativo_codigo": "95E9",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35e9-5",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 754.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35E9-5",
+            "nome": "",
+            "vao": "HX",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35E9-5",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35d8-1",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 860.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35D8-1",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 180,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35D8-1",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "15d8",
+          "type": "noUnifilar",
+          "position": {
+            "x": 590.0,
+            "y": 940.0
+          },
+          "data": {
+            "tipo": "DISJUNTOR",
+            "codigo": "15D8",
+            "nome": "",
+            "vao": "HY",
+            "rotacao": 0,
+            "largura": 44.0,
+            "altura": 72.0,
+            "ativo_codigo": "15D8",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "95d8",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 1012.0
+          },
+          "data": {
+            "tipo": "TC",
+            "codigo": "95D8",
+            "nome": "",
+            "vao": "HY",
+            "rotacao": 0,
+            "largura": 32.0,
+            "altura": 108.0,
+            "ativo_codigo": "95D8",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35d8-2",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 1120.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35D8-2",
+            "nome": "",
+            "vao": "HY",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35D8-2",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35c4-5",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 1230.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35C4-5",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 180,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35C4-5",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "95c4",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 1306.0
+          },
+          "data": {
+            "tipo": "TC",
+            "codigo": "95C4",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 0,
+            "largura": 32.0,
+            "altura": 108.0,
+            "ativo_codigo": "95C4",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "15c4",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 1428.0
+          },
+          "data": {
+            "tipo": "DISJUNTOR",
+            "codigo": "15C4",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 0,
+            "largura": 44.0,
+            "altura": 72.0,
+            "ativo_codigo": "15C4",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35c4-4",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 1514.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35C4-4",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35C4-4",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "bar500b",
+          "type": "noUnifilar",
+          "position": {
+            "x": 60.0,
+            "y": 1680.0
+          },
+          "data": {
+            "tipo": "BARRAMENTO",
+            "codigo": "BAR500B",
+            "nome": "Barramento 500 kV B",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 900.0,
+            "altura": 10.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "35c2-7",
+          "type": "noUnifilar",
+          "position": {
+            "x": 120.0,
+            "y": 1750.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35C2-7",
+            "nome": "",
+            "vao": "GZ",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35C2-7",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "j_c2",
+          "type": "noUnifilar",
+          "position": {
+            "x": 192.0,
+            "y": 1830.0
+          },
+          "data": {
+            "tipo": "CONEXAO",
+            "codigo": "J_C2",
+            "nome": "Juncao J_C2",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 16.0,
+            "altura": 16.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "75c2",
+          "type": "noUnifilar",
+          "position": {
+            "x": 450.0,
+            "y": 1820.0
+          },
+          "data": {
+            "tipo": "PARA_RAIOS",
+            "codigo": "75C2",
+            "nome": "",
+            "vao": "GZ",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 96.0,
+            "ativo_codigo": "75C2",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "85c2",
+          "type": "noUnifilar",
+          "position": {
+            "x": 320.0,
+            "y": 1910.0
+          },
+          "data": {
+            "tipo": "TPC",
+            "codigo": "85C2",
+            "nome": "",
+            "vao": "GZ",
+            "rotacao": 0,
+            "largura": 44.0,
+            "altura": 104.0,
+            "ativo_codigo": "85C2",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35e6-8",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 1890.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35E6-8",
+            "nome": "",
+            "vao": "GZ",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35E6-8",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35c4-7",
+          "type": "noUnifilar",
+          "position": {
+            "x": 540.0,
+            "y": 1760.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35C4-7",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35C4-7",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "j_c4",
+          "type": "noUnifilar",
+          "position": {
+            "x": 612.0,
+            "y": 1830.0
+          },
+          "data": {
+            "tipo": "CONEXAO",
+            "codigo": "J_C4",
+            "nome": "Juncao J_C4",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 16.0,
+            "altura": 16.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "75c4",
+          "type": "noUnifilar",
+          "position": {
+            "x": 820.0,
+            "y": 1850.0
+          },
+          "data": {
+            "tipo": "PARA_RAIOS",
+            "codigo": "75C4",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 96.0,
+            "ativo_codigo": "75C4",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "85c4",
+          "type": "noUnifilar",
+          "position": {
+            "x": 710.0,
+            "y": 1870.0
+          },
+          "data": {
+            "tipo": "TPC",
+            "codigo": "85C4",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 0,
+            "largura": 44.0,
+            "altura": 104.0,
+            "ativo_codigo": "85C4",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "35e8-8",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 1890.0
+          },
+          "data": {
+            "tipo": "SECCIONADORA",
+            "codigo": "35E8-8",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 72.0,
+            "ativo_codigo": "35E8-8",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "05e8",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 2050.0
+          },
+          "data": {
+            "tipo": "REATOR",
+            "codigo": "05E8",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 180,
+            "largura": 44.0,
+            "altura": 110.0,
+            "ativo_codigo": "05E8",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "05e8-n",
+          "type": "noUnifilar",
+          "position": {
+            "x": 600.0,
+            "y": 2180.0
+          },
+          "data": {
+            "tipo": "REATOR",
+            "codigo": "05E8-N",
+            "nome": "Reator de neutro",
+            "vao": "HZ",
+            "rotacao": 180,
+            "largura": 44.0,
+            "altura": 110.0,
+            "ativo_codigo": "05E8-N",
+            "ativo_fase": "N"
+          }
+        },
+        {
+          "id": "75e8-2",
+          "type": "noUnifilar",
+          "position": {
+            "x": 750.0,
+            "y": 2020.0
+          },
+          "data": {
+            "tipo": "PARA_RAIOS",
+            "codigo": "75E8-2",
+            "nome": "",
+            "vao": "HZ",
+            "rotacao": 0,
+            "largura": 40.0,
+            "altura": 96.0,
+            "ativo_codigo": "75E8-2",
+            "ativo_fase": "N"
+          }
+        },
+        {
+          "id": "cpvx4sp9h4023",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 2030.0
+          },
+          "data": {
+            "tipo": "REATOR",
+            "codigo": "05E6",
+            "nome": "",
+            "vao": "GZ",
+            "rotacao": 180,
+            "largura": 44.0,
+            "altura": 110.0,
+            "ativo_codigo": "05E6",
+            "ativo_fase": "AZ"
+          }
+        },
+        {
+          "id": "c52s93qrc4cw9",
+          "type": "noUnifilar",
+          "position": {
+            "x": -30.0,
+            "y": 2000.0
+          },
+          "data": {
+            "tipo": "PARA_RAIOS",
+            "codigo": "PR01",
+            "nome": "",
+            "vao": "",
+            "rotacao": 90,
+            "largura": 40.0,
+            "altura": 96.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "c85p5wn3e5cme",
+          "type": "noUnifilar",
+          "position": {
+            "x": 180.0,
+            "y": 2190.0
+          },
+          "data": {
+            "tipo": "REATOR",
+            "codigo": "05E6N",
+            "nome": "",
+            "vao": "GZ",
+            "rotacao": 180,
+            "largura": 44.0,
+            "altura": 110.0,
+            "ativo_codigo": "05E6-N",
+            "ativo_fase": "N"
+          }
+        },
+        {
+          "id": "couvd7x3vha5d",
+          "type": "noUnifilar",
+          "position": {
+            "x": 190.0,
+            "y": 1980.0
+          },
+          "data": {
+            "tipo": "CONEXAO",
+            "codigo": "CX01",
+            "nome": "",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 16.0,
+            "altura": 16.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "c1v7rm80ekuec",
+          "type": "noUnifilar",
+          "position": {
+            "x": 190.0,
+            "y": 830.0
+          },
+          "data": {
+            "tipo": "CONEXAO",
+            "codigo": "CX02",
+            "nome": "",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 16.0,
+            "altura": 16.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "cnbnlt22x7kqj",
+          "type": "noUnifilar",
+          "position": {
+            "x": 610.0,
+            "y": 840.0
+          },
+          "data": {
+            "tipo": "CONEXAO",
+            "codigo": "CX03",
+            "nome": "",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 16.0,
+            "altura": 16.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "cl8vghzwwgdrh",
+          "type": "noUnifilar",
+          "position": {
+            "x": 610.0,
+            "y": 1990.0
+          },
+          "data": {
+            "tipo": "CONEXAO",
+            "codigo": "CX04",
+            "nome": "",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 16.0,
+            "altura": 16.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "c5ydp544l1y99",
+          "type": "noUnifilar",
+          "position": {
+            "x": 190.0,
+            "y": 1210.0
+          },
+          "data": {
+            "tipo": "CONEXAO",
+            "codigo": "CX05",
+            "nome": "",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 16.0,
+            "altura": 16.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        },
+        {
+          "id": "ci60pun8xc4vz",
+          "type": "noUnifilar",
+          "position": {
+            "x": 610.0,
+            "y": 1200.0
+          },
+          "data": {
+            "tipo": "CONEXAO",
+            "codigo": "CX06",
+            "nome": "",
+            "vao": "",
+            "rotacao": 0,
+            "largura": 16.0,
+            "altura": 16.0,
+            "ativo_codigo": null,
+            "ativo_fase": null
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "l-35e7-8-T1-jt_e7-B4",
+          "type": "smoothstep",
+          "source": "35e7-8",
+          "sourceHandle": "T1",
+          "target": "jt_e7",
+          "targetHandle": "B4"
+        },
+        {
+          "id": "l-jt_e7-B1-75e7-1-T1",
+          "type": "smoothstep",
+          "source": "jt_e7",
+          "sourceHandle": "B1",
+          "target": "75e7-1",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-jt_e7-B3-05e7-T2",
+          "type": "smoothstep",
+          "source": "jt_e7",
+          "sourceHandle": "B3",
+          "target": "05e7",
+          "targetHandle": "T2"
+        },
+        {
+          "id": "l-35e9-8-T1-jt_e9-B4",
+          "type": "smoothstep",
+          "source": "35e9-8",
+          "sourceHandle": "T1",
+          "target": "jt_e9",
+          "targetHandle": "B4"
+        },
+        {
+          "id": "l-jt_e9-B1-75e9-1-T1",
+          "type": "smoothstep",
+          "source": "jt_e9",
+          "sourceHandle": "B1",
+          "target": "75e9-1",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-jt_e9-B3-05e9-T2",
+          "type": "smoothstep",
+          "source": "jt_e9",
+          "sourceHandle": "B3",
+          "target": "05e9",
+          "targetHandle": "T2"
+        },
+        {
+          "id": "l-bar500a-B4-35e7-4-T1",
+          "type": "smoothstep",
+          "source": "bar500a",
+          "sourceHandle": "B4",
+          "target": "35e7-4",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-35e7-4-T2-15e7-T1",
+          "type": "smoothstep",
+          "source": "35e7-4",
+          "sourceHandle": "T2",
+          "target": "15e7",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-15e7-T2-95e7-T1",
+          "type": "smoothstep",
+          "source": "15e7",
+          "sourceHandle": "T2",
+          "target": "95e7",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-95e7-T2-35e7-5-T1",
+          "type": "smoothstep",
+          "source": "95e7",
+          "sourceHandle": "T2",
+          "target": "35e7-5",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-15d7-T2-95d7-T1",
+          "type": "smoothstep",
+          "source": "15d7",
+          "sourceHandle": "T2",
+          "target": "95d7",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-95d7-T2-35d7-2-T1",
+          "type": "smoothstep",
+          "source": "95d7",
+          "sourceHandle": "T2",
+          "target": "35d7-2",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-95c2-T2-15c2-T1",
+          "type": "smoothstep",
+          "source": "95c2",
+          "sourceHandle": "T2",
+          "target": "15c2",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-15c2-T2-35c2-4-T1",
+          "type": "smoothstep",
+          "source": "15c2",
+          "sourceHandle": "T2",
+          "target": "35c2-4",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-bar500a-B4-35e9-4-T1",
+          "type": "smoothstep",
+          "source": "bar500a",
+          "sourceHandle": "B4",
+          "target": "35e9-4",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-35e9-4-T2-15e9-T1",
+          "type": "smoothstep",
+          "source": "35e9-4",
+          "sourceHandle": "T2",
+          "target": "15e9",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-15e9-T2-95e9-T1",
+          "type": "smoothstep",
+          "source": "15e9",
+          "sourceHandle": "T2",
+          "target": "95e9",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-95e9-T2-35e9-5-T1",
+          "type": "smoothstep",
+          "source": "95e9",
+          "sourceHandle": "T2",
+          "target": "35e9-5",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-15d8-T2-95d8-T1",
+          "type": "smoothstep",
+          "source": "15d8",
+          "sourceHandle": "T2",
+          "target": "95d8",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-95c4-T2-15c4-T1",
+          "type": "smoothstep",
+          "source": "95c4",
+          "sourceHandle": "T2",
+          "target": "15c4",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-15c4-T2-35c4-4-T1",
+          "type": "smoothstep",
+          "source": "15c4",
+          "sourceHandle": "T2",
+          "target": "35c4-4",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-35c2-4-T2-bar500b-B3",
+          "type": "smoothstep",
+          "source": "35c2-4",
+          "sourceHandle": "T2",
+          "target": "bar500b",
+          "targetHandle": "B3"
+        },
+        {
+          "id": "l-35c4-4-T2-bar500b-B3",
+          "type": "smoothstep",
+          "source": "35c4-4",
+          "sourceHandle": "T2",
+          "target": "bar500b",
+          "targetHandle": "B3"
+        },
+        {
+          "id": "l-35c2-7-T2-j_c2-B1",
+          "type": "smoothstep",
+          "source": "35c2-7",
+          "sourceHandle": "T2",
+          "target": "j_c2",
+          "targetHandle": "B1"
+        },
+        {
+          "id": "l-j_c2-B3-75c2-T1",
+          "type": "smoothstep",
+          "source": "j_c2",
+          "sourceHandle": "B3",
+          "target": "75c2",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-j_c4-B3-75c4-T1",
+          "type": "smoothstep",
+          "source": "j_c4",
+          "sourceHandle": "B3",
+          "target": "75c4",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-j_c4-B4-85c4-T1",
+          "type": "smoothstep",
+          "source": "j_c4",
+          "sourceHandle": "B4",
+          "target": "85c4",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__couvd7x3vha5dB3-35e6-8T2",
+          "type": "smoothstep",
+          "source": "couvd7x3vha5d",
+          "sourceHandle": "B3",
+          "target": "35e6-8",
+          "targetHandle": "T2"
+        },
+        {
+          "id": "xy-edge__couvd7x3vha5dB4-cpvx4sp9h4023T1",
+          "type": "smoothstep",
+          "source": "couvd7x3vha5d",
+          "sourceHandle": "B4",
+          "target": "cpvx4sp9h4023",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__c52s93qrc4cw9T1-couvd7x3vha5dB1",
+          "type": "smoothstep",
+          "source": "c52s93qrc4cw9",
+          "sourceHandle": "T1",
+          "target": "couvd7x3vha5d",
+          "targetHandle": "B1"
+        },
+        {
+          "id": "xy-edge__cpvx4sp9h4023T2-c85p5wn3e5cmeT1",
+          "type": "smoothstep",
+          "source": "cpvx4sp9h4023",
+          "sourceHandle": "T2",
+          "target": "c85p5wn3e5cme",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__35e6-8T1-j_c2B4",
+          "type": "smoothstep",
+          "source": "35e6-8",
+          "sourceHandle": "T1",
+          "target": "j_c2",
+          "targetHandle": "B4"
+        },
+        {
+          "id": "xy-edge__c1v7rm80ekuecB3-35e7-5T2",
+          "type": "smoothstep",
+          "source": "c1v7rm80ekuec",
+          "sourceHandle": "B3",
+          "target": "35e7-5",
+          "targetHandle": "T2"
+        },
+        {
+          "id": "xy-edge__c1v7rm80ekuecB4-35d7-1T1",
+          "type": "smoothstep",
+          "source": "c1v7rm80ekuec",
+          "sourceHandle": "B4",
+          "target": "35d7-1",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__35d7-1T2-15d7T1",
+          "type": "smoothstep",
+          "source": "35d7-1",
+          "sourceHandle": "T2",
+          "target": "15d7",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__35e7-8T2-c1v7rm80ekuecB1",
+          "type": "smoothstep",
+          "source": "35e7-8",
+          "sourceHandle": "T2",
+          "target": "c1v7rm80ekuec",
+          "targetHandle": "B1"
+        },
+        {
+          "id": "xy-edge__cnbnlt22x7kqjB3-35e9-5T2",
+          "type": "smoothstep",
+          "source": "cnbnlt22x7kqj",
+          "sourceHandle": "B3",
+          "target": "35e9-5",
+          "targetHandle": "T2"
+        },
+        {
+          "id": "xy-edge__15d8T1-35d8-1T2",
+          "type": "smoothstep",
+          "source": "15d8",
+          "sourceHandle": "T1",
+          "target": "35d8-1",
+          "targetHandle": "T2"
+        },
+        {
+          "id": "xy-edge__cnbnlt22x7kqjB4-35d8-1T1",
+          "type": "smoothstep",
+          "source": "cnbnlt22x7kqj",
+          "sourceHandle": "B4",
+          "target": "35d8-1",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__35e9-8T2-cnbnlt22x7kqjB1",
+          "type": "smoothstep",
+          "source": "35e9-8",
+          "sourceHandle": "T2",
+          "target": "cnbnlt22x7kqj",
+          "targetHandle": "B1"
+        },
+        {
+          "id": "xy-edge__85c2T1-j_c2B2",
+          "type": "smoothstep",
+          "source": "85c2",
+          "sourceHandle": "T1",
+          "target": "j_c2",
+          "targetHandle": "B2"
+        },
+        {
+          "id": "xy-edge__35e8-8T1-j_c4B4",
+          "type": "smoothstep",
+          "source": "35e8-8",
+          "sourceHandle": "T1",
+          "target": "j_c4",
+          "targetHandle": "B4"
+        },
+        {
+          "id": "xy-edge__35e8-8T2-cl8vghzwwgdrhB3",
+          "type": "smoothstep",
+          "source": "35e8-8",
+          "sourceHandle": "T2",
+          "target": "cl8vghzwwgdrh",
+          "targetHandle": "B3"
+        },
+        {
+          "id": "xy-edge__cl8vghzwwgdrhB2-75e8-2T1",
+          "type": "smoothstep",
+          "source": "cl8vghzwwgdrh",
+          "sourceHandle": "B2",
+          "target": "75e8-2",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__05e8T1-cl8vghzwwgdrhB4",
+          "type": "smoothstep",
+          "source": "05e8",
+          "sourceHandle": "T1",
+          "target": "cl8vghzwwgdrh",
+          "targetHandle": "B4"
+        },
+        {
+          "id": "xy-edge__05e8T2-05e8-nT1",
+          "type": "smoothstep",
+          "source": "05e8",
+          "sourceHandle": "T2",
+          "target": "05e8-n",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__c5ydp544l1y99B3-35d7-2T2",
+          "type": "smoothstep",
+          "source": "c5ydp544l1y99",
+          "sourceHandle": "B3",
+          "target": "35d7-2",
+          "targetHandle": "T2"
+        },
+        {
+          "id": "xy-edge__c5ydp544l1y99B4-35c2-5T1",
+          "type": "smoothstep",
+          "source": "c5ydp544l1y99",
+          "sourceHandle": "B4",
+          "target": "35c2-5",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__35c2-7T1-c5ydp544l1y99B1",
+          "type": "smoothstep",
+          "source": "35c2-7",
+          "sourceHandle": "T1",
+          "target": "c5ydp544l1y99",
+          "targetHandle": "B1"
+        },
+        {
+          "id": "xy-edge__95d8T2-35d8-2T1",
+          "type": "smoothstep",
+          "source": "95d8",
+          "sourceHandle": "T2",
+          "target": "35d8-2",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__95c4T1-35c4-5T2",
+          "type": "smoothstep",
+          "source": "95c4",
+          "sourceHandle": "T1",
+          "target": "35c4-5",
+          "targetHandle": "T2"
+        },
+        {
+          "id": "xy-edge__ci60pun8xc4vzB3-35d8-2T2",
+          "type": "smoothstep",
+          "source": "ci60pun8xc4vz",
+          "sourceHandle": "B3",
+          "target": "35d8-2",
+          "targetHandle": "T2"
+        },
+        {
+          "id": "xy-edge__ci60pun8xc4vzB4-35c4-5T1",
+          "type": "smoothstep",
+          "source": "ci60pun8xc4vz",
+          "sourceHandle": "B4",
+          "target": "35c4-5",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__ci60pun8xc4vzB1-35c4-7T1",
+          "type": "smoothstep",
+          "source": "ci60pun8xc4vz",
+          "sourceHandle": "B1",
+          "target": "35c4-7",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "xy-edge__35c4-7T2-j_c4B1",
+          "type": "smoothstep",
+          "source": "35c4-7",
+          "sourceHandle": "T2",
+          "target": "j_c4",
+          "targetHandle": "B1"
+        }
+      ]
+    }
+  ]
+}
