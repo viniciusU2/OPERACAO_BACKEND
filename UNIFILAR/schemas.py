@@ -91,6 +91,7 @@ class ResumoDiagramaSaida(SchemaUnifilar):
 
     id_subestacao: int
     nome: str
+    tipo_instalacao: str = "SUBESTACAO"
     total_componentes: int
     total_ligacoes: int
     atualizado_em: datetime | None = None

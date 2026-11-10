@@ -93,14 +93,14 @@ def listar_diagramas(db: Session) -> list[schemas.ResumoDiagramaSaida]:
     """
     linhas = db.execute(
         text(
-            "SELECT d.id_subestacao, s.nome, d.atualizado_em, "
+            "SELECT d.id_subestacao, s.nome, s.tipo_instalacao, d.atualizado_em, "
             "(SELECT COUNT(*) FROM unifilar_componente c "
             " WHERE c.id_diagrama = d.id_diagrama) AS total_componentes, "
             "(SELECT COUNT(*) FROM unifilar_conexao l "
             " WHERE l.id_diagrama = d.id_diagrama) AS total_ligacoes "
             "FROM unifilar_diagrama d "
             "JOIN subestacao s ON s.id_subestacao = d.id_subestacao "
-            "ORDER BY d.atualizado_em DESC, s.nome"
+            "ORDER BY (s.tipo_instalacao = 'SUBESTACAO') DESC, d.atualizado_em DESC, s.nome"
         )
     )
     resumos: list[schemas.ResumoDiagramaSaida] = []
@@ -112,6 +112,7 @@ def listar_diagramas(db: Session) -> list[schemas.ResumoDiagramaSaida]:
             schemas.ResumoDiagramaSaida(
                 id_subestacao=int(l.id_subestacao),
                 nome=l.nome,
+                tipo_instalacao=str(l.tipo_instalacao or "SUBESTACAO"),
                 total_componentes=componentes,
                 total_ligacoes=int(l.total_ligacoes or 0),
                 atualizado_em=l.atualizado_em,
