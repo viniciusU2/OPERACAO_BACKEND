@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from typing import Optional, Literal
 from problemas_tipicos.schemas import SSProblemaIn, SSProblemaResponse
@@ -50,6 +50,7 @@ class SolicitacaoServicoBase(BaseModel):
 
 # CREATE
     problemas: list[SSProblemaIn] = []
+    fotos: list[str] = Field(default_factory=list, max_length=5)
 
 class SolicitacaoServicoCreate(SolicitacaoServicoBase):
     id_subestacao: Optional[int] = None
@@ -102,6 +103,7 @@ class SolicitacaoServicoUpdate(BaseModel):
 
 
     problemas: Optional[list[SSProblemaIn]] = None
+    fotos: Optional[list[str]] = Field(default=None, max_length=5)
 
 # RESPONSE
 class SolicitacaoServicoResponse(SolicitacaoServicoBase):
@@ -121,3 +123,16 @@ class SolicitacaoServicoPaginadaResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
+
+
+class FotoSSUploadOut(BaseModel):
+    url: str
+    nome_arquivo: str
+
+
+class SolicitanteSSOut(BaseModel):
+    nome: str
+    matricula: str = ""
+    funcao: str = ""
+    telefone: str = ""
+    email: str = ""

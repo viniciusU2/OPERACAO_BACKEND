@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from database import Base
@@ -52,6 +54,17 @@ class SolicitacaoServico(Base):
     ativo = relationship("Ativo")
     grupo_ativo = relationship("GrupoAtivo")
     problemas = relationship("SSProblema", back_populates="ss", cascade="all, delete-orphan", lazy="selectin")
+    fotos_registros = relationship(
+        "SolicitacaoServicoFoto",
+        back_populates="ss",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="SolicitacaoServicoFoto.ordem",
+    )
+
+    @property
+    def fotos(self):
+        return [foto.url for foto in self.fotos_registros]
 
     @property
     def tipo_ativo_nome(self):
@@ -99,3 +112,21 @@ class SolicitacaoServico(Base):
         if self.ativo:
             return self.ativo.id_subestacao
         return self.grupo_ativo.id_subestacao if self.grupo_ativo else None
+
+
+class SolicitacaoServicoFoto(Base):
+    __tablename__ = "solicitacao_servico_foto"
+
+    id_foto = Column(Integer, primary_key=True)
+    id_ss = Column(
+        Integer,
+        ForeignKey("solicitacao_servico.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    url = Column(String(500), nullable=False)
+    nome_arquivo = Column(String(255), nullable=True)
+    ordem = Column(Integer, nullable=False, default=0)
+    criado_em = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    ss = relationship("SolicitacaoServico", back_populates="fotos_registros")
