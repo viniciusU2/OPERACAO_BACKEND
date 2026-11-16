@@ -462,63 +462,49 @@ def _normalizar_prazo_ss(data_limite, hoje: date):
     return rotulo, max(0, -dias), max(0, dias)
 
 
-def adicionar_aba_prazos_ss(wb, registros):
-    ws = wb.create_sheet("Prazo")
-    ws.append(
-        [
-            "Numero SS",
-            "Numero OS",
-            "Status",
-            "Instalacao",
-            "Tipo Ativo",
-            "Codigo Ativo",
-            "Fase",
-            "Solicitante",
-            "Prioridade",
-            "Data Solicitacao",
-            "Data Limite",
-            "Prazo",
-            "Dias em atraso",
-            "Dias restantes",
-        ]
-    )
+def _colunas_ss_com_prazo():
+    """Colunas da aba SS, com o prazo normalizado logo apos a data limite."""
+    colunas = []
+    for label, campo in SS_COLUNAS:
+        colunas.append((label, campo, None))
+        if campo == "data_hora_limite":
+            colunas.append(("Prazo", None, "prazo"))
+            colunas.append(("Dias em atraso", None, "atraso"))
+            colunas.append(("Dias restantes", None, "restantes"))
+    return colunas
+
+
+def adicionar_aba_ss(wb, registros):
+    """Aba unica de SS, com as colunas de prazo normalizadas."""
+    colunas = _colunas_ss_com_prazo()
+    ws = wb.create_sheet("SS")
+    ws.append([label for label, _, _ in colunas])
 
     hoje = date.today()
-    linhas = []
     for ss in registros:
         rotulo, atraso, restantes = _normalizar_prazo_ss(ss.data_hora_limite, hoje)
-        instalacao = ss.instalacao
-        if not instalacao and getattr(ss, "ativo", None) and ss.ativo.subestacao:
-            instalacao = ss.ativo.subestacao.nome
-        linhas.append((ss, rotulo, atraso, restantes, instalacao))
-
-    linhas.sort(key=lambda item: (item[0].data_hora_limite is None, item[0].data_hora_limite or datetime.max))
-
-    for ss, rotulo, atraso, restantes, instalacao in linhas:
-        data_limite = ss.data_hora_limite
-        ws.append(
-            [
-                limpar(ss.numero_ss),
-                limpar(ss.numero_os),
-                limpar(ss.status),
-                limpar(instalacao),
-                limpar(getattr(ss, "tipo_ativo_nome", "")),
-                limpar(getattr(ss, "codigo_ativo", "")),
-                limpar(getattr(ss, "fase_ativo", "")),
-                limpar(ss.solicitante),
-                limpar(ss.prioridade),
-                limpar(ss.data_hora_solicitacao),
-                data_limite.strftime("%d/%m/%Y") if data_limite else "",
-                rotulo,
-                "" if data_limite is None else atraso,
-                "" if data_limite is None else restantes,
-            ]
-        )
+        tem_prazo = ss.data_hora_limite is not None
+        linha = []
+        for _, campo, calculado in colunas:
+            if calculado == "prazo":
+                linha.append(rotulo)
+            elif calculado == "atraso":
+                linha.append(atraso if tem_prazo else "")
+            elif calculado == "restantes":
+                linha.append(restantes if tem_prazo else "")
+            else:
+                linha.append(limpar(valor_campo(ss, campo)))
+        ws.append(linha)
 
     aplicar_estilo(ws)
 
+    indice_prazo = next(
+        indice
+        for indice, (label, _, _) in enumerate(colunas, start=1)
+        if label == "Prazo"
+    )
     for linha in range(2, ws.max_row + 1):
-        celula = ws.cell(linha, 12)
+        celula = ws.cell(linha, indice_prazo)
         if celula.value == "Vencida":
             celula.font = Font(color="B91C1C", bold=True)
             celula.fill = PatternFill("solid", fgColor="FEE2E2")
@@ -583,8 +569,7 @@ def baixar_operacionais(
                 Ativo.id_subestacao == id_subestacao
             )
         registros_ss = query.all()
-        adicionar_aba(wb, "SS", SS_COLUNAS, registros_ss)
-        adicionar_aba_prazos_ss(wb, registros_ss)
+        adicionar_aba_ss(wb, registros_ss)
 
     caminho, nome_arquivo = salvar_workbook(wb, f"operacionais_{documento}")
 
