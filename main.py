@@ -27,6 +27,7 @@ from relatorio_manutencao import analysis_routes as relatorio_manutencao_analysi
 from relatorio_manutencao import models as relatorio_manutencao_models
 from models import problemas_tipicos_models
 import downloads
+import sync
 import auditoria_semanal
 from database import Base, engine
 from ATIVO import ativos
@@ -177,6 +178,7 @@ app.include_router(livro_registro.router)
 app.include_router(rdo.router)
 app.include_router(sobreaviso.router)
 app.include_router(downloads.router)
+app.include_router(sync.router)
 app.include_router(auditoria_semanal.router)
 app.include_router(analytics.router)
 app.include_router(analytics.recursos_router)
