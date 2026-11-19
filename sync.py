@@ -17,7 +17,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from database import get_db
-
 from models.Ativo import Ativo
 from models.OS_models import OrdemServico
 from models.SS_models import SolicitacaoServico
@@ -143,7 +142,7 @@ def sincronizar(body: SyncRequest, db: Session = Depends(get_db)):
     )
 
     return {
-        "ultima_sincronizacao": datetime.now(timezone.utc),
+        "ultima_sincronizacao": datetime.now(timezone.utc).replace(tzinfo=None),
         "completo": completo,
         "subestacoes": subestacoes,
         "tipos_ativo": tipos,
