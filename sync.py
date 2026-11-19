@@ -14,6 +14,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from database import get_db
@@ -100,10 +101,16 @@ def sincronizar(body: SyncRequest, db: Session = Depends(get_db)):
         .all()
     )
 
+    # Somente OS passíveis de cache no app (abertas/programadas/em execução).
+    # O app descarta as demais; filtrar aqui evita enviar OS encerradas.
+    status_cacheaveis = ["ABERTA", "ABERTO", "PROGRAMADA", "PROGRAMADO",
+                         "EM_EXECUCAO", "EM ANDAMENTO"]
     max_id_os = _max_id(max_ids, "ordem_servico")
     os_filtro = OrdemServico.id_os > max_id_os
     if ultima is not None:
         os_filtro = os_filtro | (OrdemServico.criado_em > ultima)
+    os_filtro = os_filtro & func.coalesce(OrdemServico.status, "ABERTA").in_(
+        status_cacheaveis)
 
     ordens = (
         db.query(OrdemServico)
@@ -141,6 +148,10 @@ def sincronizar(body: SyncRequest, db: Session = Depends(get_db)):
         .all()
     )
 
+    # O max_id de OS considera TODAS as OS (mesmo as encerradas), para não
+    # reescanear as encerradas a cada sincronização incremental.
+    max_os_global = db.query(func.max(OrdemServico.id_os)).scalar() or 0
+
     return {
         "ultima_sincronizacao": datetime.now(timezone.utc).replace(tzinfo=None),
         "completo": completo,
@@ -156,7 +167,7 @@ def sincronizar(body: SyncRequest, db: Session = Depends(get_db)):
         "plano_itens": itens,
         "max_ids": {
             "ativo": max(a.id_ativo for a in ativos) if ativos else _max_id(max_ids, "ativo"),
-            "ordem_servico": max(o.id_os for o in ordens) if ordens else _max_id(max_ids, "ordem_servico"),
+            "ordem_servico": max_os_global,
             "solicitacao_servico": max(s.id for s in solicitacoes) if solicitacoes else _max_id(max_ids, "solicitacao_servico"),
             "plano_manutencao": max(p.id_plano_manutencao for p in planos) if planos else _max_id(max_ids, "plano_manutencao"),
             "plano_item": max(i.id_plano_item for i in itens) if itens else _max_id(max_ids, "plano_item"),
