@@ -1,10 +1,10 @@
 {
-  "gerado_em": "2026-11-10T15:51:43",
+  "gerado_em": "2026-11-25T08:54:46",
   "diagramas": [
     {
       "subestacao": "SE GOR",
       "tipo_instalacao": "SUBESTACAO",
-      "atualizado_em": "2026-11-10T15:51:41",
+      "atualizado_em": "2026-11-25T08:54:37",
       "nodes": [
         {
           "id": "bar500a",
@@ -1457,14 +1457,6 @@
           "targetHandle": "T1"
         },
         {
-          "id": "xy-edge__35c2-7T1-c5ydp544l1y99B1",
-          "type": "smoothstep",
-          "source": "35c2-7",
-          "sourceHandle": "T1",
-          "target": "c5ydp544l1y99",
-          "targetHandle": "B1"
-        },
-        {
           "id": "xy-edge__95d8T2-35d8-2T1",
           "type": "smoothstep",
           "source": "95d8",
@@ -1497,20 +1489,36 @@
           "targetHandle": "T1"
         },
         {
-          "id": "xy-edge__ci60pun8xc4vzB1-35c4-7T1",
-          "type": "smoothstep",
-          "source": "ci60pun8xc4vz",
-          "sourceHandle": "B1",
-          "target": "35c4-7",
-          "targetHandle": "T1"
-        },
-        {
           "id": "xy-edge__35c4-7T2-j_c4B1",
           "type": "smoothstep",
           "source": "35c4-7",
           "sourceHandle": "T2",
           "target": "j_c4",
           "targetHandle": "B1"
+        },
+        {
+          "id": "l-35c2-5-T2-95c2-T1",
+          "type": "smoothstep",
+          "source": "35c2-5",
+          "sourceHandle": "T2",
+          "target": "95c2",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-bar500b-B4-35c2-7-T1",
+          "type": "smoothstep",
+          "source": "bar500b",
+          "sourceHandle": "B4",
+          "target": "35c2-7",
+          "targetHandle": "T1"
+        },
+        {
+          "id": "l-bar500b-B4-35c4-7-T1",
+          "type": "smoothstep",
+          "source": "bar500b",
+          "sourceHandle": "B4",
+          "target": "35c4-7",
+          "targetHandle": "T1"
         }
       ]
     }
